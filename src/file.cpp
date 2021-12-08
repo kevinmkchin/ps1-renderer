@@ -1,37 +1,37 @@
-
+// TODO(Kevin): Once we have custom memory allocators, replace the mallocs/frees in this file.
 
 
 struct BinaryFileHandle
 {
     /** Handle for a file in memory */
-    u32   size = 0;            // size of file in memory
-    void* memory = nullptr;  // pointer to file in memory
+    u32     size   = 0;        // size of file in memory
+    void*   memory = nullptr;  // pointer to file in memory
 };
 
 struct BitmapHandle : BinaryFileHandle
 {
     /** Handle for an UNSIGNED BYTE bitmap in memory */
-    u32 width = 0;      // image width
-    u32 height = 0;     // image height
-    u8 bitDepth = 0;  // bit depth of bitmap in bytes (e.g. bit depth = 3 means there are 3 bytes in the bitmap per pixel)
+    u32 width    = 0;   // image width
+    u32 height   = 0;   // image height
+    u8  bitDepth = 0;   // bit depth of bitmap in bytes (e.g. bit depth = 3 means there are 3 bytes in the bitmap per pixel)
 };
 
-void freeFileBinary(BinaryFileHandle& binaryFileToFree)
+INTERNAL void FreeFileBinary(BinaryFileHandle& binaryFileToFree)
 {
     free(binaryFileToFree.memory);
     binaryFileToFree.memory = nullptr;
     binaryFileToFree.size = 0;
 }
 
-/** Allocates memory, stores the binary file data in memory, makes BinaryFileHandle.memory
-    point to it. Pass along a BinaryFileHandle to receive the pointer to the file data in
-    memory and the size in bytes. */
-void readFileBinary(BinaryFileHandle& memToReadTo, const char* filePath)
+/** Allocates memory, stores the binary file data in memory, makes 
+    BinaryFileHandle.memory point to it. Pass along a BinaryFileHandle 
+    to receive the pointer to the file data in memory and the size in bytes. */
+INTERNAL void ReadFileBinary(BinaryFileHandle& memToReadTo, const char* filePath)
 {
     if(memToReadTo.memory)
     {
         printf("WARNING: Binary File Handle already points to allocated memory. Freeing memory first...\n");
-        freeFileBinary(memToReadTo);
+        FreeFileBinary(memToReadTo);
     }
 
     SDL_RWops* binaryFileRW = SDL_RWFromFile(filePath, "rb");
@@ -50,7 +50,7 @@ void readFileBinary(BinaryFileHandle& memToReadTo, const char* filePath)
 }
 
 /** Returns the string content of a file as an std::string */
-std::string readFileString(const char* filePath)
+INTERNAL std::string ReadFileString(const char* filePath)
 {
     std::string stringContent;
 
@@ -72,9 +72,9 @@ std::string readFileString(const char* filePath)
     return stringContent;
 }
 
-void free_image(BitmapHandle& imageHandle)
+INTERNAL void FreeImage(BitmapHandle& imageHandle)
 {
-    freeFileBinary(imageHandle);
+    FreeFileBinary(imageHandle);
     imageHandle.width = 0;
     imageHandle.height = 0;
     imageHandle.bitDepth = 0;
@@ -83,12 +83,12 @@ void free_image(BitmapHandle& imageHandle)
 /** Allocates memory, loads an image file as an UNSIGNED BYTE bitmap, makes BitmapHandle.memory
     point to it. Pass along a BitmapHandle to receive the pointer to the bitmap in memory and
     bitmap information. */
-void read_image(BitmapHandle& imageHandle, const char* imageFilePath)
+INTERNAL void ReadImage(BitmapHandle& imageHandle, const char* imageFilePath)
 {
     if(imageHandle.memory)
     {
         printf("WARNING: Binary File Handle already points to allocated memory. Freeing memory first...\n");
-        free_image(imageHandle);
+        FreeImage(imageHandle);
     }
 
     imageHandle.memory = stbi_load(imageFilePath, (int*)&imageHandle.width, (int*)&imageHandle.height, (int*)&imageHandle.bitDepth, 0);
