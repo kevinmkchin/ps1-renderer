@@ -323,6 +323,8 @@ int main(int argc, char* argv[])
         }
     }
 
+    consoleInputThread.detach();
+
     SDL_DestroyWindow(window);
     SDL_GL_DeleteContext(openglContext);
     SDL_Quit();
