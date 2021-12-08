@@ -1,81 +1,82 @@
 struct Shader
 {
-    static void glUseShader(Shader& shader);
-    static void glDeleteShader(Shader& shader);
-    static void glLoadShaderProgramFromFile(Shader& shader, const char* vertex_path, const char* fragment_path);
-    static void glLoadShaderProgramFromFile(Shader& shader, const char* vertex_path, const char* geometry_path, const char* fragment_path);
-    static void glCreateShaderProgram(Shader& shader, const char* vertex_shader_str, const char* fragment_shader_str);
-    static void glCreateShaderProgram(Shader& shader, const char* vertex_shader_str, const char* geometry_shader_str, const char* fragment_shader_str);
-    static void glLoadComputeShaderProgramFromFile(Shader& shader, const char* compute_path);
-    static void glCreateComputeShaderProgram(Shader& shader, const char* compute_shader_str);
+    static void GLDeleteShader(Shader& shader);
+    static void GLLoadShaderProgramFromFile(Shader& shader, const char* vertexPath, const char* fragmentPath);
+    static void GLLoadShaderProgramFromFile(Shader& shader, const char* vertexPath, const char* geometryPath, const char* fragmentPath);
+    static void GLCreateShaderProgram(Shader& shader, const char* vertexShaderStr, const char* fragmentShaderStr);
+    static void GLCreateShaderProgram(Shader& shader, const char* vertexShaderStr, const char* geometryShaderStr, const char* fragmentShaderStr);
+    static void GLLoadComputeShaderProgramFromFile(Shader& shader, const char* computePath);
+    static void GLCreateComputeShaderProgram(Shader& shader, const char* computeShaderStr);
 
-    void glBind1i(const char* uniform_name, GLint v0) const;
-    void glBind2i(const char* uniform_name, GLint v0, GLint v1) const;
-    void glBind3i(const char* uniform_name, GLint v0, GLint v1, GLint v2) const;
-    void glBind4i(const char* uniform_name, GLint v0, GLint v1, GLint v2, GLint v3) const;
-    void glBind1f(const char* uniform_name, GLfloat v0) const;
-    void glBind2f(const char* uniform_name, GLfloat v0, GLfloat v1) const;
-    void glBind3f(const char* uniform_name, GLfloat v0, GLfloat v1, GLfloat v2) const;
-    void glBind4f(const char* uniform_name, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3) const;
-    void glBindMatrix3fv(const char* uniform_name, GLsizei count, const GLfloat* value) const;
-    void glBindMatrix4fv(const char* uniform_name, GLsizei count, const GLfloat* value) const;
+    void UseShader();
 
-    i32 getCachedUniformLocation(const char* uniform_name) const;
+    void GLBind1i(const char* uniformName, GLint v0) const;
+    void GLBind2i(const char* uniformName, GLint v0, GLint v1) const;
+    void GLBind3i(const char* uniformName, GLint v0, GLint v1, GLint v2) const;
+    void GLBind4i(const char* uniformName, GLint v0, GLint v1, GLint v2, GLint v3) const;
+    void GLBind1f(const char* uniformName, GLfloat v0) const;
+    void GLBind2f(const char* uniformName, GLfloat v0, GLfloat v1) const;
+    void GLBind3f(const char* uniformName, GLfloat v0, GLfloat v1, GLfloat v2) const;
+    void GLBind4f(const char* uniformName, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3) const;
+    void GLBindMatrix3fv(const char* uniformName, GLsizei count, const GLfloat* value) const;
+    void GLBindMatrix4fv(const char* uniformName, GLsizei count, const GLfloat* value) const;
+
+    i32 GetCachedUniformLocation(const char* uniformName) const;
 
 private:
-    GLuint id_shader_program = 0; // id of this shader program in GPU memory
+    GLuint idShaderProgram = 0; // id of this shader program in GPU memory
 
-    std::unordered_map<std::string, i32> uniform_locations;
+    std::unordered_map<std::string, i32> uniformLocationsMap;
 
     static void cache_uniform_locations(Shader& shader);
 
-    static void cache_uniform_location(Shader& shader, const char* uniform_name);
+    static void cache_uniform_location(Shader& shader, const char* uniformName);
 
-    void warning_uniform_not_found(const char* uniform_name) const;
+    void warning_uniform_not_found(const char* uniformName) const;
 
     // Create shader on GPU and compile shader
-    static void gl_compile_shader(u32 program_id, const char* shader_code, GLenum Shaderype);
+    static void gl_compile_shader(u32 program_id, const char* shader_code, GLenum shaderType);
 
     // Return true if there was a compile error
     static bool gl_check_error_and_validate(GLuint program_id);
 };
 
 /** Telling opengl to start using this shader program */
-void Shader::glUseShader(Shader& shader)
+void Shader::UseShader()
 {
-    if (shader.id_shader_program == 0)
+    if (idShaderProgram == 0)
     {
-        printf("WARNING: Passed an unloaded shader program to glUseShader! Aborting.\n");
+        printf("WARNING: Passed an unloaded shader program to UseShader! Aborting.\n");
         return;
     }
-    glUseProgram(shader.id_shader_program);
+    glUseProgram(idShaderProgram);
 }
 
 /** Delete the shader program off GPU memory */
-void Shader::glDeleteShader(Shader& shader)
+void Shader::GLDeleteShader(Shader& shader)
 {
-    if (shader.id_shader_program == 0)
+    if (shader.idShaderProgram == 0)
     {
-        printf("WARNING: Passed an unloaded shader program to glDeleteShader! Aborting.\n");
+        printf("WARNING: Passed an unloaded shader program to GLDeleteShader! Aborting.\n");
         return;
     }
-    glDeleteProgram(shader.id_shader_program);
+    glDeleteProgram(shader.idShaderProgram);
 }
 
-void Shader::glCreateShaderProgram(Shader& shader, const char* vertex_shader_str, const char* fragment_shader_str)
+void Shader::GLCreateShaderProgram(Shader& shader, const char* vertexShaderStr, const char* fragmentShaderStr)
 {
-    shader.id_shader_program = glCreateProgram(); // Create an empty shader program and get the id
-    if (!shader.id_shader_program)
+    shader.idShaderProgram = glCreateProgram(); // Create an empty shader program and get the id
+    if (!shader.idShaderProgram)
     {
         printf("Failed to create shader program! Aborting.\n");
         return;
     }
-    gl_compile_shader(shader.id_shader_program, vertex_shader_str, GL_VERTEX_SHADER); // Compile and attach the shaders
-    gl_compile_shader(shader.id_shader_program, fragment_shader_str, GL_FRAGMENT_SHADER);
-    glLinkProgram(shader.id_shader_program); // Actually create the exectuable shader program on the graphics card
+    gl_compile_shader(shader.idShaderProgram, vertexShaderStr, GL_VERTEX_SHADER); // Compile and attach the shaders
+    gl_compile_shader(shader.idShaderProgram, fragmentShaderStr, GL_FRAGMENT_SHADER);
+    glLinkProgram(shader.idShaderProgram); // Actually create the exectuable shader program on the graphics card
 
 #if INTERNAL_BUILD
-    if (gl_check_error_and_validate(shader.id_shader_program))
+    if (gl_check_error_and_validate(shader.idShaderProgram))
     {
         return;
     }
@@ -84,22 +85,22 @@ void Shader::glCreateShaderProgram(Shader& shader, const char* vertex_shader_str
     Shader::cache_uniform_locations(shader);
 }
 
-void Shader::glCreateShaderProgram(Shader& shader, const char* vertex_shader_str, const char* geometry_shader_str, const char* fragment_shader_str)
+void Shader::GLCreateShaderProgram(Shader& shader, const char* vertexShaderStr, const char* geometryShaderStr, const char* fragmentShaderStr)
 {
 
-    shader.id_shader_program = glCreateProgram(); // Create an empty shader program and get the id
-    if (!shader.id_shader_program)
+    shader.idShaderProgram = glCreateProgram(); // Create an empty shader program and get the id
+    if (!shader.idShaderProgram)
     {
         printf("Failed to create shader program! Aborting.\n");
         return;
     }
-    gl_compile_shader(shader.id_shader_program, vertex_shader_str, GL_VERTEX_SHADER); // Compile and attach the shaders
-    gl_compile_shader(shader.id_shader_program, geometry_shader_str, GL_GEOMETRY_SHADER);
-    gl_compile_shader(shader.id_shader_program, fragment_shader_str, GL_FRAGMENT_SHADER);
-    glLinkProgram(shader.id_shader_program); // Actually create the exectuable shader program on the graphics card
+    gl_compile_shader(shader.idShaderProgram, vertexShaderStr, GL_VERTEX_SHADER); // Compile and attach the shaders
+    gl_compile_shader(shader.idShaderProgram, geometryShaderStr, GL_GEOMETRY_SHADER);
+    gl_compile_shader(shader.idShaderProgram, fragmentShaderStr, GL_FRAGMENT_SHADER);
+    glLinkProgram(shader.idShaderProgram); // Actually create the exectuable shader program on the graphics card
 
 #if INTERNAL_BUILD
-    if (gl_check_error_and_validate(shader.id_shader_program))
+    if (gl_check_error_and_validate(shader.idShaderProgram))
     {
         return;
     }
@@ -109,19 +110,19 @@ void Shader::glCreateShaderProgram(Shader& shader, const char* vertex_shader_str
 }
 
 
-void Shader::glCreateComputeShaderProgram(Shader& shader, const char* compute_shader_str)
+void Shader::GLCreateComputeShaderProgram(Shader& shader, const char* computeShaderStr)
 {
-    shader.id_shader_program = glCreateProgram();
-    if (!shader.id_shader_program)
+    shader.idShaderProgram = glCreateProgram();
+    if (!shader.idShaderProgram)
     {
         printf("Failed to create shader program! Aborting.\n");
         return;
     }
-    gl_compile_shader(shader.id_shader_program, compute_shader_str, GL_COMPUTE_SHADER);
-    glLinkProgram(shader.id_shader_program);
+    gl_compile_shader(shader.idShaderProgram, computeShaderStr, GL_COMPUTE_SHADER);
+    glLinkProgram(shader.idShaderProgram);
 
 #if INTERNAL_BUILD
-    if (gl_check_error_and_validate(shader.id_shader_program))
+    if (gl_check_error_and_validate(shader.idShaderProgram))
     {
         return;
     }
@@ -155,41 +156,41 @@ bool Shader::gl_check_error_and_validate(GLuint program_id)
     return false;
 }
 
-void Shader::glLoadShaderProgramFromFile(Shader& shader, const char* vertex_path, const char* fragment_path)
+void Shader::GLLoadShaderProgramFromFile(Shader& shader, const char* vertexPath, const char* fragmentPath)
 {
-    std::string v = readFileString(vertex_path);
-    std::string f = readFileString(fragment_path);
-    glCreateShaderProgram(shader, v.c_str(), f.c_str());
+    std::string v = ReadFileString(vertexPath);
+    std::string f = ReadFileString(fragmentPath);
+    GLCreateShaderProgram(shader, v.c_str(), f.c_str());
 }
 
-void Shader::glLoadShaderProgramFromFile(Shader& shader, const char* vertex_path, const char* geometry_path, const char* fragment_path)
+void Shader::GLLoadShaderProgramFromFile(Shader& shader, const char* vertexPath, const char* geometryPath, const char* fragmentPath)
 {
-    std::string v = readFileString(vertex_path);
-    std::string g = readFileString(geometry_path);
-    std::string f = readFileString(fragment_path);
-    glCreateShaderProgram(shader, v.c_str(), g.c_str(), f.c_str());
+    std::string v = ReadFileString(vertexPath);
+    std::string g = ReadFileString(geometryPath);
+    std::string f = ReadFileString(fragmentPath);
+    GLCreateShaderProgram(shader, v.c_str(), g.c_str(), f.c_str());
 }
 
-void Shader::glLoadComputeShaderProgramFromFile(Shader& shader, const char* compute_path)
+void Shader::GLLoadComputeShaderProgramFromFile(Shader& shader, const char* computePath)
 {
-    std::string c = readFileString(compute_path);
-    glCreateComputeShaderProgram(shader, c.c_str());
+    std::string c = ReadFileString(computePath);
+    GLCreateComputeShaderProgram(shader, c.c_str());
 }
 
 void Shader::cache_uniform_locations(Shader &shader)
 {
-    shader.uniform_locations.clear();
+    shader.uniformLocationsMap.clear();
 
     GLint longest_uniform_name_length;
     GLint number_of_uniforms;
-    glGetProgramiv(shader.id_shader_program, GL_ACTIVE_UNIFORM_MAX_LENGTH, &longest_uniform_name_length);
-    glGetProgramiv(shader.id_shader_program, GL_ACTIVE_UNIFORMS, &number_of_uniforms);
+    glGetProgramiv(shader.idShaderProgram, GL_ACTIVE_UNIFORM_MAX_LENGTH, &longest_uniform_name_length);
+    glGetProgramiv(shader.idShaderProgram, GL_ACTIVE_UNIFORMS, &number_of_uniforms);
     //printf("number of active uniforms for shader %d:  %d\n", shader.id_shader_program, number_of_uniforms);
 
     GLint readlength;
     GLint size;
     GLenum type;
-    GLchar uniform_name[128]; ASSERT(longest_uniform_name_length <= 128)
+    GLchar uniformName[128]; ASSERT(longest_uniform_name_length <= 128)
 
     /**If one or more elements of an array are active, the name of the array is returned in name, the type is returned
      * in type, and the size parameter returns the highest array element index used, plus one, as determined by the compiler
@@ -197,27 +198,27 @@ void Shader::cache_uniform_locations(Shader &shader)
     */
     for (GLint i = 0; i < number_of_uniforms; ++i)
     {
-        glGetActiveUniform(shader.id_shader_program, i, longest_uniform_name_length, &readlength, &size, &type, uniform_name);
-        cache_uniform_location(shader, uniform_name);
+        glGetActiveUniform(shader.idShaderProgram, i, longest_uniform_name_length, &readlength, &size, &type, uniformName);
+        cache_uniform_location(shader, uniformName);
     }
 }
 
-void Shader::cache_uniform_location(Shader& shader, const char *uniform_name)
+void Shader::cache_uniform_location(Shader& shader, const char *uniformName)
 {
-    i32 location = glGetUniformLocation(shader.id_shader_program, uniform_name);
+    i32 location = glGetUniformLocation(shader.idShaderProgram, uniformName);
     if (location != 0xffffffff)
     {
-        shader.uniform_locations[std::string(uniform_name)] = location;
+        shader.uniformLocationsMap[std::string(uniformName)] = location;
     }
     else
     {
-        printf("Warning! Unable to get the location of uniform '%s' for shader id %d...\n", uniform_name, shader.id_shader_program);
+        printf("Warning! Unable to get the location of uniform '%s' for shader id %d...\n", uniformName, shader.idShaderProgram);
     }
 }
 
-void Shader::gl_compile_shader(u32 program_id, const char* shader_code, GLenum Shaderype)
+void Shader::gl_compile_shader(u32 program_id, const char* shader_code, GLenum shaderType)
 {
-    GLuint id_shader = glCreateShader(Shaderype);             // Create an empty shader of given type and get id
+    GLuint id_shader = glCreateShader(shaderType);             // Create an empty shader of given type and get id
     GLint code_length = (GLint) strlen(shader_code);
     glShaderSource(id_shader, 1, &shader_code, &code_length);   // Fill the empty shader with the shader code
     glCompileShader(id_shader);                                 // Compile the shader source
@@ -228,154 +229,154 @@ void Shader::gl_compile_shader(u32 program_id, const char* shader_code, GLenum S
     if (!result)
     {
         glGetProgramInfoLog(id_shader, sizeof(eLog), nullptr, eLog);
-        printf("Error compiling the %d shader: '%s' \n", Shaderype, eLog);
+        printf("Error compiling the %d shader: '%s' \n", shaderType, eLog);
         return;
     }
 
     glAttachShader(program_id, id_shader);
 }
 
-void Shader::glBind1i(const char* uniform_name, GLint v0) const
+void Shader::GLBind1i(const char* uniformName, GLint v0) const
 {
-    i32 location = getCachedUniformLocation(uniform_name);
+    i32 location = GetCachedUniformLocation(uniformName);
     if(location >= 0)
     {
         glUniform1i(location, v0);
     }
     else
     {
-        warning_uniform_not_found(uniform_name);
+        warning_uniform_not_found(uniformName);
     }
 }
 
-void Shader::glBind2i(const char* uniform_name, GLint v0, GLint v1) const
+void Shader::GLBind2i(const char* uniformName, GLint v0, GLint v1) const
 {
-    i32 location = getCachedUniformLocation(uniform_name);
+    i32 location = GetCachedUniformLocation(uniformName);
     if(location >= 0)
     {
         glUniform2i(location, v0, v1);
     }
     else
     {
-        warning_uniform_not_found(uniform_name);
+        warning_uniform_not_found(uniformName);
     }
 }
 
-void Shader::glBind3i(const char* uniform_name, GLint v0, GLint v1, GLint v2) const
+void Shader::GLBind3i(const char* uniformName, GLint v0, GLint v1, GLint v2) const
 {
-    i32 location = getCachedUniformLocation(uniform_name);
+    i32 location = GetCachedUniformLocation(uniformName);
     if(location >= 0)
     {
         glUniform3i(location, v0, v1, v2);
     }
     else
     {
-        warning_uniform_not_found(uniform_name);
+        warning_uniform_not_found(uniformName);
     }
 }
 
-void Shader::glBind4i(const char* uniform_name, GLint v0, GLint v1, GLint v2, GLint v3) const
+void Shader::GLBind4i(const char* uniformName, GLint v0, GLint v1, GLint v2, GLint v3) const
 {
-    i32 location = getCachedUniformLocation(uniform_name);
+    i32 location = GetCachedUniformLocation(uniformName);
     if(location >= 0)
     {
         glUniform4i(location, v0, v1, v2, v3);
     }
     else
     {
-        warning_uniform_not_found(uniform_name);
+        warning_uniform_not_found(uniformName);
     }
 }
 
-void Shader::glBind1f(const char* uniform_name, GLfloat v0) const
+void Shader::GLBind1f(const char* uniformName, GLfloat v0) const
 {
-    i32 location = getCachedUniformLocation(uniform_name);
+    i32 location = GetCachedUniformLocation(uniformName);
     if(location >= 0)
     {
         glUniform1f(location, v0);
     }
     else
     {
-        warning_uniform_not_found(uniform_name);
+        warning_uniform_not_found(uniformName);
     }
 }
 
-void Shader::glBind2f(const char* uniform_name, GLfloat v0, GLfloat v1) const
+void Shader::GLBind2f(const char* uniformName, GLfloat v0, GLfloat v1) const
 {
-    i32 location = getCachedUniformLocation(uniform_name);
+    i32 location = GetCachedUniformLocation(uniformName);
     if(location >= 0)
     {
         glUniform2f(location, v0, v1);
     }
     else
     {
-        warning_uniform_not_found(uniform_name);
+        warning_uniform_not_found(uniformName);
     }
 }
 
-void Shader::glBind3f(const char* uniform_name, GLfloat v0, GLfloat v1, GLfloat v2) const
+void Shader::GLBind3f(const char* uniformName, GLfloat v0, GLfloat v1, GLfloat v2) const
 {
-    i32 location = getCachedUniformLocation(uniform_name);
+    i32 location = GetCachedUniformLocation(uniformName);
     if(location >= 0)
     {
         glUniform3f(location, v0, v1, v2);
     }
     else
     {
-        warning_uniform_not_found(uniform_name);
+        warning_uniform_not_found(uniformName);
     }
 }
 
-void Shader::glBind4f(const char* uniform_name, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3) const
+void Shader::GLBind4f(const char* uniformName, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3) const
 {
-    i32 location = getCachedUniformLocation(uniform_name);
+    i32 location = GetCachedUniformLocation(uniformName);
     if(location >= 0)
     {
         glUniform4f(location, v0, v1, v2, v3);
     }
     else
     {
-        warning_uniform_not_found(uniform_name);
+        warning_uniform_not_found(uniformName);
     }
 }
 
-void Shader::glBindMatrix3fv(const char* uniform_name, const GLsizei count, const GLfloat* value) const
+void Shader::GLBindMatrix3fv(const char* uniformName, GLsizei count, const GLfloat* value) const
 {
-    i32 location = getCachedUniformLocation(uniform_name);
+    i32 location = GetCachedUniformLocation(uniformName);
     if(location >= 0)
     {
         glUniformMatrix3fv(location, count, GL_FALSE, value);
     }
     else
     {
-        warning_uniform_not_found(uniform_name);
+        warning_uniform_not_found(uniformName);
     }
 }
 
-void Shader::glBindMatrix4fv(const char* uniform_name, const GLsizei count, const GLfloat* value) const
+void Shader::GLBindMatrix4fv(const char* uniformName, GLsizei count, const GLfloat* value) const
 {
-    i32 location = getCachedUniformLocation(uniform_name);
+    i32 location = GetCachedUniformLocation(uniformName);
     if(location >= 0)
     {
         glUniformMatrix4fv(location, count, GL_FALSE, value);
     }
     else
     {
-        warning_uniform_not_found(uniform_name);
+        warning_uniform_not_found(uniformName);
     }
 }
 
-i32 Shader::getCachedUniformLocation(const char* uniform_name) const
+i32 Shader::GetCachedUniformLocation(const char* uniformName) const
 {
-    auto location_iter = uniform_locations.find(uniform_name);
-    if(location_iter != uniform_locations.end())
+    auto location_iter = uniformLocationsMap.find(uniformName);
+    if(location_iter != uniformLocationsMap.end())
     {
         return location_iter->second;
     }
     return -1;
 }
 
-void Shader::warning_uniform_not_found(const char* uniform_name) const
+void Shader::warning_uniform_not_found(const char* uniformName) const
 {
-    printf("Warning: Uniform '%s' doesn't exist or isn't active on shader %d.\n", uniform_name, id_shader_program);
+    printf("Warning: Uniform '%s' doesn't exist or isn't active on shader %d.\n", uniformName, idShaderProgram);
 }

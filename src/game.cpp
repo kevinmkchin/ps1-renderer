@@ -1,44 +1,47 @@
+INTERNAL GameCamera camera;
 INTERNAL Shader sceneShader;
+INTERNAL MeshGroup cubeModel;
 
-INTERNAL void gameInit()
+INTERNAL std::string bgColor = "blue";
+
+INTERNAL void GameInit()
 {
-    Shader::glLoadShaderProgramFromFile(sceneShader, "data/shaders/scene.vert", "data/shaders/scene.frag");
+    Shader::GLLoadShaderProgramFromFile(sceneShader, "shaders/scene.vert", "shaders/scene.frag");
+    camera.CameraCalculatePerspectiveMatrix();
+
+    MeshGroupAssimpLoad(cubeModel, "data/cube/cube.obj");
+
+    console.bind_cvar("color", &bgColor);
 }
 
-INTERNAL void gameUpdate()
+INTERNAL void GameUpdate()
 {
-
+    camera.CameraUpdate();
 }
 
-INTERNAL void gameRender()
+INTERNAL void GameRender()
 {
-    glViewport(0, 0, BACKBUFFER_WIDTH, BACKBUFFER_HEIGHT);
-
-    glClearColor(0.39f, 0.582f, 0.926f, 1.f);
+    glViewport(0, 0, INTERNAL_RESOLUTION_WIDTH, INTERNAL_RESOLUTION_HEIGHT);
+    // glClearColor(RGB(46,88,120), 1.f);
+    if(bgColor == "red")
+    {
+        glClearColor(RGB(243,52,57), 1.f);
+    }
+    else if(bgColor == "blue")
+    {
+        glClearColor(RGB(46,88,120), 1.f);
+    }
+    else if(bgColor == "green")
+    {
+        glClearColor(RGB(103,192,115), 1.f);
+    }
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
 
-    Shader::glUseShader(sceneShader);
-
-        // glActiveTexture(GL_TEXTURE0);
-        // glBindTexture(GL_TEXTURE_2D, deferred_composition_output_texture);
-        LOCAL_PERSIST Mesh quad;
-        LOCAL_PERSIST bool meshmade = false;
-        if (!meshmade) {
-            meshmade = true;
-            u32 quadindices[6] = {
-                    0, 1, 3,
-                    0, 3, 2
-            };
-            GLfloat quadvertices[16] = {
-                    //  x   y    u    v
-                    -1.f, -1.f, 0.f, 0.f,
-                    1.f, -1.f, 1.f, 0.f,
-                    -1.f, 1.f, 0.f, 1.f,
-                    1.f, 1.f, 1.f, 1.f
-            };
-            Mesh::glCreateMesh(quad, quadvertices, quadindices, 16, 6, 2, 2, 0);
-        }
-        quad.glRenderMesh();
-
-    glUseProgram(0);   
+    sceneShader.UseShader();
+    sceneShader.GLBindMatrix4fv("modelMatrix", 1, identity_mat4().ptr());
+    sceneShader.GLBindMatrix4fv("viewMatrix", 1, camera.viewMatrix.ptr());
+    sceneShader.GLBindMatrix4fv("projMatrix", 1, camera.perspectiveMatrix.ptr());
+        cubeModel.render();
+    glUseProgram(0);
 }

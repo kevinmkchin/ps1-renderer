@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#define GLOBAL_VAR    static
 #define INTERNAL      static
 #define LOCAL_PERSIST static
 
@@ -19,11 +20,7 @@ typedef int_fast16_t  i16f;
 typedef int_fast32_t  i32f;
 typedef i32           bool32;
 
-
-#define TARGET_FPS 60
-#define BACKBUFFER_WIDTH 640
-#define BACKBUFFER_HEIGHT 480
-
+#define INDEX_NONE -1
 
 /** HELPER FUNCTIONS **/
 #if SLOW_BUILD
@@ -31,3 +28,25 @@ typedef i32           bool32;
 #else
 #define ASSERT(predicate)
 #endif
+
+#define RGB(r,g,b) ((float)r)/255.f, ((float)g)/255.f, ((float)b)/255.f
+
+#define printf printf
+
+/** REFERENCE **/
+INTERNAL u32 refQuadIndices[6] = {
+        0, 1, 3,
+        0, 3, 2
+};
+INTERNAL float refQuadVertices[16] = {
+        //  x   y    u    v
+        -1.f, -1.f, 0.f, 0.f,
+        1.f, -1.f, 1.f, 0.f,
+        -1.f, 1.f, 0.f, 1.f,
+        1.f, 1.f, 1.f, 1.f
+};
+
+/** GAME **/
+#define TARGET_FPS 60
+#define INTERNAL_RESOLUTION_WIDTH 320
+#define INTERNAL_RESOLUTION_HEIGHT 240
