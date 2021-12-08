@@ -424,7 +424,7 @@ struct GameCamera
     mat4  viewMatrix            = { 0.f }; // Last calculated view matrix
     float nearClip              = 0.1f;
     float farClip               = 2000.f;
-    float moveSpeed             = 10.f;
+    float moveSpeed             = 6.f;
     float turnSpeed             = 0.15f;
 
     void CameraUpdate();
@@ -436,8 +436,8 @@ void GameCamera::CameraUpdate()
 {
     if(kc_abs(gMouseDeltaX) < 50.f && kc_abs(gMouseDeltaY) < 50.f) // don't move if mouse delta is too big to be normal
     {
-        rotation.y /*yaw*/ -= ((float)gMouseDeltaX) * turnSpeed * 4.f;
-        rotation.z /*pitch*/ -= ((float)gMouseDeltaY) * turnSpeed * 4.f;
+        rotation.y /*yaw*/ -= ((float)gMouseDeltaX) * turnSpeed * 0.8f;
+        rotation.z /*pitch*/ -= ((float)gMouseDeltaY) * turnSpeed * 0.8f;
     }
 
     if(rotation.z > 89.f)

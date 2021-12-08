@@ -12,10 +12,22 @@ uniform mat4 modelMatrix;
 uniform mat4 viewMatrix;
 uniform mat4 projMatrix;
 
+#define INTERNAL_RESOLUTION_WIDTH 320
+#define INTERNAL_RESOLUTION_HEIGHT 240
+
 void main()
 {
     vary_uv = uv;
-    gl_Position = projMatrix * viewMatrix * modelMatrix * vec4(pos, 1.0);
+
+    vec4 vertInClipSpace = projMatrix * viewMatrix * modelMatrix * vec4(pos, 1.0);
+
+    /* Polygon Jittering */
+    vec2 grid = 0.5 * vec2(INTERNAL_RESOLUTION_WIDTH, INTERNAL_RESOLUTION_HEIGHT);
+    vec3 vertInNDC = vertInClipSpace.xyz / vertInClipSpace.w;
+    vertInNDC.xy = floor(vertInNDC.xy * grid) / grid;
+    vertInClipSpace.xyz = vertInNDC * vertInClipSpace.w;
+
+    gl_Position = vertInClipSpace;
 
     const vec4 sunlightWCS = vec4(-0.5, -1.0, -1.0, 0.0);
     vec3 normalWCS = transpose(inverse(mat3(modelMatrix))) * normal;
