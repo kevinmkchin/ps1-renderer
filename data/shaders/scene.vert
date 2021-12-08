@@ -1,11 +1,10 @@
 #version 330 core
 
-layout (location = 0) in vec3 pos;
-layout (location = 1) in vec2 uv;
-layout (location = 2) in vec3 normal;
+layout (location = 0) in vec3 vertex_pos;
+layout (location = 1) in vec2 vertex_uv;
+layout (location = 2) in vec3 vertex_normal;
 
-out vec3 vary_pos;
-out vec2 vary_uv;
+noperspective out vec2 uv;
 out vec3 LIGHT;
 
 uniform mat4 modelMatrix;
@@ -17,9 +16,9 @@ uniform mat4 projMatrix;
 
 void main()
 {
-    vary_uv = uv;
+    uv = vertex_uv;
 
-    vec4 vertInClipSpace = projMatrix * viewMatrix * modelMatrix * vec4(pos, 1.0);
+    vec4 vertInClipSpace = projMatrix * viewMatrix * modelMatrix * vec4(vertex_pos, 1.0);
 
     /* Polygon Jittering */
     vec2 grid = 0.5 * vec2(INTERNAL_RESOLUTION_WIDTH, INTERNAL_RESOLUTION_HEIGHT);
@@ -30,7 +29,7 @@ void main()
     gl_Position = vertInClipSpace;
 
     const vec4 sunlightWCS = vec4(-0.5, -1.0, -1.0, 0.0);
-    vec3 normalWCS = transpose(inverse(mat3(modelMatrix))) * normal;
+    vec3 normalWCS = transpose(inverse(mat3(modelMatrix))) * vertex_normal;
 
     float ambientIntensity = 0.3;
     float diffuseIntensity = max(0.0, dot(normalize(normalWCS), normalize(-vec3(sunlightWCS))));
