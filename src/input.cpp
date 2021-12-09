@@ -1,7 +1,7 @@
 
 INTERNAL i16 SDL_JOYSTICK_DEAD_ZONE = 8000;
 
-void SDLUpdateGamepads()
+INTERNAL void SDLUpdateGamepads()
 {
     LOCAL_PERSIST SDL_Joystick* gGamepadPointers[MAX_GAMEPAD_COUNT] = {};
 
