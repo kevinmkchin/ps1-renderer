@@ -23,7 +23,7 @@ void main()
     /* Polygon Jittering */
     vec2 grid = 0.5 * vec2(INTERNAL_RESOLUTION_WIDTH, INTERNAL_RESOLUTION_HEIGHT);
     vec3 vertInNDC = vertInClipSpace.xyz / vertInClipSpace.w;
-    vertInNDC.xy = floor(vertInNDC.xy * grid) / grid;
+    vertInNDC.xy = round(vertInNDC.xy * grid) / grid;
     vertInClipSpace.xyz = vertInNDC * vertInClipSpace.w;
 
     gl_Position = vertInClipSpace;
