@@ -262,6 +262,8 @@ struct MeshGroup
     void clear();
 };
 
+INTERNAL Texture missingTexture;
+
 void MeshGroup::render()
 {
     for(size_t i = 0; i < meshes.size(); ++i)
@@ -270,6 +272,10 @@ void MeshGroup::render()
         if(materialIndex < textures.size() && textures[materialIndex].textureId != 0)
         {
             textures[materialIndex].UseTexture();
+        }
+        else if(textures[materialIndex].textureId == 0)
+        {
+            missingTexture.UseTexture();
         }
 
         meshes[i].RenderMesh();

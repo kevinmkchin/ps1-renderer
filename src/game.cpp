@@ -9,7 +9,9 @@ INTERNAL void GameInit()
     Shader::GLLoadShaderProgramFromFile(sceneShader, "shaders/scene.vert", "shaders/scene.frag");
     camera.CameraCalculatePerspectiveMatrix();
 
-    MeshGroupAssimpLoad(cubeModel, "data/cube/cube.obj");
+    TextureCreateFromFile(missingTexture, "data/primitives/missing_texture.png");
+
+    MeshGroupAssimpLoad(cubeModel, "data/primitives/sphere.obj");
 
     console.bind_cvar("color", &bgColor);
 }
@@ -39,9 +41,10 @@ INTERNAL void GameRender()
     glEnable(GL_DEPTH_TEST);
 
     sceneShader.UseShader();
-    sceneShader.GLBindMatrix4fv("modelMatrix", 1, identity_mat4().ptr());
-    sceneShader.GLBindMatrix4fv("viewMatrix", 1, camera.viewMatrix.ptr());
-    sceneShader.GLBindMatrix4fv("projMatrix", 1, camera.perspectiveMatrix.ptr());
+        sceneShader.GLBindMatrix4fv("modelMatrix", 1, identity_mat4().ptr());
+        sceneShader.GLBindMatrix4fv("viewMatrix", 1, camera.viewMatrix.ptr());
+        sceneShader.GLBindMatrix4fv("projMatrix", 1, camera.perspectiveMatrix.ptr());
+        sceneShader.GLBind3f("modelColor", RGB(255,255,255));
         cubeModel.render();
     glUseProgram(0);
 }
