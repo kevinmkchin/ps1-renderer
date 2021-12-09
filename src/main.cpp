@@ -4,6 +4,7 @@ TODO:
     - Collision
     - Animation
     - Audio
+    - Text rendering with kc_truetypeassembler.h
 
 Rules:
      - unit vector (x: 1, y: 0, z: 0), aka positive X, is the "forward" direction for un-rotated objects

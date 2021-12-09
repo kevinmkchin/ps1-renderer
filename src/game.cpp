@@ -10,37 +10,19 @@ struct GameObject
         model = nullptr;
     }
 
-    vec3 GetPos() const
+    virtual void Update()
     {
-        return pos;
+
     }
 
-    void SetPos(const vec3& newPos)
+    virtual void Render(const Shader& shader)
     {
-        pos = newPos;
-        isModelMatrixOutdated = true;
-    }
-
-    quaternion GetOrientation() const
-    {
-        return orientation;
-    }
-
-    void SetOrientation(const quaternion& newOrientation)
-    {
-        orientation = newOrientation;
-        isModelMatrixOutdated = true;
-    }
-
-    vec3 GetScale() const
-    {
-        return scale;
-    }
-
-    void SetScale(const vec3& newScale)
-    {
-        scale = newScale;
-        isModelMatrixOutdated = true;
+        MeshGroup* modelToRender = GetModel();
+        if(modelToRender)
+        {
+            shader.GLBindMatrix4fv("modelMatrix", 1, GetModelMatrix().ptr());
+            modelToRender->render();
+        }
     }
 
     const mat4& GetModelMatrix()
@@ -57,24 +39,48 @@ struct GameObject
         return modelMatrix;
     }
 
+    vec3 GetPos() const
+    {
+        return pos;
+    }
+    void SetPos(const vec3& newPos)
+    {
+        pos = newPos;
+        isModelMatrixOutdated = true;
+    }
+    void Move(const vec3& moveAmount)
+    {
+        pos += moveAmount;
+        isModelMatrixOutdated = true;
+    }
+
+    quaternion GetOrientation() const
+    {
+        return orientation;
+    }
+    void SetOrientation(const quaternion& newOrientation)
+    {
+        orientation = newOrientation;
+        isModelMatrixOutdated = true;
+    }
+
+    vec3 GetScale() const
+    {
+        return scale;
+    }
+    void SetScale(const vec3& newScale)
+    {
+        scale = newScale;
+        isModelMatrixOutdated = true;
+    }
+
     MeshGroup* GetModel() const
     {
         return model;
     }
-
     void SetModel(MeshGroup* newModelPtr)
     {
         model = newModelPtr;
-    }
-
-    void Render(const Shader& shader)
-    {
-        MeshGroup* modelToRender = GetModel();
-        if(modelToRender)
-        {
-            shader.GLBindMatrix4fv("modelMatrix", 1, GetModelMatrix().ptr());
-            modelToRender->render();
-        }
     }
 
 private:
@@ -122,6 +128,15 @@ INTERNAL void GameInit()
 INTERNAL void GameUpdate()
 {
     camera.CameraUpdate();
+    for(auto& gameObj : gameObjectsA)
+    {
+        gameObj.Update();
+    }
+
+    gameObjectsA[0].Move(
+            {(gKeyState[SDL_SCANCODE_RIGHT] * 1.f + -gKeyState[SDL_SCANCODE_LEFT] * 1.f) * gDeltaTime,
+             (gKeyState[SDL_SCANCODE_UP] * 1.f + -gKeyState[SDL_SCANCODE_DOWN] * 1.f) * gDeltaTime,
+              0.f });
 }
 
 INTERNAL void GameRender()
@@ -134,6 +149,7 @@ INTERNAL void GameRender()
     sceneShader.UseShader();
         sceneShader.GLBindMatrix4fv("viewMatrix", 1, camera.viewMatrix.ptr());
         sceneShader.GLBindMatrix4fv("projMatrix", 1, camera.perspectiveMatrix.ptr());
+        sceneShader.GLBind3f("modelColor", RGB(255,255,255));
         for(auto& gameObj : gameObjectsA)
         {
             gameObj.Render(sceneShader);
