@@ -526,7 +526,7 @@ void GameCamera::CameraUpdate()
         position.y += moveSpeed * gDeltaTime;
     }
 
-    viewMatrix = view_matrix_look_at(position, position + calculatedDirection, calculatedUp);
+    CameraCalculateViewMatrix();
 }
 
 void GameCamera::CameraCalculatePerspectiveMatrix()
@@ -534,4 +534,9 @@ void GameCamera::CameraCalculatePerspectiveMatrix()
     float fov = 90.f;
     float aspect_ratio = (float)INTERNAL_RESOLUTION_WIDTH / (float)INTERNAL_RESOLUTION_HEIGHT;
     perspectiveMatrix = projection_matrix_perspective((fov/2.f)*KC_DEG2RAD, aspect_ratio, nearClip, farClip);
+}
+
+void GameCamera::CameraCalculateViewMatrix()
+{
+    viewMatrix = view_matrix_look_at(position, position + calculatedDirection, calculatedUp);
 }
