@@ -2,7 +2,7 @@
 
 TODO:
     - make sure texture, mesh, mesh group aren't leaking memory.
-    - read about framebuffers https://learnopengl.com/Advanced-OpenGL/Framebuffers
+    - scene system + game objects
 
 Rules:
      - unit vector (x: 1, y: 0, z: 0), aka positive X, is the "forward" direction for un-rotated objects
@@ -191,24 +191,36 @@ INTERNAL void SDLProcessEvents()
                 {
                     gIsRunning = false;
                 }
-                if (event.key.keysym.sym == SDLK_1)
-                {
-                    SDLFullscreen(0);
-                }
-                if (event.key.keysym.sym == SDLK_2)
-                {
-                    SDLFullscreen(1);
-                }
-                if (event.key.keysym.sym == SDLK_3)
-                {
-                    SDLFullscreen(2);
-                }
             } break;
         }
     }
+
+    if(gGamepadStates[0].isConnected && gGamepadStates[0].HasBeenPressed(GAMEPAD_START))
+    {
+        gIsRunning = false;
+    }
 }
 
-bool CreateInternalFramebuffer()
+INTERNAL void PollConsoleInput()
+{
+    while(gIsRunning)
+    {
+        std::string input;
+        std::cin >> input;
+        consoleCommandQueue = consoleCommandQueue + " " + input;
+    }
+}
+
+INTERNAL void CheckConsoleCommandQueue()
+{
+    if(!consoleCommandQueue.empty())
+    {
+        console.execute(consoleCommandQueue, std::cout);
+        consoleCommandQueue = std::string();
+    }
+}
+
+INTERNAL bool CreateInternalFramebuffer()
 {
     glGenFramebuffers(1, &internalFBO);
     glBindFramebuffer(GL_FRAMEBUFFER, internalFBO);
@@ -236,23 +248,50 @@ bool CreateInternalFramebuffer()
     return true;
 }
 
-void PollConsoleInput()
+INTERNAL void DrawInternalBufferToBackBuffer()
 {
-    while(gIsRunning)
-    {
-        std::string input;
-        std::cin >> input;
-        consoleCommandQueue = consoleCommandQueue + " " + input;
-    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f); 
+        glClear(GL_COLOR_BUFFER_BIT);
+        glDisable(GL_DEPTH_TEST);
+        glViewport(0, 0, backbufferWidth, backbufferHeight);
+        quadShader.UseShader();
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, internalColorTexture);
+            float internal_ratio = (float)INTERNAL_RESOLUTION_WIDTH / (float)INTERNAL_RESOLUTION_HEIGHT;
+            float screen_ratio = (float)backbufferWidth / (float)backbufferHeight;
+            float finalOutputQuadVertices[16] = {
+                -1.f, -1.f, 0.f, 0.f,
+                1.f, -1.f, 1.f, 0.f,
+                -1.f, 1.f, 0.f, 1.f,
+                1.f, 1.f, 1.f, 1.f
+            };
+            if(screen_ratio > internal_ratio)
+            {
+                float w = backbufferHeight * internal_ratio;
+                float f = (backbufferWidth - w) / backbufferWidth;
+                finalOutputQuadVertices[0] = -1.f + f;
+                finalOutputQuadVertices[4] = 1.f - f;
+                finalOutputQuadVertices[8] = -1.f + f;
+                finalOutputQuadVertices[12] = 1.f - f;
+            }
+            else
+            {
+                float h = backbufferWidth / internal_ratio;
+                float f = (backbufferHeight - h) / backbufferHeight;
+                finalOutputQuadVertices[1] = -1.f + f;
+                finalOutputQuadVertices[5] = -1.f + f;
+                finalOutputQuadVertices[9] = 1.f - f;
+                finalOutputQuadVertices[13] = 1.f - f;
+            }
+            finalOutputQuad.RebindBufferObjects(finalOutputQuadVertices, refQuadIndices, 16, 6);
+            finalOutputQuad.RenderMesh();
+        glUseProgram(0);
 }
 
-void CheckConsoleCommandQueue()
+INTERNAL void BindConsoleCommandsAndVariables()
 {
-    if(!consoleCommandQueue.empty())
-    {
-        console.execute(consoleCommandQueue, std::cout);
-        consoleCommandQueue = std::string();
-    }
+    console.bind_cmd("fullscreen", SDLFullscreen);
 }
 
 int main(int argc, char* argv[])
@@ -262,6 +301,7 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    BindConsoleCommandsAndVariables();
     std::thread consoleInputThread(PollConsoleInput);
 
     GameInit();
@@ -289,43 +329,7 @@ int main(int argc, char* argv[])
             glBindFramebuffer(GL_FRAMEBUFFER, internalFBO);
             GameRender();
 
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            glClearColor(0.0f, 0.0f, 0.0f, 0.0f); 
-            glClear(GL_COLOR_BUFFER_BIT);
-            glDisable(GL_DEPTH_TEST);
-            glViewport(0, 0, backbufferWidth, backbufferHeight);
-            quadShader.UseShader();
-                glActiveTexture(GL_TEXTURE0);
-                glBindTexture(GL_TEXTURE_2D, internalColorTexture);
-                float internal_ratio = (float)INTERNAL_RESOLUTION_WIDTH / (float)INTERNAL_RESOLUTION_HEIGHT;
-                float screen_ratio = (float)backbufferWidth / (float)backbufferHeight;
-                float finalOutputQuadVertices[16] = {
-                    -1.f, -1.f, 0.f, 0.f,
-                    1.f, -1.f, 1.f, 0.f,
-                    -1.f, 1.f, 0.f, 1.f,
-                    1.f, 1.f, 1.f, 1.f
-                };
-                if(screen_ratio > internal_ratio)
-                {
-                    float w = backbufferHeight * internal_ratio;
-                    float f = (backbufferWidth - w) / backbufferWidth;
-                    finalOutputQuadVertices[0] = -1.f + f;
-                    finalOutputQuadVertices[4] = 1.f - f;
-                    finalOutputQuadVertices[8] = -1.f + f;
-                    finalOutputQuadVertices[12] = 1.f - f;
-                }
-                else
-                {
-                    float h = backbufferWidth / internal_ratio;
-                    float f = (backbufferHeight - h) / backbufferHeight;
-                    finalOutputQuadVertices[1] = -1.f + f;
-                    finalOutputQuadVertices[5] = -1.f + f;
-                    finalOutputQuadVertices[9] = 1.f - f;
-                    finalOutputQuadVertices[13] = 1.f - f;
-                }
-                finalOutputQuad.RebindBufferObjects(finalOutputQuadVertices, refQuadIndices, 16, 6);
-                finalOutputQuad.RenderMesh();
-            glUseProgram(0);
+            DrawInternalBufferToBackBuffer();
 
             SDL_GL_SwapWindow(window);
         }
