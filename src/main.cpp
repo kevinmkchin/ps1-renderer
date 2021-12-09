@@ -40,13 +40,15 @@ BUILD MODES:
 
 INTERNAL bool gIsRunning = true;
 INTERNAL float gDeltaTime;
-INTERNAL const u8* gKeystate = nullptr; // Stores keyboard state this frame. Access via gKeystate[SDL_Scancode].
+INTERNAL const u8* gKeyState = nullptr; // Stores keyboard state this frame. Access via gKeystate[SDL_Scancode].
 INTERNAL i32 gMouseDeltaX;
 INTERNAL i32 gMouseDeltaY;
+INTERNAL GamepadState gGamepadStates[MAX_GAMEPAD_COUNT] = {};
 
 INTERNAL noclip::console console;
 INTERNAL std::string consoleCommandQueue;
 
+#include "input.cpp"
 #include "file.cpp"
 #include "shader.cpp"
 #include "core.cpp"
@@ -106,7 +108,7 @@ INTERNAL bool SDLInitialize()
     }
     printf("SDL Window & OpenGL context created.\n");
 
-    gKeystate = SDL_GetKeyboardState(nullptr);
+    gKeyState = SDL_GetKeyboardState(nullptr);
     SDL_SetRelativeMouseMode(SDL_TRUE);
 
     return true;
@@ -148,6 +150,8 @@ INTERNAL void SDLFullscreen(int mode)
 
 INTERNAL void SDLProcessEvents()
 {
+    SDLUpdateGamepads();
+
     // Store Mouse state
     gMouseDeltaX = 0;
     gMouseDeltaY = 0;
@@ -204,6 +208,34 @@ INTERNAL void SDLProcessEvents()
     }
 }
 
+bool CreateInternalFramebuffer()
+{
+    glGenFramebuffers(1, &internalFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, internalFBO);
+        glGenTextures(1, &internalColorTexture);
+        glBindTexture(GL_TEXTURE_2D, internalColorTexture);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, INTERNAL_RESOLUTION_WIDTH, INTERNAL_RESOLUTION_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, internalColorTexture, 0);
+            u32 colorAttachments[1] = { GL_COLOR_ATTACHMENT0 };
+            glDrawBuffers(1, colorAttachments);
+        glGenRenderbuffers(1, &internalDepthBuffer);
+        glBindRenderbuffer(GL_RENDERBUFFER, internalDepthBuffer);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, INTERNAL_RESOLUTION_WIDTH, INTERNAL_RESOLUTION_HEIGHT);
+            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, internalDepthBuffer);
+        if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        {
+            printf("Internal FrameBuffer Object failed to create.");
+            return false;
+        }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    Shader::GLLoadShaderProgramFromFile(quadShader, "shaders/quad.vert", "shaders/quad.frag");
+    MeshCreate(finalOutputQuad, refQuadVertices, refQuadIndices, 16, 6, 2, 2, 0);
+
+    return true;
+}
+
 void PollConsoleInput()
 {
     while(gIsRunning)
@@ -225,33 +257,10 @@ void CheckConsoleCommandQueue()
 
 int main(int argc, char* argv[])
 {
-    if(SDLInitialize() == false || GLEWInitialize() == false)
+    if(!SDLInitialize() || !GLEWInitialize() || !CreateInternalFramebuffer())
     {
         return -1;
     }
-
-    glGenFramebuffers(1, &internalFBO);
-    glBindFramebuffer(GL_FRAMEBUFFER, internalFBO);
-        glGenTextures(1, &internalColorTexture);
-        glBindTexture(GL_TEXTURE_2D, internalColorTexture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, INTERNAL_RESOLUTION_WIDTH, INTERNAL_RESOLUTION_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, internalColorTexture, 0);
-        u32 colorAttachments[1] = { GL_COLOR_ATTACHMENT0 };
-        glDrawBuffers(1, colorAttachments);
-        glGenRenderbuffers(1, &internalDepthBuffer);
-        glBindRenderbuffer(GL_RENDERBUFFER, internalDepthBuffer);
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, INTERNAL_RESOLUTION_WIDTH, INTERNAL_RESOLUTION_HEIGHT);
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, internalDepthBuffer);
-        if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        {
-            printf("Internal FrameBuffer Object failed to create.");
-            return -1;
-        }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    Shader::GLLoadShaderProgramFromFile(quadShader, "shaders/quad.vert", "shaders/quad.frag");
-    MeshCreate(finalOutputQuad, refQuadVertices, refQuadIndices, 16, 6, 2, 2, 0);
 
     std::thread consoleInputThread(PollConsoleInput);
 
@@ -269,7 +278,6 @@ int main(int argc, char* argv[])
         while(msSinceLastUpdate > msPerFrame)
         {
             msSinceLastUpdate -= msPerFrame;
-
             gDeltaTime = msPerFrame / 1000.f;
 
             CheckConsoleCommandQueue();

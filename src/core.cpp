@@ -445,6 +445,11 @@ void GameCamera::CameraUpdate()
         rotation.y /*yaw*/ -= ((float)gMouseDeltaX) * turnSpeed * 0.8f;
         rotation.z /*pitch*/ -= ((float)gMouseDeltaY) * turnSpeed * 0.8f;
     }
+    if(gGamepadStates[0].isConnected)
+    {
+        rotation.y -= gGamepadStates[0].rightThumbStickDir.x * turnSpeed * gDeltaTime * 260.f;
+        rotation.z += gGamepadStates[0].rightThumbStickDir.y * turnSpeed * gDeltaTime * 260.f;
+    }
 
     if(rotation.z > 89.f)
     {
@@ -461,27 +466,41 @@ void GameCamera::CameraUpdate()
     calculatedRight = normalize(cross(calculatedDirection, WORLD_UP_VECTOR));
     calculatedUp = normalize(cross(calculatedRight, calculatedDirection));
 
-    if (gKeystate[SDL_SCANCODE_W])
+    if(gGamepadStates[0].isConnected)
+    {
+
+        position += calculatedDirection * gGamepadStates[0].leftThumbStickDir.y * gDeltaTime;
+        position += calculatedRight * gGamepadStates[0].leftThumbStickDir.x * gDeltaTime;
+
+        if (gGamepadStates[0].IsPressed(GAMEPAD_RB)) {
+            position.y += moveSpeed * gDeltaTime;
+        }
+        if (gGamepadStates[0].IsPressed(GAMEPAD_LB)) {
+            position.y += -moveSpeed * gDeltaTime;
+        }
+    }
+
+    if (gKeyState[SDL_SCANCODE_W])
     {
         position += calculatedDirection * moveSpeed * gDeltaTime;
     }
-    if (gKeystate[SDL_SCANCODE_A])
+    if (gKeyState[SDL_SCANCODE_A])
     {
         position += -calculatedRight * moveSpeed * gDeltaTime;
     }
-    if (gKeystate[SDL_SCANCODE_S])
+    if (gKeyState[SDL_SCANCODE_S])
     {
         position += -calculatedDirection * moveSpeed * gDeltaTime;
     }
-    if (gKeystate[SDL_SCANCODE_D])
+    if (gKeyState[SDL_SCANCODE_D])
     {
         position += calculatedRight * moveSpeed * gDeltaTime;
     }
-    if (gKeystate[SDL_SCANCODE_Q])
+    if (gKeyState[SDL_SCANCODE_Q])
     {
         position.y += -moveSpeed * gDeltaTime;
     }
-    if (gKeystate[SDL_SCANCODE_E])
+    if (gKeyState[SDL_SCANCODE_E])
     {
         position.y += moveSpeed * gDeltaTime;
     }

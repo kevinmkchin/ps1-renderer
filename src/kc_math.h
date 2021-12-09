@@ -229,13 +229,17 @@ inline vec3 sub(vec3 a, vec3 b);
 inline vec4 sub(vec4 a, vec4 b);
 inline vec3 mul(vec3 a, float b);
 inline vec4 mul(vec4 a, float b);
+inline vec2 div(vec2 a, float b);
 inline vec3 div(vec3 a, float b);
 inline vec4 div(vec4 a, float b);
+inline float dot(vec2 a, vec2 b);
 inline float dot(vec3 a, vec3 b);
 inline float dot(vec4 a, vec4 b);
 inline vec3 cross(vec3 a, vec3 b);
+inline float magnitude(vec2 a);
 inline float magnitude(vec3 a);
 inline float magnitude(vec4 a);
+inline vec2 normalize(vec2 a);
 inline vec3 normalize(vec3 a);
 inline vec4 normalize(vec4 a);
 
@@ -602,6 +606,14 @@ inline vec4 mul(vec4 a, float b)
     return a;
 }
 
+inline vec2 div(vec2 a, float b)
+{
+    b = 1.f/b;
+    a.x *= b;
+    a.y *= b;
+    return a;
+}
+
 inline vec3 div(vec3 a, float b)
 {
     b = 1.f/b;
@@ -619,6 +631,11 @@ inline vec4 div(vec4 a, float b)
     a.z *= b;
     a.w *= b;
     return a;
+}
+
+inline float dot(vec2 a, vec2 b)
+{
+    return a.x * b.x + a.y * b.y;
 }
 
 inline float dot(vec3 a, vec3 b)
@@ -640,13 +657,38 @@ inline vec3 cross(vec3 a, vec3 b)
     return R;
 }
 
+inline float magnitude(vec2 a) { return sqrtf(dot(a, a)); }
+
 inline float magnitude(vec3 a) { return sqrtf(dot(a, a)); }
 
 inline float magnitude(vec4 a) { return sqrtf(dot(a, a)); }
 
-inline vec3 normalize(vec3 a) { return div(a, magnitude(a)); }
+inline vec2 normalize(vec2 a)
+{
+    if(a.x == 0.f && a.y == 0.f)
+    {
+        return {0.f,0.f};
+    }
+    return div(a, magnitude(a));
+}
 
-inline vec4 normalize(vec4 a) { return div(a, magnitude(a)); }
+inline vec3 normalize(vec3 a)
+{
+    if(a.x == 0.f && a.y == 0.f && a.z == 0.f)
+    {
+        return {0.f,0.f,0.f};
+    }
+    return div(a, magnitude(a));
+}
+
+inline vec4 normalize(vec4 a)
+{
+    if(a.x == 0.f && a.y == 0.f && a.z == 0.f && a.w == 0.f)
+    {
+        return {0.f,0.f,0.f,0.f};
+    }
+    return div(a, magnitude(a));
+}
 
 inline vec3 operator-(vec3 a) { vec3 r = { -a.x, -a.y, -a.z }; return(r); }
 inline vec3 operator+(vec3 a, vec3 b) { return add(a, b); }
