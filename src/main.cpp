@@ -292,6 +292,13 @@ INTERNAL void DrawInternalBufferToBackBuffer()
 INTERNAL void BindConsoleCommandsAndVariables()
 {
     console.bind_cmd("fullscreen", SDLFullscreen);
+
+    console.bind_cmd("camstats", [](std::istream& is, std::ostream& os){
+        printf("camera position x: %f, y: %f, z: %f \n", camera.position.x, camera.position.y, camera.position.z);
+        printf("camera rotation roll: %f, yaw: %f, pitch: %f \n", camera.rotation.x, camera.rotation.y, camera.rotation.z);
+        printf("camera speed: %f\n", camera.moveSpeed);
+        printf("camera sensitivity: %f\n", camera.turnSpeed);
+    });
 }
 
 int main(int argc, char* argv[])

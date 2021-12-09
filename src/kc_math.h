@@ -779,11 +779,11 @@ inline vec4 mul(const mat4& A, vec4 v)
 
 inline vec3 operator*(mat3 A, vec3 v) { return(mul(A, v)); }
 inline mat3 operator*(mat3 a, mat3 b) { return(mul(a, b)); }
-inline mat3 &operator*=(mat3& a, mat3& b) { a = mul(a, b); return a; }
+inline mat3& operator*=(mat3& a, mat3 b) { a = mul(a, b); return a; }
 
 inline vec4 operator*(mat4 A, vec4 v) { return(mul(A, v)); }
 inline mat4 operator*(mat4 a, mat4 b) { return(mul(a, b)); }
-inline mat4 &operator*=(mat4& a, mat4& b) { a = mul(a, b); return a; }
+inline mat4& operator*=(mat4& a, mat4 b) { a = mul(a, b); return a; }
 
 inline mat4 translation_matrix(float x, float y, float z)
 {
