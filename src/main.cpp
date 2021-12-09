@@ -1,8 +1,9 @@
 /** Playstation 1 style renderer
 
 TODO:
-    - make sure texture, mesh, mesh group aren't leaking memory.
-    - scene system + game objects
+    - Collision
+    - Animation
+    - Audio
 
 Rules:
      - unit vector (x: 1, y: 0, z: 0), aka positive X, is the "forward" direction for un-rotated objects
@@ -23,6 +24,7 @@ BUILD MODES:
 #include <string>
 #include <fstream>
 #include <unordered_map>
+#include <mutex>
 #include <thread>
 
 #include <GL/glew.h>
@@ -46,6 +48,7 @@ INTERNAL i32 gMouseDeltaY;
 INTERNAL GamepadState gGamepadStates[MAX_GAMEPAD_COUNT] = {};
 
 INTERNAL noclip::console console;
+INTERNAL std::mutex consoleCommandQueueMutex;
 INTERNAL std::string consoleCommandQueue;
 
 #include "input.cpp"
@@ -207,12 +210,15 @@ INTERNAL void PollConsoleInput()
     {
         std::string input;
         std::cin >> input;
-        consoleCommandQueue = consoleCommandQueue + " " + input;
+
+        std::lock_guard<std::mutex> lock(consoleCommandQueueMutex);
+        consoleCommandQueue += " " + input;
     }
 }
 
 INTERNAL void CheckConsoleCommandQueue()
 {
+    std::lock_guard<std::mutex> lock(consoleCommandQueueMutex);
     if(!consoleCommandQueue.empty())
     {
         console.execute(consoleCommandQueue, std::cout);
