@@ -2,10 +2,11 @@ struct Texture
 {
     /** Handle for texture stored in GPU memory */
 
-    GLuint  textureId   = 0;        // ID for the texture in GPU memory
-    i32     width       = 0;        // Width of the texture
-    i32     height      = 0;        // Height of the texture
-    GLenum  format      = GL_NONE;  // format / bitdepth of texture (GL_RGB would be 3 byte bit depth)
+    GLuint      textureId   = 0;        // ID for the texture in GPU memory
+    i32         width       = 0;        // Width of the texture
+    i32         height      = 0;        // Height of the texture
+    GLenum      format      = GL_NONE;  // format / bitdepth of texture (GL_RGB would be 3 byte bit depth)
+    std::string filePath    = "";
 
     void UseTexture() const;      // Binds this texture to Texture Unit 1
 };
@@ -23,18 +24,14 @@ INTERNAL void TextureDelete(Texture& texture)
 {
     if(texture.textureId == 0)
     {
-        printf("WARNING: Attempting to clear a texture with id: 0. This means this texture hasn't been loaded!\n");
         return;
     }
     glDeleteTextures(1, &texture.textureId);
 
-    for(auto it = gpuLoadedTextures.begin(); it != gpuLoadedTextures.end(); ++it)
+    auto gpuTextureIter = gpuLoadedTextures.find(texture.filePath);
+    if(gpuTextureIter != gpuLoadedTextures.end())
     {
-        if(it->second.textureId == texture.textureId)
-        {
-            gpuLoadedTextures.erase(it);
-            break;
-        }
+        gpuLoadedTextures.erase(gpuTextureIter);
     }
 
     texture.textureId = 0;
@@ -101,7 +98,8 @@ INTERNAL void TextureCreateFromFile(Texture& texture, const char* textureFilePat
                             textureHandle.height, GL_RGBA, (textureHandle.bitDepth == 3 ? GL_RGB : GL_RGBA));
     FreeImage(textureHandle); // texture data has been copied to GPU memory, so we can free image from memory
 
-    gpuLoadedTextures[std::string(textureFilePath)] = texture;
+    texture.filePath = textureFilePath;
+    gpuLoadedTextures[textureFilePath] = texture;
 }
 
 
@@ -256,16 +254,19 @@ struct MeshGroup
     std::vector<Mesh>     meshes;
     std::vector<Texture>  textures;
     std::vector<u16>      meshToTextureTable; // stores index of textures element corresponding to mesh
+    std::string           filePath = "";
 
     void render();
-
-    void clear();
 };
-
-INTERNAL Texture missingTexture;
 
 void MeshGroup::render()
 {
+    LOCAL_PERSIST Texture missingTexture;
+    if(missingTexture.textureId == 0)
+    {
+        TextureCreateFromFile(missingTexture, "data/primitives/missing_texture.png");
+    }
+
     for(size_t i = 0; i < meshes.size(); ++i)
     {
         u16 materialIndex = meshToTextureTable[i];
@@ -279,18 +280,6 @@ void MeshGroup::render()
         }
 
         meshes[i].RenderMesh();
-    }
-}
-
-void MeshGroup::clear()
-{
-    for(auto& mesh : meshes)
-    {
-        MeshDelete(mesh);
-    }
-    for(auto& texture : textures)
-    {
-        TextureDelete(texture);
     }
 }
 
@@ -345,9 +334,17 @@ INTERNAL Mesh __assimpLoadMeshHelper(aiMesh* meshNode)
     return mesh;
 }
 
+INTERNAL std::unordered_map<std::string, MeshGroup> gpuLoadedModels;
+
 /** Load model from disk through Assimp */
-INTERNAL void MeshGroupAssimpLoad(MeshGroup& meshGroupToLoadTo, const char* fileName)
+INTERNAL MeshGroup* MeshGroupAssimpLoad(const char* fileName)
 {
+    auto modelAlreadyLoaded = gpuLoadedModels.find(fileName);
+    if(modelAlreadyLoaded != gpuLoadedModels.end())
+    {
+        return &modelAlreadyLoaded->second;
+    }
+
     Assimp::Importer importer;
     /*  NOTE: To create smooth normals respecting edges sharper than a given angle,
         use importer.SetPropertyFloat("PP_GSN_MAX_SMOOTHING_ANGLE", 90) along with
@@ -379,8 +376,10 @@ INTERNAL void MeshGroupAssimpLoad(MeshGroup& meshGroupToLoadTo, const char* file
     if(!scene)
     {
         printf("Model '%s' failed to load: %s\n", fileName, importer.GetErrorString());
-        return;
+        return nullptr;
     }
+
+    MeshGroup meshGroupToLoadTo;
 
     meshGroupToLoadTo.meshes = std::vector<Mesh>(scene->mNumMeshes);
     meshGroupToLoadTo.textures = std::vector<Texture>(scene->mNumMaterials);
@@ -413,6 +412,28 @@ INTERNAL void MeshGroupAssimpLoad(MeshGroup& meshGroupToLoadTo, const char* file
                 TextureCreateFromFile(meshGroupToLoadTo.textures[i], tex_path.c_str());
             }
         }
+    }
+
+    meshGroupToLoadTo.filePath = fileName;
+    gpuLoadedModels[fileName] = meshGroupToLoadTo;
+    return &gpuLoadedModels[fileName];
+}
+
+INTERNAL void MeshGroupDelete(MeshGroup* const modelToDelete)
+{
+    for(auto& mesh : modelToDelete->meshes)
+    {
+        MeshDelete(mesh);
+    }
+    for(auto& texture : modelToDelete->textures)
+    {
+        TextureDelete(texture);
+    }
+
+    auto gpuModelIter = gpuLoadedModels.find(modelToDelete->filePath);
+    if(gpuModelIter != gpuLoadedModels.end())
+    {
+        gpuLoadedModels.erase(gpuModelIter);
     }
 }
 
