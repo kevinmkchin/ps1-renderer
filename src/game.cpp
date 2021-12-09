@@ -2,8 +2,6 @@ INTERNAL GameCamera camera;
 INTERNAL Shader sceneShader;
 INTERNAL MeshGroup cubeModel;
 
-INTERNAL std::string bgColor = "blue";
-
 INTERNAL void GameInit()
 {
     Shader::GLLoadShaderProgramFromFile(sceneShader, "shaders/scene.vert", "shaders/scene.frag");
@@ -12,8 +10,6 @@ INTERNAL void GameInit()
     TextureCreateFromFile(missingTexture, "data/primitives/missing_texture.png");
 
     MeshGroupAssimpLoad(cubeModel, "data/primitives/sphere.obj");
-
-    console.bind_cvar("color", &bgColor);
 }
 
 INTERNAL void GameUpdate()
@@ -24,19 +20,7 @@ INTERNAL void GameUpdate()
 INTERNAL void GameRender()
 {
     glViewport(0, 0, INTERNAL_RESOLUTION_WIDTH, INTERNAL_RESOLUTION_HEIGHT);
-    // glClearColor(RGB(46,88,120), 1.f);
-    if(bgColor == "red")
-    {
-        glClearColor(RGB(243,52,57), 1.f);
-    }
-    else if(bgColor == "blue")
-    {
-        glClearColor(RGB(46,88,120), 1.f);
-    }
-    else if(bgColor == "green")
-    {
-        glClearColor(RGB(103,192,115), 1.f);
-    }
+    glClearColor(RGB(46,88,120), 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
 
