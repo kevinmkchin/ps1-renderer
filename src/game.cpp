@@ -1,17 +1,15 @@
 INTERNAL GameCamera camera;
 INTERNAL Shader sceneShader;
-INTERNAL MeshGroup cubeModel;
-INTERNAL MeshGroup sphereModel;
+INTERNAL MeshGroup* cubeModel;
+INTERNAL MeshGroup* sphereModel;
 
 INTERNAL void GameInit()
 {
     Shader::GLLoadShaderProgramFromFile(sceneShader, "shaders/scene.vert", "shaders/scene.frag");
     camera.CameraCalculatePerspectiveMatrix();
 
-    TextureCreateFromFile(missingTexture, "data/primitives/missing_texture.png");
-
-    MeshGroupAssimpLoad(cubeModel, "data/primitives/cube.obj");
-    MeshGroupAssimpLoad(sphereModel, "data/primitives/sphere.obj");
+    cubeModel = MeshGroupAssimpLoad("data/primitives/cube.obj");
+    sphereModel = MeshGroupAssimpLoad("data/primitives/sphere.obj");
 }
 
 INTERNAL void GameUpdate()
@@ -32,10 +30,10 @@ INTERNAL void GameRender()
 
         sceneShader.GLBindMatrix4fv("modelMatrix", 1, identity_mat4().ptr());
         sceneShader.GLBind3f("modelColor", RGB(0,0,0));
-        cubeModel.render();
+        cubeModel->render();
 
         sceneShader.GLBindMatrix4fv("modelMatrix", 1, translation_matrix(5.f,0.f,0.f).ptr());
         sceneShader.GLBind3f("modelColor", RGB(255,255,255));
-        sphereModel.render();
+        sphereModel->render();
     glUseProgram(0);
 }
