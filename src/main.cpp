@@ -24,6 +24,7 @@ BUILD MODES:
 #include <stdio.h>
 #include <string>
 #include <fstream>
+#include <array>
 #include <unordered_map>
 #include <mutex>
 #include <thread>

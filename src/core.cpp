@@ -336,7 +336,9 @@ INTERNAL Mesh __assimpLoadMeshHelper(aiMesh* meshNode)
 
 INTERNAL std::unordered_map<std::string, MeshGroup> gpuLoadedModels;
 
-/** Load model from disk through Assimp */
+/** Load model from disk through Assimp
+ * TODO(Kevin): probably add option to create a basic MeshCollider from the obj vertices info
+ * */
 INTERNAL MeshGroup* MeshGroupAssimpLoad(const char* fileName)
 {
     auto modelAlreadyLoaded = gpuLoadedModels.find(fileName);
@@ -540,3 +542,389 @@ void GameCamera::CameraCalculateViewMatrix()
 {
     viewMatrix = view_matrix_look_at(position, position + calculatedDirection, calculatedUp);
 }
+
+
+
+
+
+struct GameObject
+{
+    GameObject()
+        : pos({ 0.f, 0.f, 0.f })
+        , orientation(identity_quaternion())
+        , scale({ 1.f, 1.f, 1.f })
+        , modelMatrix(identity_mat4())
+        , isModelMatrixOutdated(false)
+        , model(nullptr)
+    {}
+
+    virtual void Update()
+    {
+
+    }
+
+    virtual void Render(const Shader& shader)
+    {
+        MeshGroup* modelToRender = GetModel();
+        if(modelToRender)
+        {
+            shader.GLBindMatrix4fv("modelMatrix", 1, GetModelMatrix().ptr());
+            modelToRender->render();
+        }
+    }
+
+    const mat4& GetModelMatrix()
+    {
+        if(isModelMatrixOutdated)
+        {
+            modelMatrix = identity_mat4();
+            modelMatrix *= translation_matrix(pos);
+            modelMatrix *= rotation_matrix(orientation);
+            modelMatrix *= scale_matrix(scale);
+            isModelMatrixOutdated = false;
+        }
+
+        return modelMatrix;
+    }
+
+    vec3 GetPos() const
+    {
+        return pos;
+    }
+    void SetPos(const vec3& newPos)
+    {
+        pos = newPos;
+        isModelMatrixOutdated = true;
+    }
+    void Move(const vec3& moveAmount)
+    {
+        pos += moveAmount;
+        isModelMatrixOutdated = true;
+    }
+
+    quaternion GetOrientation() const
+    {
+        return orientation;
+    }
+    void SetOrientation(const quaternion& newOrientation)
+    {
+        orientation = newOrientation;
+        isModelMatrixOutdated = true;
+    }
+
+    vec3 GetScale() const
+    {
+        return scale;
+    }
+    void SetScale(const vec3& newScale)
+    {
+        scale = newScale;
+        isModelMatrixOutdated = true;
+    }
+
+    MeshGroup* GetModel() const
+    {
+        return model;
+    }
+    void SetModel(MeshGroup* newModelPtr)
+    {
+        model = newModelPtr;
+    }
+
+private:
+    vec3 pos; // World space
+    quaternion orientation;
+    vec3 scale;
+
+    mat4 modelMatrix;
+    bool32 isModelMatrixOutdated;
+
+    MeshGroup* model;
+
+    // POINTER to a collider which is described in MODEL SPACE
+    // In order to do collision checks, we first move the collider by modelMatrix
+    // Colliders are SHARED between objects e.g. cars in a racing game may all have same collider
+    // Colliders have a hierarchy from BROAD to NEAR phase
+    //   SPHERE A          SPHERE B
+    //     |-- A1            |-- B1
+    //     |-- A2            |-- B2
+    //                       |-- B3
+    //                       |-- B4
+    // For a PlayStation 1 style game, a single Sphere for BROAD phase and child polygons for NEAR phase may be enough
+};
+
+
+
+
+
+// GJK + EPA
+
+/** A collider contains two basic pieces of information - a Shape and a Transform */
+struct Collider
+{
+    /* A preparation function which transforms the collider to World Space from Model Space */
+    virtual void TransformCollider() = 0;
+
+    /* Returns the furthest point on the collider along a given direction */
+    virtual vec3 FindFurthestPoint(vec3 direction) const = 0;
+
+    GameObject* owningGameObject = nullptr;
+};
+
+struct MeshCollider : Collider
+{
+    void TransformCollider() override
+    {
+        mat4 modelMatrix = owningGameObject->GetModelMatrix();
+        verticesWorldSpace.resize(verticesModelSpace.size());
+        // TODO(Kevin): can probably multi-thread vertex position calculation
+        for(int i = 0; i < verticesModelSpace.size(); ++i)
+        {
+            auto vertexMCS = verticesModelSpace[i];
+            verticesWorldSpace[i] = make_vec3(modelMatrix * make_vec4(vertexMCS, 1.0f));
+        }
+    }
+
+    vec3 FindFurthestPoint(vec3 direction) const override
+    {
+        vec3 maxVertexSoFar;
+        float maxDistanceSoFar = -FLT_MAX;
+        for(auto vertexWCS : verticesWorldSpace)
+        {
+            float distance = dot(vertexWCS, direction);
+            if(distance > maxDistanceSoFar)
+            {
+                maxVertexSoFar = vertexWCS;
+                maxDistanceSoFar = distance;
+            }
+        }
+        return maxVertexSoFar;
+    }
+
+    std::vector<vec3> verticesModelSpace; // shouldn't change after first initialization
+private:
+    std::vector<vec3> verticesWorldSpace; // changes based on transform of owning game object
+};
+
+struct Simplex {
+private:
+    std::array<vec3, 4> m_points;
+    unsigned m_size;
+
+public:
+    Simplex()
+        : m_points({ 0, 0, 0, 0 })
+        , m_size(0)
+    {}
+
+    Simplex& operator=(std::initializer_list<vec3> list) {
+        for (auto v = list.begin(); v != list.end(); v++) {
+            m_points[std::distance(list.begin(), v)] = *v;
+        }
+        m_size = list.size();
+
+        return *this;
+    }
+
+    void push_front(vec3 point) {
+        m_points = { point, m_points[0], m_points[1], m_points[2] };
+        m_size = std::min(m_size + 1, 4u);
+    }
+
+    vec3& operator[](unsigned i) { return m_points[i]; }
+    unsigned size() const { return m_size; }
+
+    auto begin() const { return m_points.begin(); }
+    auto end()   const { return m_points.end() - (4 - m_size); }
+};
+
+INTERNAL vec3 GJKSupport(const Collider* colA, const Collider* colB, const vec3& direction)
+{
+    // https://en.wikipedia.org/wiki/Support_function
+    return colA->FindFurthestPoint(direction) - colB->FindFurthestPoint(-direction);
+}
+
+#define GJKSameDirection(dir, ao) (dot(dir, ao) > 0.f)
+
+INTERNAL bool GJKLine(Simplex& capture, vec3& direction)
+{
+    vec3 a = capture[0];
+    vec3 b = capture[1];
+    vec3 ab = b - a;
+
+    if(GJKSameDirection(ab, -a))
+    {
+        direction = cross(cross(ab, -a), ab);
+    }
+    else
+    {
+        capture = { a };
+        direction = -a;
+        // THIS PATH WILL SIGNAL THAT THERE IS NO COLLISION, but it might waste a support call
+        // Is there a way to stop the algorithm here?
+        // if origin is past point A, then it's impossible to be included in the simplex.
+        // I need to figure out how to stop the algorithm here and return that they are not intersecting.
+    }
+
+    return false;
+}
+
+INTERNAL bool GJKTriangle(Simplex& capture, vec3& direction)
+{
+    // Note that vector ao (vector from a to origin) is always -a
+    vec3 a = capture[0];
+    vec3 b = capture[1];
+    vec3 c = capture[2];
+    vec3 ab = b - a;
+    vec3 ac = c - a;
+    vec3 triangleNormal = cross(ab, ac);
+
+    if(GJKSameDirection(cross(triangleNormal, ac), -a))
+    {
+        if(GJKSameDirection(ac, -a))
+        {
+            capture = { a, c };
+            direction = cross(cross(ac, -a), ac);
+        }
+        else
+        {
+            if(GJKSameDirection(ab, -a))
+            {
+                // TODO(KEVIN): this might be impossible path
+                capture = { a, b };
+                direction = cross(cross(ab, -a), ab);
+            }
+            else
+            {
+                capture = { a };
+                direction = -a;
+            }
+        }
+    }
+    else
+    {
+        if(GJKSameDirection(cross(ab, triangleNormal), -a))
+        {
+            if(GJKSameDirection(ab, -a))
+            {
+                capture = { a, b };
+                direction = cross(cross(ab, -a), ab);
+            }
+            else
+            {
+                capture = { a };
+                direction = -a;
+            }
+        }
+        else
+        {
+            // The origin must be above or below this triangle
+            if(GJKSameDirection(triangleNormal, -a))
+            {
+                capture = { a, b, c };
+                direction = triangleNormal;
+            }
+            else
+            {
+                capture = { a, c, b };
+                direction = -triangleNormal;
+            }
+        }
+    }
+
+    return false;
+}
+
+INTERNAL bool GJKTetrahedron(Simplex& capture, vec3& direction)
+{
+    vec3 a = capture[0];
+    vec3 b = capture[1];
+    vec3 c = capture[2];
+    vec3 d = capture[3];
+    vec3 ab = b - a;
+    vec3 ac = c - a;
+    vec3 ad = d - a;
+    vec3 abcNormal = cross(ab, ac);
+    vec3 acdNormal = cross(ac, ad);
+    vec3 adbNormal = cross(ad, ab);
+
+    /*
+     * ORDER NEEDS TO BE ABC first, ACD second, ADB third OR IT MIGHT INFINITELY
+     * LOOP THE TETRAHEDRON AND TRIANGLE CASES BUT I DON'T UNDERSTAND WHY
+     * */
+
+    if(GJKSameDirection(abcNormal, -a))
+    {
+        capture = { a, b, c };
+        return GJKTriangle(capture, direction);
+    }
+    if(GJKSameDirection(acdNormal, -a))
+    {
+        capture = { a, c, d };
+        return GJKTriangle(capture, direction);
+    }
+    if(GJKSameDirection(adbNormal, -a))
+    {
+        capture = { a, d, b };
+        return GJKTriangle(capture, direction);
+    }
+
+    // IN THIS CASE: The origin is not in the direction of the normals of the three triangles formed with a.
+    // AND we know that the origin is not "below" the triangle (if bcd forms the base) because we just added
+    // the point a i.e. the origin is in direction of direction given to this function.
+    // THEREFORE, the origin MUST be inside the tetrahedron
+    return true;
+}
+
+INTERNAL bool GJKNextSimplex(Simplex& capture, vec3& direction)
+{
+    /* We need a series of different checks for each shape of simplex
+     * to see what the new simplex should be and what direction we’ll
+     * search in next */
+    switch (capture.size()) {
+        case 2: return GJKLine(capture, direction);
+        case 3: return GJKTriangle(capture, direction);
+        case 4: return GJKTetrahedron(capture, direction);
+    }
+
+    ASSERT(false) // should never happen
+    return false;
+}
+
+INTERNAL bool GJK(Collider* colA, Collider* colB)
+{
+    colA->TransformCollider();
+    colB->TransformCollider();
+
+    //initial point in any direction
+    //NOTE(Kevin): start direction could be origin - (colA owning object position - colB owning object position)
+    vec3 support = GJKSupport(colA, colB, {1.f,0.f,0.f});
+    Simplex capture;
+    capture.push_front(support);
+    // direction to origin from initialSupportPoint is -initialSupportPoint
+    vec3 direction = -support;
+
+    for(;;)
+    {
+        support = GJKSupport(colA, colB, direction);
+        if(dot(support, direction) <= 0)
+        {
+            return false; // previous support point was already the furthest along direction
+        }
+
+        capture.push_front(support);
+        if(GJKNextSimplex(capture, direction))
+        {
+            return true;
+        }
+    }
+}
+
+
+
+
+// Collision World
+
+
+
+
