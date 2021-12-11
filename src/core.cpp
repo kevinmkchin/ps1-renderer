@@ -706,36 +706,39 @@ private:
     std::vector<vec3> verticesWorldSpace; // changes based on transform of owning game object
 };
 
-struct Simplex {
+struct GJKSimplex
+{
 private:
-    std::array<vec3, 4> m_points;
-    unsigned m_size;
+    std::array<vec3, 4> points = {};
+    u8 count = 0;
 
 public:
-    Simplex()
-        : m_points({ 0, 0, 0, 0 })
-        , m_size(0)
-    {}
-
-    Simplex& operator=(std::initializer_list<vec3> list) {
-        for (auto v = list.begin(); v != list.end(); v++) {
-            m_points[std::distance(list.begin(), v)] = *v;
+    GJKSimplex& operator=(std::initializer_list<vec3> list)
+    {
+        count = 0;
+        for(auto v : list)
+        {
+            points[count] = v;
+            ++count;
         }
-        m_size = list.size();
-
         return *this;
     }
 
-    void push_front(vec3 point) {
-        m_points = { point, m_points[0], m_points[1], m_points[2] };
-        m_size = std::min(m_size + 1, 4u);
+    vec3& operator[](int i)
+    {
+        return points[i];
     }
 
-    vec3& operator[](unsigned i) { return m_points[i]; }
-    unsigned size() const { return m_size; }
+    void pushFront(vec3 point)
+    {
+        points = { point, points[0], points[1], points[2] };
+        count = kc_min(count + 1, 4u);
+    }
 
-    auto begin() const { return m_points.begin(); }
-    auto end()   const { return m_points.end() - (4 - m_size); }
+    u8 size() const
+    {
+        return count;
+    }
 };
 
 INTERNAL vec3 GJKSupport(const Collider* colA, const Collider* colB, const vec3& direction)
@@ -746,7 +749,7 @@ INTERNAL vec3 GJKSupport(const Collider* colA, const Collider* colB, const vec3&
 
 #define GJKSameDirection(dir, ao) (dot(dir, ao) > 0.f)
 
-INTERNAL bool GJKLine(Simplex& capture, vec3& direction)
+INTERNAL bool GJKLine(GJKSimplex& capture, vec3& direction)
 {
     vec3 a = capture[0];
     vec3 b = capture[1];
@@ -769,7 +772,7 @@ INTERNAL bool GJKLine(Simplex& capture, vec3& direction)
     return false;
 }
 
-INTERNAL bool GJKTriangle(Simplex& capture, vec3& direction)
+INTERNAL bool GJKTriangle(GJKSimplex& capture, vec3& direction)
 {
     // Note that vector ao (vector from a to origin) is always -a
     vec3 a = capture[0];
@@ -835,7 +838,7 @@ INTERNAL bool GJKTriangle(Simplex& capture, vec3& direction)
     return false;
 }
 
-INTERNAL bool GJKTetrahedron(Simplex& capture, vec3& direction)
+INTERNAL bool GJKTetrahedron(GJKSimplex& capture, vec3& direction)
 {
     vec3 a = capture[0];
     vec3 b = capture[1];
@@ -876,7 +879,7 @@ INTERNAL bool GJKTetrahedron(Simplex& capture, vec3& direction)
     return true;
 }
 
-INTERNAL bool GJKNextSimplex(Simplex& capture, vec3& direction)
+INTERNAL bool GJKNextSimplex(GJKSimplex& capture, vec3& direction)
 {
     /* We need a series of different checks for each shape of simplex
      * to see what the new simplex should be and what direction we’ll
@@ -896,12 +899,10 @@ INTERNAL bool GJK(Collider* colA, Collider* colB)
     colA->TransformCollider();
     colB->TransformCollider();
 
-    //initial point in any direction
     //NOTE(Kevin): start direction could be origin - (colA owning object position - colB owning object position)
     vec3 support = GJKSupport(colA, colB, {1.f,0.f,0.f});
-    Simplex capture;
-    capture.push_front(support);
-    // direction to origin from initialSupportPoint is -initialSupportPoint
+    GJKSimplex capture;
+    capture.pushFront(support);
     vec3 direction = -support;
 
     for(;;)
@@ -912,7 +913,7 @@ INTERNAL bool GJK(Collider* colA, Collider* colB)
             return false; // previous support point was already the furthest along direction
         }
 
-        capture.push_front(support);
+        capture.pushFront(support);
         if(GJKNextSimplex(capture, direction))
         {
             return true;
