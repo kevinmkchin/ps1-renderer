@@ -37,8 +37,8 @@ BUILD MODES:
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #include <noclip.h>
-#define KC_MATH_IMPLEMENTATION
-#include "kc_math.h"
+#define SEXY_MATH_IMPLEMENTATION
+#include "sexymathlibrary.h"
 
 #include "gamedefines.h"
 

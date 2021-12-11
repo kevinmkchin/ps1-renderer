@@ -21,7 +21,7 @@ INTERNAL void GameInit()
     //newObj.SetOrientation(euler_to_quat(make_vec3(0.f, 30.f, -47.f) * KC_DEG2RAD));
     gameObjectsA.push_back(newObj);
     newObj.SetModel(MeshGroupAssimpLoad("data/primitives/cube.obj"));
-    newObj.SetOrientation(identity_quaternion());
+    newObj.SetOrientation(quat());
     newObj.SetPos({ 3.f, 0.f, 0.f });
     gameObjectsA.push_back(newObj);
 
@@ -61,8 +61,8 @@ INTERNAL void GameUpdate()
             {(gKeyState[SDL_SCANCODE_RIGHT] * 1.f + -gKeyState[SDL_SCANCODE_LEFT] * 1.f) * gDeltaTime,
              (gKeyState[SDL_SCANCODE_UP] * 1.f + -gKeyState[SDL_SCANCODE_DOWN] * 1.f) * gDeltaTime,
               0.f });
-    gameObjectsA[0].Rotate(WORLD_UP_VECTOR * 30.f * gDeltaTime);
-    gameObjectsA[0].Rotate(WORLD_RIGHT_VECTOR * -47.f * gDeltaTime);
+    gameObjectsA[0].Rotate(SML_UP_VECTOR * 30.f * gDeltaTime);
+    gameObjectsA[0].Rotate(SML_RIGHT_VECTOR * -47.f * gDeltaTime);
 
     if(GJK(&colA, &colB))
     {

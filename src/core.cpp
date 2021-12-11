@@ -407,7 +407,7 @@ INTERNAL MeshGroup* MeshGroupAssimpLoad(const char* fileName)
                 int idx = (int)std::string(path.data).find_last_of("\\");
                 std::string texture_file_name = std::string(path.data).substr(idx+1);
                 std::string model_file_directory = std::string(fileName);
-                idx = kc_max((int)model_file_directory.find_last_of("/"), (int)model_file_directory.find_last_of("\\"));
+                idx = SML_max((int)model_file_directory.find_last_of("/"), (int)model_file_directory.find_last_of("\\"));
                 model_file_directory = model_file_directory.substr(0, idx + 1);
 
                 std::string tex_path = model_file_directory + texture_file_name;
@@ -444,13 +444,13 @@ INTERNAL void MeshGroupDelete(MeshGroup* const modelToDelete)
 
 struct GameCamera
 {
-    vec3  position              = { 0.f }; // camera x y z pos in world space
-    vec3  rotation              = { 0.f }; // roll yaw pitch - in that order
-    vec3  calculatedDirection   = {0.f }; // Intuitive direction - direction forward
-    vec3  calculatedUp          = {0.f };
-    vec3  calculatedRight       = {0.f };
-    mat4  perspectiveMatrix     = { 0.f }; // Perspective projection matrix
-    mat4  viewMatrix            = { 0.f }; // Last calculated view matrix
+    vec3  position;             // camera x y z pos in world space
+    vec3  rotation;             // roll yaw pitch - in that order
+    vec3  calculatedDirection;  // Intuitive direction - direction forward
+    vec3  calculatedUp;
+    vec3  calculatedRight;
+    mat4  perspectiveMatrix;    // Perspective projection matrix
+    mat4  viewMatrix;           // Last calculated view matrix
     float nearClip              = 0.1f;
     float farClip               = 2000.f;
     float moveSpeed             = 6.f;
@@ -463,7 +463,7 @@ struct GameCamera
 
 void GameCamera::CameraUpdate()
 {
-    if(kc_abs(gMouseDeltaX) < 50.f && kc_abs(gMouseDeltaY) < 50.f) // don't move if mouse delta is too big to be normal
+    if(SML_abs(gMouseDeltaX) < 50.f && SML_abs(gMouseDeltaY) < 50.f) // don't move if mouse delta is too big to be normal
     {
         rotation.y /*yaw*/ -= ((float)gMouseDeltaX) * turnSpeed * 0.8f;
         rotation.z /*pitch*/ -= ((float)gMouseDeltaY) * turnSpeed * 0.8f;
@@ -484,10 +484,10 @@ void GameCamera::CameraUpdate()
     }
 
     // Calcuate direction, right, and up vectors
-    calculatedDirection = orientation_to_direction(euler_to_quat(rotation * KC_DEG2RAD));
-    calculatedDirection = normalize(calculatedDirection);
-    calculatedRight = normalize(cross(calculatedDirection, WORLD_UP_VECTOR));
-    calculatedUp = normalize(cross(calculatedRight, calculatedDirection));
+    calculatedDirection = OrientationToDirection(EulerToQuat(rotation * SML_DEG2RAD));
+    calculatedDirection = Normalize(calculatedDirection);
+    calculatedRight = Normalize(Cross(calculatedDirection, SML_UP_VECTOR));
+    calculatedUp = Normalize(Cross(calculatedRight, calculatedDirection));
 
     if(gGamepadStates[0].isConnected)
     {
@@ -535,12 +535,12 @@ void GameCamera::CameraCalculatePerspectiveMatrix()
 {
     float fov = 90.f;
     float aspect_ratio = (float)INTERNAL_RESOLUTION_WIDTH / (float)INTERNAL_RESOLUTION_HEIGHT;
-    perspectiveMatrix = projection_matrix_perspective((fov/2.f)*KC_DEG2RAD, aspect_ratio, nearClip, farClip);
+    perspectiveMatrix = ProjectionMatrixPerspective((fov / 2.f) * SML_DEG2RAD, aspect_ratio, nearClip, farClip);
 }
 
 void GameCamera::CameraCalculateViewMatrix()
 {
-    viewMatrix = view_matrix_look_at(position, position + calculatedDirection, calculatedUp);
+    viewMatrix = ViewMatrixLookAt(position, position + calculatedDirection, calculatedUp);
 }
 
 
@@ -551,9 +551,9 @@ struct GameObject
 {
     GameObject()
         : pos({ 0.f, 0.f, 0.f })
-        , orientation(identity_quaternion())
+        , orientation(quat())
         , scale({ 1.f, 1.f, 1.f })
-        , modelMatrix(identity_mat4())
+        , modelMatrix(mat4())
         , isModelMatrixOutdated(false)
         , model(nullptr)
     {}
@@ -577,10 +577,10 @@ struct GameObject
     {
         if(isModelMatrixOutdated)
         {
-            modelMatrix = identity_mat4();
-            modelMatrix *= translation_matrix(pos);
-            modelMatrix *= rotation_matrix(orientation);
-            modelMatrix *= scale_matrix(scale);
+            modelMatrix = mat4();
+            modelMatrix *= TranslationMatrix(pos);
+            modelMatrix *= RotationMatrix(orientation);
+            modelMatrix *= ScaleMatrix(scale);
             isModelMatrixOutdated = false;
         }
 
@@ -602,18 +602,18 @@ struct GameObject
         isModelMatrixOutdated = true;
     }
 
-    quaternion GetOrientation() const
+    quat GetOrientation() const
     {
         return orientation;
     }
-    void SetOrientation(const quaternion& newOrientation)
+    void SetOrientation(const quat& newOrientation)
     {
         orientation = newOrientation;
         isModelMatrixOutdated = true;
     }
     void Rotate(const vec3& eulerInDegrees)
     {
-        quaternion q = euler_to_quat(eulerInDegrees * KC_DEG2RAD);
+        quat q = EulerToQuat(eulerInDegrees * SML_DEG2RAD);
         SetOrientation(q * GetOrientation());
     }
 
@@ -638,7 +638,7 @@ struct GameObject
 
 private:
     vec3 pos; // World space
-    quaternion orientation;
+    quat orientation;
     vec3 scale;
 
     mat4 modelMatrix;
@@ -686,7 +686,7 @@ struct MeshCollider : Collider
         for(int i = 0; i < verticesModelSpace.size(); ++i)
         {
             auto vertexMCS = verticesModelSpace[i];
-            verticesWorldSpace[i] = make_vec3(modelMatrix * make_vec4(vertexMCS, 1.0f));
+            verticesWorldSpace[i] = (modelMatrix * vec4(vertexMCS, 1.0f)).xyz;
         }
     }
 
@@ -696,7 +696,7 @@ struct MeshCollider : Collider
         float maxDistanceSoFar = -FLT_MAX;
         for(auto vertexWCS : verticesWorldSpace)
         {
-            float distance = dot(vertexWCS, direction);
+            float distance = Dot(vertexWCS, direction);
             if(distance > maxDistanceSoFar)
             {
                 maxVertexSoFar = vertexWCS;
@@ -737,7 +737,7 @@ public:
     void pushFront(vec3 point)
     {
         points = { point, points[0], points[1], points[2] };
-        count = kc_min(count + 1, 4u);
+        count = SML_min(count + 1, 4u);
     }
 
     u8 size() const
@@ -752,7 +752,7 @@ INTERNAL vec3 GJKSupport(const Collider* colA, const Collider* colB, const vec3&
     return colA->FindFurthestPoint(direction) - colB->FindFurthestPoint(-direction);
 }
 
-#define GJKSameDirection(dir, ao) (dot(dir, ao) > 0.f)
+#define GJKSameDirection(dir, ao) (Dot(dir, ao) > 0.f)
 
 INTERNAL bool GJKLine(GJKSimplex& capture, vec3& direction)
 {
@@ -763,7 +763,7 @@ INTERNAL bool GJKLine(GJKSimplex& capture, vec3& direction)
 
     if(GJKSameDirection(ab, -a))
     {
-        direction = cross(cross(ab, -a), ab);
+        direction = Cross(Cross(ab, -a), ab);
     }
     else
     {
@@ -785,14 +785,14 @@ INTERNAL bool GJKTriangle(GJKSimplex& capture, vec3& direction)
     vec3 c = capture[2];
     vec3 ab = b - a;
     vec3 ac = c - a;
-    vec3 triangleNormal = cross(ab, ac);
+    vec3 triangleNormal = Cross(ab, ac);
 
-    if(GJKSameDirection(cross(triangleNormal, ac), -a))
+    if(GJKSameDirection(Cross(triangleNormal, ac), -a))
     {
         if(GJKSameDirection(ac, -a))
         {
             capture = { a, c };
-            direction = cross(cross(ac, -a), ac);
+            direction = Cross(Cross(ac, -a), ac);
         }
         else
         {
@@ -802,12 +802,12 @@ INTERNAL bool GJKTriangle(GJKSimplex& capture, vec3& direction)
     }
     else
     {
-        if(GJKSameDirection(cross(ab, triangleNormal), -a))
+        if(GJKSameDirection(Cross(ab, triangleNormal), -a))
         {
             if(GJKSameDirection(ab, -a))
             {
                 capture = { a, b };
-                direction = cross(cross(ab, -a), ab);
+                direction = Cross(Cross(ab, -a), ab);
             }
             else
             {
@@ -843,9 +843,9 @@ INTERNAL bool GJKTetrahedron(GJKSimplex& capture, vec3& direction)
     vec3 ab = b - a;
     vec3 ac = c - a;
     vec3 ad = d - a;
-    vec3 abcNormal = cross(ab, ac);
-    vec3 acdNormal = cross(ac, ad);
-    vec3 adbNormal = cross(ad, ab);
+    vec3 abcNormal = Cross(ab, ac);
+    vec3 acdNormal = Cross(ac, ad);
+    vec3 adbNormal = Cross(ad, ab);
 
     /*
      * ORDER NEEDS TO BE ABC first, ACD second, ADB third OR IT MIGHT INFINITELY
@@ -904,7 +904,7 @@ INTERNAL bool GJK(Collider* colA, Collider* colB)
     for(;;)
     {
         support = GJKSupport(colA, colB, direction);
-        if(dot(support, direction) <= 0)
+        if(Dot(support, direction) <= 0)
         {
             return false; // previous support point was already the furthest along direction
         }

@@ -123,7 +123,7 @@ INTERNAL void SDLUpdateGamepads()
             }
 
             i16 axisPosition = SDL_JoystickGetAxis(gGamepadPointers[0], 0);
-            if(kc_abs(axisPosition) > SDL_JOYSTICK_DEAD_ZONE) // axis 0 = Left Thumb X
+            if(SML_abs(axisPosition) > SDL_JOYSTICK_DEAD_ZONE) // axis 0 = Left Thumb X
             {
                 float val = (float) axisPosition;
                 val /= 32768.f;
@@ -135,7 +135,7 @@ INTERNAL void SDLUpdateGamepads()
             }
 
             axisPosition = SDL_JoystickGetAxis(gGamepadPointers[0], 1);
-            if(kc_abs(axisPosition) > SDL_JOYSTICK_DEAD_ZONE) // axis 1 = Left Thumb Y
+            if(SML_abs(axisPosition) > SDL_JOYSTICK_DEAD_ZONE) // axis 1 = Left Thumb Y
             {
                 float val = (float) -axisPosition;
                 val /= 32768.f;
@@ -147,7 +147,7 @@ INTERNAL void SDLUpdateGamepads()
             }
 
             axisPosition = SDL_JoystickGetAxis(gGamepadPointers[0], 3);
-            if(kc_abs(axisPosition) > SDL_JOYSTICK_DEAD_ZONE) // axis 3 = Right Thumb X
+            if(SML_abs(axisPosition) > SDL_JOYSTICK_DEAD_ZONE) // axis 3 = Right Thumb X
             {
                 float val = (float) axisPosition;
                 val /= 32768.f;
@@ -159,7 +159,7 @@ INTERNAL void SDLUpdateGamepads()
             }
 
             axisPosition = SDL_JoystickGetAxis(gGamepadPointers[0], 4);
-            if(kc_abs(axisPosition) > SDL_JOYSTICK_DEAD_ZONE) // axis 4 = Right Thumb Y
+            if(SML_abs(axisPosition) > SDL_JOYSTICK_DEAD_ZONE) // axis 4 = Right Thumb Y
             {
                 float val = (float) -axisPosition;
                 val /= 32768.f;
@@ -170,8 +170,8 @@ INTERNAL void SDLUpdateGamepads()
                 gGamepadStates[i].rightThumbStickDir.y = 0.0f;
             }
 
-            gGamepadStates[i].leftThumbStickDir = normalize(gGamepadStates[i].leftThumbStickDir);
-            gGamepadStates[i].rightThumbStickDir = normalize(gGamepadStates[i].rightThumbStickDir);
+            gGamepadStates[i].leftThumbStickDir = Normalize(gGamepadStates[i].leftThumbStickDir);
+            gGamepadStates[i].rightThumbStickDir = Normalize(gGamepadStates[i].rightThumbStickDir);
 
             axisPosition = SDL_JoystickGetAxis(gGamepadPointers[0], 2);
             if(axisPosition > -32768 + SDL_JOYSTICK_DEAD_ZONE)
