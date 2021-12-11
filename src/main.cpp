@@ -38,7 +38,7 @@ BUILD MODES:
 #include <stb_image.h>
 #include <noclip.h>
 #define SEXY_MATH_IMPLEMENTATION
-#include "sexymathlibrary.h"
+#include <sexymathlibrary.h>
 
 #include "gamedefines.h"
 
