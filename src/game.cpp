@@ -1,114 +1,13 @@
-struct GameObject
-{
-    GameObject()
-    {
-        pos = { 0.f, 0.f, 0.f };
-        orientation = identity_quaternion();
-        scale = { 1.f, 1.f, 1.f };
-        modelMatrix = identity_mat4();
-        isModelMatrixOutdated = false;
-        model = nullptr;
-    }
 
-    virtual void Update()
-    {
-
-    }
-
-    virtual void Render(const Shader& shader)
-    {
-        MeshGroup* modelToRender = GetModel();
-        if(modelToRender)
-        {
-            shader.GLBindMatrix4fv("modelMatrix", 1, GetModelMatrix().ptr());
-            modelToRender->render();
-        }
-    }
-
-    const mat4& GetModelMatrix()
-    {
-        if(isModelMatrixOutdated)
-        {
-            modelMatrix = identity_mat4();
-            modelMatrix *= translation_matrix(pos);
-            modelMatrix *= rotation_matrix(orientation);
-            modelMatrix *= scale_matrix(scale);
-            isModelMatrixOutdated = false;
-        }
-
-        return modelMatrix;
-    }
-
-    vec3 GetPos() const
-    {
-        return pos;
-    }
-    void SetPos(const vec3& newPos)
-    {
-        pos = newPos;
-        isModelMatrixOutdated = true;
-    }
-    void Move(const vec3& moveAmount)
-    {
-        pos += moveAmount;
-        isModelMatrixOutdated = true;
-    }
-
-    quaternion GetOrientation() const
-    {
-        return orientation;
-    }
-    void SetOrientation(const quaternion& newOrientation)
-    {
-        orientation = newOrientation;
-        isModelMatrixOutdated = true;
-    }
-
-    vec3 GetScale() const
-    {
-        return scale;
-    }
-    void SetScale(const vec3& newScale)
-    {
-        scale = newScale;
-        isModelMatrixOutdated = true;
-    }
-
-    MeshGroup* GetModel() const
-    {
-        return model;
-    }
-    void SetModel(MeshGroup* newModelPtr)
-    {
-        model = newModelPtr;
-    }
-
-private:
-    vec3 pos; // World space
-    quaternion orientation;
-    vec3 scale;
-
-    mat4 modelMatrix;
-    bool32 isModelMatrixOutdated;
-
-    MeshGroup* model;
-
-    // POINTER to a collider which is described in MODEL SPACE
-    // In order to do collision checks, we first move the collider by modelMatrix
-    // Colliders are SHARED between objects e.g. cars in a racing game may all have same collider
-    // Colliders have a hierarchy from BROAD to NEAR phase
-    //   SPHERE A          SPHERE B
-    //     |-- A1            |-- B1
-    //     |-- A2            |-- B2
-    //                       |-- B3
-    //                       |-- B4
-    // For a PlayStation 1 style game, a single Sphere for BROAD phase and child polygons for NEAR phase may be enough
-};
 
 INTERNAL GameCamera camera;
 INTERNAL Shader sceneShader;
 INTERNAL std::vector<GameObject> gameObjectsA;
 INTERNAL std::vector<GameObject> gameObjectsB;
+
+INTERNAL MeshCollider colA;
+INTERNAL MeshCollider colB;
+INTERNAL vec3 modelColor;
 
 INTERNAL void GameInit()
 {
@@ -119,10 +18,35 @@ INTERNAL void GameInit()
 
     GameObject newObj;
     newObj.SetModel(MeshGroupAssimpLoad("data/primitives/cube.obj"));
+    //newObj.SetOrientation(euler_to_quat(make_vec3(0.f, 30.f, -47.f) * KC_DEG2RAD));
     gameObjectsA.push_back(newObj);
-    newObj.SetModel(MeshGroupAssimpLoad("data/primitives/sphere.obj"));
+    newObj.SetModel(MeshGroupAssimpLoad("data/primitives/cube.obj"));
+    newObj.SetOrientation(identity_quaternion());
     newObj.SetPos({ 3.f, 0.f, 0.f });
     gameObjectsA.push_back(newObj);
+
+    colA.owningGameObject = &gameObjectsA[0];
+    colB.owningGameObject = &gameObjectsA[1];
+    colA.verticesModelSpace = {
+            {-0.5f, 0.5f, -0.5f},
+            {-0.5f, 0.5f, 0.5f},
+            {0.5f, 0.5f, 0.5f},
+            {0.5f, 0.5f, -0.5f},
+            {-0.5f, -0.5f, -0.5f},
+            {-0.5f, -0.5f, 0.5f},
+            {0.5f, -0.5f, 0.5f},
+            {0.5f, -0.5f, -0.5f}
+    };
+    colB.verticesModelSpace = {
+            {-0.5f, 0.5f, -0.5f},
+            {-0.5f, 0.5f, 0.5f},
+            {0.5f, 0.5f, 0.5f},
+            {0.5f, 0.5f, -0.5f},
+            {-0.5f, -0.5f, -0.5f},
+            {-0.5f, -0.5f, 0.5f},
+            {0.5f, -0.5f, 0.5f},
+            {0.5f, -0.5f, -0.5f}
+    };
 }
 
 INTERNAL void GameUpdate()
@@ -137,6 +61,17 @@ INTERNAL void GameUpdate()
             {(gKeyState[SDL_SCANCODE_RIGHT] * 1.f + -gKeyState[SDL_SCANCODE_LEFT] * 1.f) * gDeltaTime,
              (gKeyState[SDL_SCANCODE_UP] * 1.f + -gKeyState[SDL_SCANCODE_DOWN] * 1.f) * gDeltaTime,
               0.f });
+    gameObjectsA[0].SetOrientation(mul(gameObjectsA[0].GetOrientation(), euler_to_quat(make_vec3(0.f, 30.f, -47.f) * KC_DEG2RAD * gDeltaTime)));
+
+    bool collied = GJK(&colA, &colB);
+    if(collied)
+    {
+        modelColor = { RGB(255,0,0) };
+    }
+    else
+    {
+        modelColor = { RGB(255,255,255) };
+    }
 }
 
 INTERNAL void GameRender()
@@ -149,7 +84,7 @@ INTERNAL void GameRender()
     sceneShader.UseShader();
         sceneShader.GLBindMatrix4fv("viewMatrix", 1, camera.viewMatrix.ptr());
         sceneShader.GLBindMatrix4fv("projMatrix", 1, camera.perspectiveMatrix.ptr());
-        sceneShader.GLBind3f("modelColor", RGB(255,255,255));
+        sceneShader.GLBind3f("modelColor", modelColor.x, modelColor.y, modelColor.z);
         for(auto& gameObj : gameObjectsA)
         {
             gameObj.Render(sceneShader);

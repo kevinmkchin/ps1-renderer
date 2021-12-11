@@ -205,7 +205,9 @@ struct quaternion
 
 */
 inline vec3 make_vec3(float inx, float iny, float inz);
+inline vec3 make_vec3(vec4 in_vec4);
 inline vec4 make_vec4(float inx, float iny, float inz, float inw);
+inline vec4 make_vec4(vec3 in_vec3, float inw);
 
 inline mat3 identity_mat3();
 inline mat3 make_mat3(const mat4& from);
@@ -448,9 +450,21 @@ inline vec3 make_vec3(float inx, float iny, float inz)
     return ret;
 }
 
+inline vec3 make_vec3(vec4 in_vec4)
+{
+    vec3 ret = {in_vec4.x,in_vec4.y,in_vec4.z};
+    return ret;
+}
+
 inline vec4 make_vec4(float inx, float iny, float inz, float inw)
 {
     vec4 ret = {inx,iny,inz,inw};
+    return ret;
+}
+
+inline vec4 make_vec4(vec3 in_vec3, float inw)
+{
+    vec4 ret = {in_vec3.x, in_vec3.y, in_vec3.z,inw};
     return ret;
 }
 
