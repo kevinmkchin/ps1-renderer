@@ -754,6 +754,7 @@ INTERNAL bool GJKLine(GJKSimplex& capture, vec3& direction)
     vec3 a = capture[0];
     vec3 b = capture[1];
     vec3 ab = b - a;
+    // Note that vec3 ao (a to origin) is just -a
 
     if(GJKSameDirection(ab, -a))
     {
@@ -774,7 +775,6 @@ INTERNAL bool GJKLine(GJKSimplex& capture, vec3& direction)
 
 INTERNAL bool GJKTriangle(GJKSimplex& capture, vec3& direction)
 {
-    // Note that vector ao (vector from a to origin) is always -a
     vec3 a = capture[0];
     vec3 b = capture[1];
     vec3 c = capture[2];
@@ -791,17 +791,8 @@ INTERNAL bool GJKTriangle(GJKSimplex& capture, vec3& direction)
         }
         else
         {
-            if(GJKSameDirection(ab, -a))
-            {
-                // TODO(KEVIN): this might be impossible path
-                capture = { a, b };
-                direction = cross(cross(ab, -a), ab);
-            }
-            else
-            {
-                capture = { a };
-                direction = -a;
-            }
+            capture = { a };
+            direction = -a;
         }
     }
     else
