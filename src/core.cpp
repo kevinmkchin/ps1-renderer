@@ -611,6 +611,11 @@ struct GameObject
         orientation = newOrientation;
         isModelMatrixOutdated = true;
     }
+    void Rotate(const vec3& eulerInDegrees)
+    {
+        quaternion q = euler_to_quat(eulerInDegrees * KC_DEG2RAD);
+        SetOrientation(q * GetOrientation());
+    }
 
     vec3 GetScale() const
     {

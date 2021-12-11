@@ -61,10 +61,10 @@ INTERNAL void GameUpdate()
             {(gKeyState[SDL_SCANCODE_RIGHT] * 1.f + -gKeyState[SDL_SCANCODE_LEFT] * 1.f) * gDeltaTime,
              (gKeyState[SDL_SCANCODE_UP] * 1.f + -gKeyState[SDL_SCANCODE_DOWN] * 1.f) * gDeltaTime,
               0.f });
-    gameObjectsA[0].SetOrientation(mul(gameObjectsA[0].GetOrientation(), euler_to_quat(make_vec3(0.f, 30.f, -47.f) * KC_DEG2RAD * gDeltaTime)));
+    gameObjectsA[0].Rotate(WORLD_UP_VECTOR * 30.f * gDeltaTime);
+    gameObjectsA[0].Rotate(WORLD_RIGHT_VECTOR * -47.f * gDeltaTime);
 
-    bool collied = GJK(&colA, &colB);
-    if(collied)
+    if(GJK(&colA, &colB))
     {
         modelColor = { RGB(255,0,0) };
     }
