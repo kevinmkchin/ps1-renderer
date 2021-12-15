@@ -6,7 +6,7 @@ INTERNAL std::vector<GameObject> gameObjectsA;
 INTERNAL std::vector<GameObject> gameObjectsB;
 
 INTERNAL MeshCollider colA;
-INTERNAL MeshCollider colB;
+INTERNAL SphereCollider colB;
 INTERNAL vec3 modelColor;
 
 INTERNAL void GameInit()
@@ -18,15 +18,13 @@ INTERNAL void GameInit()
 
     GameObject newObj;
     newObj.SetModel(MeshGroupAssimpLoad("data/primitives/cube.obj"));
-    //newObj.SetOrientation(euler_to_quat(make_vec3(0.f, 30.f, -47.f) * KC_DEG2RAD));
     gameObjectsA.push_back(newObj);
-    newObj.SetModel(MeshGroupAssimpLoad("data/primitives/cube.obj"));
+    newObj.SetModel(MeshGroupAssimpLoad("data/primitives/sphere.obj"));
     newObj.SetOrientation(quat());
-    newObj.SetPos({ 3.f, 0.f, 0.f });
+    newObj.SetPos({ 4.f, 0.f, 0.f });
     gameObjectsA.push_back(newObj);
 
     colA.owningGameObject = &gameObjectsA[0];
-    colB.owningGameObject = &gameObjectsA[1];
     colA.verticesModelSpace = {
             {-0.5f, 0.5f, -0.5f},
             {-0.5f, 0.5f, 0.5f},
@@ -37,16 +35,9 @@ INTERNAL void GameInit()
             {0.5f, -0.5f, 0.5f},
             {0.5f, -0.5f, -0.5f}
     };
-    colB.verticesModelSpace = {
-            {-0.5f, 0.5f, -0.5f},
-            {-0.5f, 0.5f, 0.5f},
-            {0.5f, 0.5f, 0.5f},
-            {0.5f, 0.5f, -0.5f},
-            {-0.5f, -0.5f, -0.5f},
-            {-0.5f, -0.5f, 0.5f},
-            {0.5f, -0.5f, 0.5f},
-            {0.5f, -0.5f, -0.5f}
-    };
+
+    colB.owningGameObject = &gameObjectsA[1];
+    colB.radius = 1.f;
 }
 
 INTERNAL void GameUpdate()
@@ -61,10 +52,8 @@ INTERNAL void GameUpdate()
             {(gKeyState[SDL_SCANCODE_RIGHT] * 1.f + -gKeyState[SDL_SCANCODE_LEFT] * 1.f) * gDeltaTime,
              (gKeyState[SDL_SCANCODE_UP] * 1.f + -gKeyState[SDL_SCANCODE_DOWN] * 1.f) * gDeltaTime,
               0.f });
-    quat rot = EulerToQuat(vec3(0.f, 30.f, -47.f) * SML_DEG2RAD * gDeltaTime);
-    gameObjectsA[0].Rotate(rot);
-//    gameObjectsA[0].Rotate(SML_UP_VECTOR * 30.f * gDeltaTime);
-//    gameObjectsA[0].Rotate(SML_RIGHT_VECTOR * -47.f * gDeltaTime);
+//    quat rot = EulerToQuat(vec3(0.f, 30.f, -47.f) * SML_DEG2RAD * gDeltaTime);
+//    gameObjectsA[0].Rotate(rot);
 
     if(GJK(&colA, &colB).hasCollision)
     {

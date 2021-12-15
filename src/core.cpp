@@ -715,6 +715,24 @@ private:
     std::vector<vec3> verticesWorldSpace; // changes based on transform of owning game object
 };
 
+struct SphereCollider : Collider
+{
+    void TransformCollider() override
+    {
+        // TODO probably need to scale the radius too
+        position = owningGameObject->GetPos();
+    }
+
+    vec3 FindFurthestPoint(vec3 direction) const override
+    {
+        vec3 offset = Normalize(direction) * radius;
+        return position + offset;
+    }
+
+    vec3 position;
+    float radius;
+};
+
 struct GJKSimplex
 {
 private:
@@ -918,7 +936,7 @@ INTERNAL std::pair<std::vector<vec4>, int> EPAGetFaceNormals(
         vec3 b = polytope[faces[i + 1]];
         vec3 c = polytope[faces[i + 2]];
         vec3 normal = Normalize(Cross((b - a), (c - a)));
-        float distance = Dot(normal, a);
+        float distance = Dot(normal, a); // the distance is the component of vector a projected onto the normal
 
         if(distance < 0.f)
         {
@@ -956,6 +974,9 @@ INTERNAL void EPAAddIfUniqueEdge(
     }
 }
 
+#ifndef EPA_MAX_ITERATIONS
+#define EPA_MAX_ITERATIONS 10
+#endif
 INTERNAL GJKEPACollisionInfo EPA(GJKSimplex& simplex, const Collider* colA, const Collider* colB)
 {
     std::vector<vec3> polytope;
@@ -978,10 +999,16 @@ INTERNAL GJKEPACollisionInfo EPA(GJKSimplex& simplex, const Collider* colA, cons
     vec3 minNormal;
     float minDistance = FLT_MAX;
 
+    u8 epaIterations = 0; // the EPA loop can be infinite if we have curved edges - just return whatever it has after X iterations.
     while(minDistance == FLT_MAX)
     {
         minNormal = normals[minFace].xyz;
         minDistance = normals[minFace].w;
+
+        if(epaIterations++ > EPA_MAX_ITERATIONS)
+        {
+            break;
+        }
 
         vec3 support = GJKSupport(colA, colB, minNormal); // i.e. is there a point to be added in this direction?
         float sDistance = Dot(minNormal, support);
