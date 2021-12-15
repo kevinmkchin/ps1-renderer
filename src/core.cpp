@@ -614,7 +614,11 @@ struct GameObject
     void Rotate(const vec3& eulerInDegrees)
     {
         quat q = EulerToQuat(eulerInDegrees * SML_DEG2RAD);
-        SetOrientation(q * GetOrientation());
+        Rotate(q);
+    }
+    void Rotate(const quat& rotationAsQuat)
+    {
+        SetOrientation(rotationAsQuat * GetOrientation());
     }
 
     vec3 GetScale() const

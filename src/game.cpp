@@ -61,8 +61,10 @@ INTERNAL void GameUpdate()
             {(gKeyState[SDL_SCANCODE_RIGHT] * 1.f + -gKeyState[SDL_SCANCODE_LEFT] * 1.f) * gDeltaTime,
              (gKeyState[SDL_SCANCODE_UP] * 1.f + -gKeyState[SDL_SCANCODE_DOWN] * 1.f) * gDeltaTime,
               0.f });
-    gameObjectsA[0].Rotate(SML_UP_VECTOR * 30.f * gDeltaTime);
-    gameObjectsA[0].Rotate(SML_RIGHT_VECTOR * -47.f * gDeltaTime);
+    quat rot = EulerToQuat(vec3(0.f, 30.f, -47.f) * SML_DEG2RAD * gDeltaTime);
+    gameObjectsA[0].Rotate(rot);
+//    gameObjectsA[0].Rotate(SML_UP_VECTOR * 30.f * gDeltaTime);
+//    gameObjectsA[0].Rotate(SML_RIGHT_VECTOR * -47.f * gDeltaTime);
 
     if(GJK(&colA, &colB).hasCollision)
     {
