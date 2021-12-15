@@ -890,7 +890,167 @@ INTERNAL bool GJKNextSimplex(GJKSimplex& capture, vec3& direction)
     return false;
 }
 
-INTERNAL bool GJK(Collider* colA, Collider* colB)
+struct GJKEPACollisionInfo
+{
+    vec3 normal;
+    float penetrationDepth;
+    bool hasCollision;
+};
+
+INTERNAL std::pair<std::vector<vec4>, int> EPAGetFaceNormals(
+        const std::vector<vec3>& polytope,
+        const std::vector<int>& faces)
+{
+    /* Returns the normal of every face in the polytope, their distances
+     * from the origin, and the index of the face closest to the origin. */
+
+    std::vector<vec4> normals;
+    int minTriangle = 0;
+    float minDistance = FLT_MAX;
+
+    for(int i = 0; i < faces.size(); i += 3)
+    {
+        vec3 a = polytope[faces[i]];
+        vec3 b = polytope[faces[i + 1]];
+        vec3 c = polytope[faces[i + 2]];
+        vec3 normal = Normalize(Cross((b - a), (c - a)));
+        float distance = Dot(normal, a);
+
+        if(distance < 0.f)
+        {
+            normal *= -1.f;
+            distance *= -1.f;
+        }
+
+        normals.emplace_back(normal, distance);
+
+        if(distance < minDistance)
+        {
+            minDistance = distance;
+            minTriangle = i / 3;
+        }
+    }
+
+    return { normals, minTriangle };
+}
+
+INTERNAL void EPAAddIfUniqueEdge(
+        std::vector<std::pair<int, int>>& edges,
+        const std::vector<int>& faces,
+        int a,
+        int b)
+{
+    auto reverse = std::find(edges.begin(), edges.end(),
+                             std::make_pair(faces[b], faces[a]));
+    if(reverse != edges.end())
+    {
+        edges.erase(reverse);
+    }
+    else
+    {
+        edges.emplace_back(faces[a], faces[b]);
+    }
+}
+
+INTERNAL GJKEPACollisionInfo EPA(GJKSimplex& simplex, const Collider* colA, const Collider* colB)
+{
+    std::vector<vec3> polytope;
+    ASSERT(simplex.size() == 4)
+    for(int i = 0; i < simplex.size(); ++i)
+    {
+        polytope.push_back(simplex[i]);
+    }
+    std::vector<int> faces = {
+            0, 1, 2,
+            0, 3, 1,
+            0, 2, 3,
+            1, 3, 2
+    };
+
+    auto normalsResult = EPAGetFaceNormals(polytope, faces);
+    auto normals = normalsResult.first;
+    auto minFace = normalsResult.second;
+
+    vec3 minNormal;
+    float minDistance = FLT_MAX;
+
+    while(minDistance == FLT_MAX)
+    {
+        minNormal = normals[minFace].xyz;
+        minDistance = normals[minFace].w;
+
+        vec3 support = GJKSupport(colA, colB, minNormal); // i.e. is there a point to be added in this direction?
+        float sDistance = Dot(minNormal, support);
+
+        if(SML_abs(sDistance - minDistance) > 0.001f)
+        {
+            // then we must expand the polytope
+            std::vector<std::pair<int, int>> uniqueEdges;
+            for(int i = 0; i < normals.size(); ++i)
+            {
+                if(GJKSameDirection(normals[i].xyz, support))
+                {
+                    // for each face, if the face is in the same direction as support, remove
+                    int f = i * 3;
+                    EPAAddIfUniqueEdge(uniqueEdges, faces, f, f + 1);
+                    EPAAddIfUniqueEdge(uniqueEdges, faces, f + 1, f + 2);
+                    EPAAddIfUniqueEdge(uniqueEdges, faces, f + 2, f);
+                    // reconstruction
+                    faces[f+2] = faces.back();
+                    faces.pop_back();
+                    faces[f+1] = faces.back();
+                    faces.pop_back();
+                    faces[f] = faces.back();
+                    faces.pop_back();
+                    normals[i] = normals.back();
+                    normals.pop_back();
+                    --i;
+                }
+            }
+
+            std::vector<int> newFaces;
+            for(auto edge : uniqueEdges)
+            {
+                newFaces.push_back(edge.first);
+                newFaces.push_back(edge.second);
+                newFaces.push_back(polytope.size());
+            }
+            polytope.push_back(support);
+
+            normalsResult = EPAGetFaceNormals(polytope, newFaces);
+            auto newNormals = normalsResult.first;
+            auto newMinFace = normalsResult.second;
+
+            float oldMinDistance = FLT_MAX;
+            for(int i = 0; i < normals.size(); ++i)
+            {
+                if(normals[i].w < oldMinDistance)
+                {
+                    oldMinDistance = normals[i].w;
+                    minFace = i;
+                }
+            }
+
+            if(newNormals[newMinFace].w < oldMinDistance)
+            {
+                minFace = newMinFace + normals.size();
+            }
+
+            faces.insert(faces.end(), newFaces.begin(), newFaces.end());
+            normals.insert(normals.end(), newNormals.begin(), newNormals.end());
+
+            minDistance = FLT_MAX;
+        }
+    }
+
+    GJKEPACollisionInfo points;
+    points.normal = minNormal;
+    points.penetrationDepth = minDistance + 0.001f;
+    points.hasCollision = true;
+    return points;
+}
+
+INTERNAL GJKEPACollisionInfo GJK(Collider* colA, Collider* colB)
 {
     colA->TransformCollider();
     colB->TransformCollider();
@@ -906,13 +1066,18 @@ INTERNAL bool GJK(Collider* colA, Collider* colB)
         support = GJKSupport(colA, colB, direction);
         if(Dot(support, direction) <= 0)
         {
-            return false; // previous support point was already the furthest along direction
+            // previous support point was already the furthest along direction
+            GJKEPACollisionInfo collisionInfo;
+            collisionInfo.hasCollision = false;
+            return collisionInfo;
         }
 
         capture.pushFront(support);
         if(GJKNextSimplex(capture, direction))
         {
-            return true;
+            GJKEPACollisionInfo collisionInfo = EPA(capture, colA, colB);
+            collisionInfo.hasCollision = true;
+            return collisionInfo;
         }
     }
 }
