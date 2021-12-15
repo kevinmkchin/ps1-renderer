@@ -64,7 +64,7 @@ INTERNAL void GameUpdate()
     gameObjectsA[0].Rotate(SML_UP_VECTOR * 30.f * gDeltaTime);
     gameObjectsA[0].Rotate(SML_RIGHT_VECTOR * -47.f * gDeltaTime);
 
-    if(GJK(&colA, &colB))
+    if(GJK(&colA, &colB).hasCollision)
     {
         modelColor = { RGB(255,0,0) };
     }
