@@ -719,18 +719,22 @@ struct SphereCollider : Collider
 {
     void TransformCollider() override
     {
-        // TODO probably need to scale the radius too
+        vec3 scale = owningGameObject->GetScale();
+        float largestScale = SML_max(scale.x, SML_max(scale.y, scale.z));
         position = owningGameObject->GetPos();
+        scaledRadius = largestScale * radius;
     }
 
     vec3 FindFurthestPoint(vec3 direction) const override
     {
-        vec3 offset = Normalize(direction) * radius;
+        vec3 offset = Normalize(direction) * scaledRadius;
         return position + offset;
     }
 
-    vec3 position;
     float radius;
+private:
+    vec3 position;
+    float scaledRadius;
 };
 
 struct GJKSimplex
