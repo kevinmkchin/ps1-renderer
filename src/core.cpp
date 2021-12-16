@@ -668,6 +668,13 @@ private:
 
 // GJK + EPA
 
+enum ColliderTypes
+{
+    INVALID_TYPE,
+    MESH_TYPE,
+    SPHERE_TYPE
+};
+
 /** A collider contains two basic pieces of information - a Shape and a Transform */
 struct Collider
 {
@@ -678,10 +685,16 @@ struct Collider
     virtual vec3 FindFurthestPoint(vec3 direction) const = 0;
 
     GameObject* owningGameObject = nullptr;
+    ColliderTypes colliderType = INVALID_TYPE;
 };
 
 struct MeshCollider : Collider
 {
+    MeshCollider()
+    {
+        colliderType = MESH_TYPE;
+    }
+
     void TransformCollider() override
     {
         mat4 modelMatrix = owningGameObject->GetModelMatrix();
@@ -717,6 +730,11 @@ private:
 
 struct SphereCollider : Collider
 {
+    SphereCollider()
+    {
+        colliderType = SPHERE_TYPE;
+    }
+
     void TransformCollider() override
     {
         vec3 scale = owningGameObject->GetScale();
@@ -731,10 +749,20 @@ struct SphereCollider : Collider
         return position + offset;
     }
 
-    float radius;
+    vec3 GetPosition() const
+    {
+        return position;
+    }
+
+    float GetScaledRadius() const
+    {
+        return scaledRadius;
+    }
+
+    float radius; // radius in model frame. before being affected by scale.
 private:
-    vec3 position;
-    float scaledRadius;
+    vec3 position; // position in world frame. should be position of owningGameObject
+    float scaledRadius; // radius actually used for FindFurthestPoint
 };
 
 struct GJKSimplex
@@ -789,6 +817,7 @@ INTERNAL bool GJKLine(GJKSimplex& capture, vec3& direction)
 
     if(GJKSameDirection(ab, -a))
     {
+        // NOTE(Kevin): If initial search direction aligns with the collision vector between two spheres, then it doesn't work.
         direction = Cross(Cross(ab, -a), ab);
     }
     else
@@ -1085,13 +1114,34 @@ INTERNAL GJKEPACollisionInfo EPA(GJKSimplex& simplex, const Collider* colA, cons
     return points;
 }
 
+INTERNAL GJKEPACollisionInfo CheckSphereCollision(SphereCollider* a, SphereCollider* b)
+{
+    vec3 aPos = a->GetPosition();
+    vec3 bPos = b->GetPosition();
+    float aRad = a->GetScaledRadius();
+    float bRad = b->GetScaledRadius();
+    if(Magnitude(bPos - aPos) < aRad + bRad)
+    {
+        return { Normalize(bPos - aPos), Magnitude(bPos - aPos), true };
+    }
+    else
+    {
+        return {vec3(), 0.f, false };
+    }
+}
+
 INTERNAL GJKEPACollisionInfo GJK(Collider* colA, Collider* colB)
 {
     colA->TransformCollider();
     colB->TransformCollider();
 
+    if(colA->colliderType == SPHERE_TYPE && colB->colliderType == SPHERE_TYPE)
+    {
+        return CheckSphereCollision((SphereCollider*) colA,(SphereCollider*) colB);
+    }
+
     //NOTE(Kevin): start direction could be origin - (colA owning object position - colB owning object position)
-    vec3 support = GJKSupport(colA, colB, {1.f,0.f,0.f});
+    vec3 support = GJKSupport(colA, colB, {0.f,1.f,0.f});
     GJKSimplex capture;
     capture.pushFront(support);
     vec3 direction = -support;
