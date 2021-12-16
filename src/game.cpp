@@ -5,7 +5,7 @@ INTERNAL Shader sceneShader;
 INTERNAL std::vector<GameObject> gameObjectsA;
 INTERNAL std::vector<GameObject> gameObjectsB;
 
-INTERNAL MeshCollider colA;
+INTERNAL SphereCollider colA;
 INTERNAL SphereCollider colB;
 INTERNAL vec3 modelColor;
 
@@ -17,24 +17,26 @@ INTERNAL void GameInit()
     camera.rotation = { 0.0f, 31.56f, -21.f };
 
     GameObject newObj;
-    newObj.SetModel(MeshGroupAssimpLoad("data/primitives/cube.obj"));
+    newObj.SetModel(MeshGroupAssimpLoad("data/primitives/sphere.obj"));
     gameObjectsA.push_back(newObj);
     newObj.SetModel(MeshGroupAssimpLoad("data/primitives/sphere.obj"));
     newObj.SetOrientation(quat());
     newObj.SetPos({ 4.f, 0.f, 0.f });
     gameObjectsA.push_back(newObj);
+    gameObjectsA[0].SetScale(vec3(1.4f,1.4f,1.4f));
 
     colA.owningGameObject = &gameObjectsA[0];
-    colA.verticesModelSpace = {
-            {-0.5f, 0.5f, -0.5f},
-            {-0.5f, 0.5f, 0.5f},
-            {0.5f, 0.5f, 0.5f},
-            {0.5f, 0.5f, -0.5f},
-            {-0.5f, -0.5f, -0.5f},
-            {-0.5f, -0.5f, 0.5f},
-            {0.5f, -0.5f, 0.5f},
-            {0.5f, -0.5f, -0.5f}
-    };
+    colA.radius = 1.f;
+//    colA.verticesModelSpace = {
+//            {-0.5f, 0.5f, -0.5f},
+//            {-0.5f, 0.5f, 0.5f},
+//            {0.5f, 0.5f, 0.5f},
+//            {0.5f, 0.5f, -0.5f},
+//            {-0.5f, -0.5f, -0.5f},
+//            {-0.5f, -0.5f, 0.5f},
+//            {0.5f, -0.5f, 0.5f},
+//            {0.5f, -0.5f, -0.5f}
+//    };
 
     colB.owningGameObject = &gameObjectsA[1];
     colB.radius = 1.f;
