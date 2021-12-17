@@ -1,10 +1,22 @@
+struct DefaultGameObject : GameObject
+{
+    void Update() override
+    {
 
+    }
+
+    void OnCollision(CollisionEventArgs collisionInfo) override
+    {
+
+    }
+};
 
 INTERNAL GameCamera camera;
 INTERNAL Shader sceneShader;
-INTERNAL std::vector<GameObject> gameObjectsA;
-INTERNAL std::vector<GameObject> gameObjectsB;
+INTERNAL std::vector<GameObject*> gameObjectsA;
 
+INTERNAL DefaultGameObject objA;
+INTERNAL DefaultGameObject objB;
 INTERNAL SphereCollider colA;
 INTERNAL SphereCollider colB;
 INTERNAL vec3 modelColor;
@@ -16,16 +28,15 @@ INTERNAL void GameInit()
     camera.position = { -3.048528f, 1.879444f, 2.618031f };
     camera.rotation = { 0.0f, 31.56f, -21.f };
 
-    GameObject newObj;
-    newObj.SetModel(MeshGroupAssimpLoad("data/primitives/sphere.obj"));
-    gameObjectsA.push_back(newObj);
-    newObj.SetModel(MeshGroupAssimpLoad("data/primitives/sphere.obj"));
-    newObj.SetOrientation(quat());
-    newObj.SetPos({ 4.f, 0.f, 0.f });
-    gameObjectsA.push_back(newObj);
-    gameObjectsA[0].SetScale(vec3(1.4f,1.4f,1.4f));
+    objA.SetModel(MeshGroupAssimpLoad("data/primitives/sphere.obj"));
+    objA.SetScale(vec3(1.4f,1.4f,1.4f));
+    gameObjectsA.push_back(&objA);
+    objB.SetModel(MeshGroupAssimpLoad("data/primitives/sphere.obj"));
+    objB.SetOrientation(quat());
+    objB.SetPos({ 4.f, 0.f, 0.f });
+    gameObjectsA.push_back(&objB);
 
-    colA.owningGameObject = &gameObjectsA[0];
+    colA.owningGameObject = &objA;
     colA.radius = 1.f;
 //    colA.verticesModelSpace = {
 //            {-0.5f, 0.5f, -0.5f},
@@ -38,8 +49,11 @@ INTERNAL void GameInit()
 //            {0.5f, -0.5f, -0.5f}
 //    };
 
-    colB.owningGameObject = &gameObjectsA[1];
+    colB.owningGameObject = &objB;
     colB.radius = 1.f;
+
+    DynamicColliders.push_back(&colA);
+    DynamicColliders.push_back(&colB);
 }
 
 INTERNAL void GameUpdate()
@@ -47,24 +61,17 @@ INTERNAL void GameUpdate()
     camera.CameraUpdate();
     for(auto& gameObj : gameObjectsA)
     {
-        gameObj.Update();
+        gameObj->Update();
     }
 
-    gameObjectsA[0].Move(
+    gameObjectsA[0]->Move(
             {(gKeyState[SDL_SCANCODE_RIGHT] * 1.f + -gKeyState[SDL_SCANCODE_LEFT] * 1.f) * gDeltaTime,
              (gKeyState[SDL_SCANCODE_UP] * 1.f + -gKeyState[SDL_SCANCODE_DOWN] * 1.f) * gDeltaTime,
               0.f });
 //    quat rot = EulerToQuat(vec3(0.f, 30.f, -47.f) * SML_DEG2RAD * gDeltaTime);
 //    gameObjectsA[0].Rotate(rot);
 
-    if(GJK(&colA, &colB).hasCollision)
-    {
-        modelColor = { RGB(255,0,0) };
-    }
-    else
-    {
-        modelColor = { RGB(255,255,255) };
-    }
+    CollisionWorldUpdate();
 }
 
 INTERNAL void GameRender()
@@ -80,7 +87,7 @@ INTERNAL void GameRender()
         sceneShader.GLBind3f("modelColor", modelColor.x, modelColor.y, modelColor.z);
         for(auto& gameObj : gameObjectsA)
         {
-            gameObj.Render(sceneShader);
+            gameObj->Render(sceneShader);
         }
     glUseProgram(0);
 }

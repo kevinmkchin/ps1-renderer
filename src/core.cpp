@@ -545,7 +545,13 @@ void GameCamera::CameraCalculateViewMatrix()
 
 
 
-
+struct GameObject;
+struct CollisionEventArgs
+{
+    vec3 normal;
+    float depth;
+    GameObject* other;
+};
 
 struct GameObject
 {
@@ -558,10 +564,7 @@ struct GameObject
         , model(nullptr)
     {}
 
-    virtual void Update()
-    {
-
-    }
+    virtual void Update() = 0;
 
     virtual void Render(const Shader& shader)
     {
@@ -572,6 +575,8 @@ struct GameObject
             modelToRender->render();
         }
     }
+
+    virtual void OnCollision(CollisionEventArgs collisionInfo) = 0;
 
     const mat4& GetModelMatrix()
     {
@@ -640,14 +645,14 @@ struct GameObject
         model = newModelPtr;
     }
 
-private:
+protected:
     vec3 pos; // World space
     quat orientation;
     vec3 scale;
 
+private:
     mat4 modelMatrix;
     bool32 isModelMatrixOutdated;
-
     MeshGroup* model;
 
     // POINTER to a collider which is described in MODEL SPACE
@@ -1120,9 +1125,10 @@ INTERNAL GJKEPACollisionInfo CheckSphereCollision(SphereCollider* a, SphereColli
     vec3 bPos = b->GetPosition();
     float aRad = a->GetScaledRadius();
     float bRad = b->GetScaledRadius();
-    if(Magnitude(bPos - aPos) < aRad + bRad)
+    float baLen = Magnitude(bPos - aPos);
+    if(baLen < aRad + bRad)
     {
-        return { Normalize(bPos - aPos), Magnitude(bPos - aPos), true };
+        return { Normalize(bPos - aPos), aRad + bRad - baLen, true };
     }
     else
     {
@@ -1172,6 +1178,48 @@ INTERNAL GJKEPACollisionInfo GJK(Collider* colA, Collider* colB)
 
 // Collision World
 
+INTERNAL void NotifyOwningObjectsAboutCollision(Collider* a, Collider* b, GJKEPACollisionInfo collisionInfo)
+{
+    CollisionEventArgs dispatchInfo;
+    dispatchInfo.normal = collisionInfo.normal;
+    dispatchInfo.depth = collisionInfo.penetrationDepth;
+    dispatchInfo.other = b->owningGameObject;
+    a->owningGameObject->OnCollision(dispatchInfo);
+    dispatchInfo.other = a->owningGameObject;
+    b->owningGameObject->OnCollision(dispatchInfo);
+}
 
+INTERNAL std::vector<Collider*> StaticColliders;
+INTERNAL std::vector<Collider*> DynamicColliders;
+
+//TODO(Kevin): Broad-phase check with bounding spheres before doing GJK.
+
+INTERNAL void CheckCollisionAndNotify(Collider* colliderA, Collider* colliderB)
+{
+    auto collisionQuery = GJK(colliderA, colliderB);
+    if(collisionQuery.hasCollision)
+    {
+        NotifyOwningObjectsAboutCollision(colliderA, colliderB, collisionQuery);
+    }
+}
+
+INTERNAL void CollisionWorldUpdate()
+{
+    for(int i = 0; i < DynamicColliders.size(); ++i)
+    {
+        auto colliderA = DynamicColliders.at(i);
+        for(int rest = i + 1; rest < DynamicColliders.size(); ++rest)
+        {
+            auto colliderB = DynamicColliders.at(rest);
+            CheckCollisionAndNotify(colliderA, colliderB);
+        }
+
+        for(int j = 0; j < StaticColliders.size(); ++j)
+        {
+            auto colliderB = StaticColliders.at(j);
+            CheckCollisionAndNotify(colliderA, colliderB);
+        }
+    }
+}
 
 
