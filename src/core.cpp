@@ -455,6 +455,7 @@ struct GameCamera
     float farClip               = 2000.f;
     float moveSpeed             = 6.f;
     float turnSpeed             = 0.15f;
+    bool bMouseControl          = false;
 
     void CameraUpdate();
     void CameraCalculatePerspectiveMatrix();
@@ -463,15 +464,18 @@ struct GameCamera
 
 void GameCamera::CameraUpdate()
 {
-    if(SML_abs(gMouseDeltaX) < 50.f && SML_abs(gMouseDeltaY) < 50.f) // don't move if mouse delta is too big to be normal
+    if(bMouseControl)
     {
-        rotation.y /*yaw*/ -= ((float)gMouseDeltaX) * turnSpeed * 0.8f;
-        rotation.z /*pitch*/ -= ((float)gMouseDeltaY) * turnSpeed * 0.8f;
-    }
-    if(gGamepadStates[0].isConnected)
-    {
-        rotation.y -= gGamepadStates[0].rightThumbStickDir.x * turnSpeed * gDeltaTime * 260.f;
-        rotation.z += gGamepadStates[0].rightThumbStickDir.y * turnSpeed * gDeltaTime * 260.f;
+        if(SML_abs(gMouseDeltaX) < 50.f && SML_abs(gMouseDeltaY) < 50.f) // don't move if mouse delta is too big to be normal
+        {
+            rotation.y /*yaw*/ -= ((float)gMouseDeltaX) * turnSpeed * 0.8f;
+            rotation.z /*pitch*/ -= ((float)gMouseDeltaY) * turnSpeed * 0.8f;
+        }
+        if(gGamepadStates[0].isConnected)
+        {
+            rotation.y -= gGamepadStates[0].rightThumbStickDir.x * turnSpeed * gDeltaTime * 260.f;
+            rotation.z += gGamepadStates[0].rightThumbStickDir.y * turnSpeed * gDeltaTime * 260.f;
+        }
     }
 
     if(rotation.z > 89.f)
