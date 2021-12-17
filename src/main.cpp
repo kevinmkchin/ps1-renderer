@@ -114,7 +114,6 @@ INTERNAL bool SDLInitialize()
     printf("SDL Window & OpenGL context created.\n");
 
     gKeyState = SDL_GetKeyboardState(nullptr);
-    SDL_SetRelativeMouseMode(SDL_TRUE);
 
     return true;
 }
@@ -166,6 +165,26 @@ INTERNAL void SDLProcessEvents()
     {
         switch(event.type)
         {
+            case SDL_MOUSEBUTTONUP:
+            {
+                SDL_MouseButtonEvent mouseUp = event.button;
+                if(mouseUp.button == SDL_BUTTON_RIGHT && mouseUp.state == SDL_RELEASED)
+                {
+                    SDL_SetRelativeMouseMode(SDL_FALSE);
+                    camera.bMouseControl = false;
+                }
+            }
+
+            case SDL_MOUSEBUTTONDOWN:
+            {
+                SDL_MouseButtonEvent mouseDown = event.button;
+                if(mouseDown.button == SDL_BUTTON_RIGHT && mouseDown.state == SDL_PRESSED)
+                {
+                    SDL_SetRelativeMouseMode(SDL_TRUE);
+                    camera.bMouseControl = true;
+                }
+            }
+
             case SDL_MOUSEMOTION:
             {
                 SDL_MouseMotionEvent mouseMotion = event.motion;
