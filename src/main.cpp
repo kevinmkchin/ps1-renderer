@@ -190,6 +190,15 @@ INTERNAL void SDLProcessEvents()
                     SDL_SetRelativeMouseMode(SDL_TRUE);
                     camera.bMouseControl = true;
                 }
+
+                if(mouseDown.button == SDL_BUTTON_LEFT && mouseDown.state == SDL_PRESSED)
+                {
+                    int x, y;
+                    SDL_GetMouseState(&x, &y);
+                    float ix = (float) x * ((float) INTERNAL_RESOLUTION_WIDTH / (float)backbufferWidth);
+                    float iy = (float) y * ((float) INTERNAL_RESOLUTION_HEIGHT / (float)backbufferHeight);
+                    EditorMousePick(ix, iy);
+                }
             }
 
             case SDL_MOUSEMOTION:
