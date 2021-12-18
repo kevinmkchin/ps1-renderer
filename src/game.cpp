@@ -21,6 +21,7 @@ INTERNAL MeshCollider colA;
 INTERNAL SphereCollider colB;
 INTERNAL vec3 modelColor;
 INTERNAL Texture textureA;
+INTERNAL LineCollider lineTest;
 
 INTERNAL void GameInit()
 {
@@ -58,6 +59,9 @@ INTERNAL void GameInit()
 
     TextureCreateFromFile(textureA, "data/primitives/TilesPlain0304.png");
 
+    lineTest.a = vec3(0,0,0);
+    lineTest.b = vec3(3,0,0);
+
     EditorInitialize();
 }
 
@@ -67,6 +71,11 @@ INTERNAL void GameUpdate()
     for(auto& gameObj : gameObjectsA)
     {
         gameObj->Update();
+    }
+
+    if(GJK(&colB, &lineTest).hasCollision)
+    {
+        modelColor = vec3(RGB(255,0,0));
     }
 
     gameObjectsA[0]->Move(

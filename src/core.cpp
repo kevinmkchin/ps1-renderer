@@ -681,7 +681,8 @@ enum ColliderTypes
 {
     INVALID_TYPE,
     MESH_TYPE,
-    SPHERE_TYPE
+    SPHERE_TYPE,
+    LINE_TYPE
 };
 
 /** A collider contains two basic pieces of information - a Shape and a Transform */
@@ -699,6 +700,8 @@ struct Collider
 
 struct MeshCollider : Collider
 {
+    std::vector<vec3> verticesModelSpace; // shouldn't change after first initialization
+
     MeshCollider()
     {
         colliderType = MESH_TYPE;
@@ -732,13 +735,14 @@ struct MeshCollider : Collider
         return maxVertexSoFar;
     }
 
-    std::vector<vec3> verticesModelSpace; // shouldn't change after first initialization
 private:
     std::vector<vec3> verticesWorldSpace; // changes based on transform of owning game object
 };
 
 struct SphereCollider : Collider
 {
+    float radius; // radius in model frame. before being affected by scale.
+
     SphereCollider()
     {
         colliderType = SPHERE_TYPE;
@@ -768,10 +772,32 @@ struct SphereCollider : Collider
         return scaledRadius;
     }
 
-    float radius; // radius in model frame. before being affected by scale.
 private:
     vec3 position; // position in world frame. should be position of owningGameObject
     float scaledRadius; // radius actually used for FindFurthestPoint
+};
+
+struct LineCollider : Collider
+{
+    vec3 a;
+    vec3 b;
+
+    LineCollider()
+    {
+        colliderType = LINE_TYPE;
+    }
+
+    void TransformCollider() override
+    {
+
+    }
+
+    vec3 FindFurthestPoint(vec3 direction) const override
+    {
+        float distanceA = Dot(a, direction);
+        float distanceB = Dot(b, direction);
+        return (distanceA > distanceB ? a : b);
+    }
 };
 
 struct GJKSimplex
@@ -1187,10 +1213,16 @@ INTERNAL void NotifyOwningObjectsAboutCollision(Collider* a, Collider* b, GJKEPA
     CollisionEventArgs dispatchInfo;
     dispatchInfo.normal = collisionInfo.normal;
     dispatchInfo.depth = collisionInfo.penetrationDepth;
-    dispatchInfo.other = b->owningGameObject;
-    a->owningGameObject->OnCollision(dispatchInfo);
-    dispatchInfo.other = a->owningGameObject;
-    b->owningGameObject->OnCollision(dispatchInfo);
+    if(a->owningGameObject)
+    {
+        dispatchInfo.other = b->owningGameObject;
+        a->owningGameObject->OnCollision(dispatchInfo);
+    }
+    if(b->owningGameObject)
+    {
+        dispatchInfo.other = a->owningGameObject;
+        b->owningGameObject->OnCollision(dispatchInfo);
+    }
 }
 
 INTERNAL std::vector<Collider*> StaticColliders;
