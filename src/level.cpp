@@ -304,9 +304,47 @@ INTERNAL void EditorRender()
     testM.RenderMesh();
 }
 
-INTERNAL void EditorMousePick()
+INTERNAL void EditorMousePick(int x, int y, float rayLength = 100.f)
 {
-    // get perspective and view matrix from camera
-    
-    
+    float xNDC = ((float) x - ((float)INTERNAL_RESOLUTION_WIDTH/2.f)) / ((float)INTERNAL_RESOLUTION_WIDTH/2.f);
+    float yNDC = ((float) y - ((float)INTERNAL_RESOLUTION_HEIGHT/2.f)) / ((float)-INTERNAL_RESOLUTION_HEIGHT/2.f);
+    mat4 inverseViewMatrix = camera.viewMatrix.GetInverse();
+    mat4 inverseProjMatrix = camera.perspectiveMatrix.GetInverse();
+    vec4 rayCCS = vec4(xNDC, yNDC, -1.f, 1.f);
+    vec4 rayVCS = vec4((inverseProjMatrix * rayCCS).xyz, 0.f);
+    vec3 rayWCS = Normalize((inverseViewMatrix * rayVCS).xyz);
+
+    LineCollider lc;
+    lc.a = camera.position;
+    lc.b = camera.position + rayWCS * rayLength;
+
+    // iterate editor/game objects to see which object was clicked on.
+    std::vector<Collider*> collided;
+    for(auto c : DynamicColliders)
+    {
+        if(GJK(c, &lc).hasCollision)
+        {
+            collided.push_back(c);
+        }
+    }
+
+    GameObject* first = nullptr;
+    float minDistanceSoFar = FLT_MAX;
+    for(auto c : collided)
+    {
+        if(c->owningGameObject)
+        {
+            float distance = Magnitude(camera.position - c->owningGameObject->GetPos());
+            if(distance < minDistanceSoFar)
+            {
+                first = c->owningGameObject;
+                minDistanceSoFar = distance;
+            }
+        }
+    }
+
+    if(first)
+    {
+        printf("%f, %f, %f\n", first->GetPos().x, first->GetPos().y, first->GetPos().z);
+    }
 }
