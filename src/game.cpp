@@ -17,9 +17,10 @@ INTERNAL std::vector<GameObject*> gameObjectsA;
 
 INTERNAL DefaultGameObject objA;
 INTERNAL DefaultGameObject objB;
-INTERNAL SphereCollider colA;
+INTERNAL MeshCollider colA;
 INTERNAL SphereCollider colB;
 INTERNAL vec3 modelColor;
+INTERNAL Texture textureA;
 
 INTERNAL void GameInit()
 {
@@ -28,7 +29,7 @@ INTERNAL void GameInit()
     camera.position = { -3.048528f, 1.879444f, 2.618031f };
     camera.rotation = { 0.0f, 31.56f, -21.f };
 
-    objA.SetModel(MeshGroupAssimpLoad("data/primitives/sphere.obj"));
+    objA.SetModel(MeshGroupAssimpLoad("data/primitives/cube.obj"));
     objA.SetScale(vec3(1.4f,1.4f,1.4f));
     gameObjectsA.push_back(&objA);
     objB.SetModel(MeshGroupAssimpLoad("data/primitives/sphere.obj"));
@@ -37,23 +38,27 @@ INTERNAL void GameInit()
     gameObjectsA.push_back(&objB);
 
     colA.owningGameObject = &objA;
-    colA.radius = 1.f;
-//    colA.verticesModelSpace = {
-//            {-0.5f, 0.5f, -0.5f},
-//            {-0.5f, 0.5f, 0.5f},
-//            {0.5f, 0.5f, 0.5f},
-//            {0.5f, 0.5f, -0.5f},
-//            {-0.5f, -0.5f, -0.5f},
-//            {-0.5f, -0.5f, 0.5f},
-//            {0.5f, -0.5f, 0.5f},
-//            {0.5f, -0.5f, -0.5f}
-//    };
+    //colA.radius = 1.f;
+    colA.verticesModelSpace = {
+            {-0.5f, 0.5f, -0.5f},
+            {-0.5f, 0.5f, 0.5f},
+            {0.5f, 0.5f, 0.5f},
+            {0.5f, 0.5f, -0.5f},
+            {-0.5f, -0.5f, -0.5f},
+            {-0.5f, -0.5f, 0.5f},
+            {0.5f, -0.5f, 0.5f},
+            {0.5f, -0.5f, -0.5f}
+    };
 
     colB.owningGameObject = &objB;
     colB.radius = 1.f;
 
     DynamicColliders.push_back(&colA);
     DynamicColliders.push_back(&colB);
+
+    TextureCreateFromFile(textureA, "data/primitives/TilesPlain0304.png");
+
+    EditorInitialize();
 }
 
 INTERNAL void GameUpdate()
@@ -68,8 +73,8 @@ INTERNAL void GameUpdate()
             {(gKeyState[SDL_SCANCODE_RIGHT] * 1.f + -gKeyState[SDL_SCANCODE_LEFT] * 1.f) * gDeltaTime,
              (gKeyState[SDL_SCANCODE_UP] * 1.f + -gKeyState[SDL_SCANCODE_DOWN] * 1.f) * gDeltaTime,
               0.f });
-//    quat rot = EulerToQuat(vec3(0.f, 30.f, -47.f) * SML_DEG2RAD * gDeltaTime);
-//    gameObjectsA[0].Rotate(rot);
+    quat rot = EulerToQuat(vec3(0.f, 30.f, -47.f) * SML_DEG2RAD * gDeltaTime);
+    gameObjectsA[0]->Rotate(rot);
 
     CollisionWorldUpdate();
 }
@@ -89,5 +94,7 @@ INTERNAL void GameRender()
         {
             gameObj->Render(sceneShader);
         }
+        textureA.UseTexture();
+        EditorRender();
     glUseProgram(0);
 }

@@ -1,7 +1,7 @@
 /** Playstation 1 style renderer
 
 TODO:
-    - Collision
+    - Level editor + Primitive shapes
     - Animation
     - Audio
     - Text rendering with kc_truetypeassembler.h
@@ -57,6 +57,7 @@ INTERNAL std::string consoleCommandQueue;
 #include "file.cpp"
 #include "shader.cpp"
 #include "core.cpp"
+#include "level.cpp"
 #include "game.cpp"
 
 #define WINDOW_TITLE "ps1 style renderer"
