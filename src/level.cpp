@@ -300,6 +300,13 @@ INTERNAL void EditorRender()
 {
     EditorCubeObject defaultCube = EditorCubeObject(vec3(4.f, 0.4f, 2.f));
     auto bo = defaultCube.GetBufferObjects();
-    testM.RebindBufferObjects(bo.first.data(), bo.second.data(), bo.first.size(), bo.second.size());
+    testM.RebindBufferObjects(bo.first.data(), bo.second.data(), (u32)bo.first.size(), (u32)bo.second.size());
     testM.RenderMesh();
+}
+
+INTERNAL void EditorMousePick()
+{
+    // get perspective and view matrix from camera
+    
+    
 }

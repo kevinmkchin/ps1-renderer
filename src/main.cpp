@@ -1,7 +1,7 @@
 /** Playstation 1 style renderer
 
 TODO:
-    - Line collider
+    - Mouse Pick
     - Level editor + Primitive shapes
     - Animation
     - Audio
@@ -42,6 +42,9 @@ BUILD MODES:
 #include <sexymathlibrary.h>
 
 #include "gamedefines.h"
+#include "shader.h"
+#include "core.h"
+#include "game.h"
 
 INTERNAL bool gIsRunning = true;
 INTERNAL float gDeltaTime;
@@ -60,6 +63,8 @@ INTERNAL std::string consoleCommandQueue;
 #include "core.cpp"
 #include "level.cpp"
 #include "game.cpp"
+
+#pragma region PLATFORM_LAYER
 
 #define WINDOW_TITLE "ps1 style renderer"
 #define WINDOW_INITIAL_WIDTH 960
@@ -379,3 +384,5 @@ int main(int argc, char* argv[])
 
     return 0;
 }
+
+#pragma endregion //PLATFORM_LAYER
