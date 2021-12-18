@@ -22,7 +22,7 @@ struct EditorCubeObject : EditorObject
 
     vec3 dimensions; // width, height, length
     vec3 originAsOffsetFromMinCorner = vec3(2.f, 0.2f, 1.f);
-    vec2 textureScale = vec2(1.f, 1.f); // used to determine UV coordinates
+    vec2 textureScale = vec2(4.f, 2.f); // i.e. how many world units is one UV unit
     bool textureTileFlag = true;
     bool textureOrientationFlag = true;
 
@@ -70,34 +70,34 @@ struct EditorCubeObject : EditorObject
         };
         vec2 uvArray[24] = {
                 {0.f, 0.f},
-                {dimensions.z * textureScale.x, 0.f},
-                {dimensions.z * textureScale.x, dimensions.y * textureScale.y},
-                {0.f, dimensions.y * textureScale.y},
+                {dimensions.z / textureScale.x, 0.f},
+                {dimensions.z / textureScale.x, dimensions.y / textureScale.y},
+                {0.f, dimensions.y / textureScale.y},
 
                 {0.f, 0.f},
-                {dimensions.x * textureScale.x, 0.f},
-                {dimensions.x * textureScale.x, dimensions.y * textureScale.y},
-                {0.f, dimensions.y * textureScale.y},
+                {dimensions.x / textureScale.x, 0.f},
+                {dimensions.x / textureScale.x, dimensions.y / textureScale.y},
+                {0.f, dimensions.y / textureScale.y},
 
                 {0.f, 0.f},
-                {dimensions.z * textureScale.x, 0.f},
-                {dimensions.z * textureScale.x, dimensions.y * textureScale.y},
-                {0.f, dimensions.y * textureScale.y},
+                {dimensions.z / textureScale.x, 0.f},
+                {dimensions.z / textureScale.x, dimensions.y / textureScale.y},
+                {0.f, dimensions.y / textureScale.y},
 
                 {0.f, 0.f},
-                {dimensions.x * textureScale.x, 0.f},
-                {dimensions.x * textureScale.x, dimensions.y * textureScale.y},
-                {0.f, dimensions.y * textureScale.y},
+                {dimensions.x / textureScale.x, 0.f},
+                {dimensions.x / textureScale.x, dimensions.y / textureScale.y},
+                {0.f, dimensions.y / textureScale.y},
 
                 {0.f, 0.f},
-                {dimensions.z * textureScale.x, 0.f},
-                {dimensions.z * textureScale.x, dimensions.x * textureScale.y},
-                {0.f, dimensions.x * textureScale.y},
+                {dimensions.z / textureScale.x, 0.f},
+                {dimensions.z / textureScale.x, dimensions.x / textureScale.y},
+                {0.f, dimensions.x / textureScale.y},
 
                 {0.f, 0.f},
-                {dimensions.z * textureScale.x, 0.f},
-                {dimensions.z * textureScale.x, dimensions.x * textureScale.y},
-                {0.f, dimensions.x * textureScale.y},
+                {dimensions.z / textureScale.x, 0.f},
+                {dimensions.z / textureScale.x, dimensions.x / textureScale.y},
+                {0.f, dimensions.x / textureScale.y},
         };
 
         if(!textureTileFlag)
@@ -198,15 +198,15 @@ struct EditorCubeObject : EditorObject
         {
             if(textureTileFlag)
             {
-                uvArray[16] = {0.f, dimensions.z * textureScale.y};
+                uvArray[16] = {0.f, dimensions.z / textureScale.y};
                 uvArray[17] = {0.f, 0.f};
-                uvArray[18] = {dimensions.x * textureScale.x, 0.f};
-                uvArray[19] = {dimensions.x * textureScale.x, dimensions.z * textureScale.y};
+                uvArray[18] = {dimensions.x / textureScale.x, 0.f};
+                uvArray[19] = {dimensions.x / textureScale.x, dimensions.z / textureScale.y};
 
-                uvArray[20] = {0.f, dimensions.z * textureScale.y};
+                uvArray[20] = {0.f, dimensions.z / textureScale.y};
                 uvArray[21] = {0.f, 0.f};
-                uvArray[22] = {dimensions.x * textureScale.x, 0.f};
-                uvArray[23] = {dimensions.x * textureScale.x, dimensions.z * textureScale.y};
+                uvArray[22] = {dimensions.x / textureScale.x, 0.f};
+                uvArray[23] = {dimensions.x / textureScale.x, dimensions.z / textureScale.y};
             }
             else
             {
