@@ -1,13 +1,12 @@
 
-// shapes:
-
 struct EditorObject
 {
     // PARENT
-
-    // CHILD
-
+    // CHILDREN
     // WE CAN HAVE EMPTY EDITOR OBJECT WHICH HAS NON-EMPTY EDITOR OBJECTS AS CHILDREN
+
+    virtual std::pair<std::vector<float>, std::vector<u32>> GetBufferObjects() = 0;
+    virtual std::vector<vec3> GetColliders() = 0;
 };
 
 // map from GameObject to EditorObject
@@ -32,11 +31,11 @@ struct EditorCubeObject : EditorObject
         dimensions = initDimensions;
     }
 
-    // function to spit out a Mesh VBO for vertex position, texture coords, normals, indices, etc based on above info
-    // use spit out Mesh VBOs to rebind a mesh on a Mesh+GameObject in the scene. So there is a 1 to 1 mapping between
-    // the EditorObjects and GameObjects in the scene.
-    std::pair<std::vector<float>, std::vector<u32>> GetBufferObjects()
+    std::pair<std::vector<float>, std::vector<u32>> GetBufferObjects() override
     {
+        // Get Mesh VBO for vertex position, texture coords, normals, indices
+        // Use Mesh VBOs to rebind a mesh on a Mesh+GameObject in the scene.
+        // So there is a 1 to 1 mapping between the EditorObjects and GameObjects in the scene.
 #pragma region MakingBufferObjects
         vec3 posArray[24] = {
                 {0.f, 0.f, 0.f},
@@ -187,9 +186,9 @@ struct EditorCubeObject : EditorObject
                 23, 22, 20
         };
 
-        // and THEN we use the origin offset to go and offset the vertex positions
         for(int i = 0; i < 24; ++i)
         {
+            // and THEN we use the origin offset to go and offset the vertex positions
             posArray[i].x -= originAsOffsetFromMinCorner.x;
             posArray[i].y -= originAsOffsetFromMinCorner.y;
             posArray[i].z -= originAsOffsetFromMinCorner.z;
@@ -238,13 +237,57 @@ struct EditorCubeObject : EditorObject
 #pragma endregion
         return { vbo, indices };
     }
-
-    // Returns a vector of vertex positions for use with MeshCollider
-    std::vector<vec3> GetColliders()
+    std::vector<vec3> GetColliders() override
     {
+#pragma region MakeColliderVertices
+        // Returns a vector of vertex positions for use with MeshCollider
+        std::vector<vec3> colliderVertices = {
+                {0.f, 0.f, 0.f},
+                {0.f, 0.f, dimensions.z},
+                {0.f, dimensions.y, dimensions.z},
+                {0.f, dimensions.y, 0.f},
 
+                {0.f, 0.f, dimensions.z},
+                {dimensions.x, 0.f, dimensions.z },
+                {dimensions.x, dimensions.y, dimensions.z},
+                {0.f, dimensions.y, dimensions.z},
+
+                {dimensions.x, 0.f, 0.f},
+                {dimensions.x, 0.f, dimensions.z},
+                {dimensions.x, dimensions.y, dimensions.z},
+                {dimensions.x, dimensions.y, 0.f},
+
+                {0.f, 0.f, 0.f},
+                {dimensions.x, 0.f, 0.f},
+                {dimensions.x, dimensions.y, 0.f},
+                {0.f, dimensions.y, 0.f},
+
+                {0.f, dimensions.y, 0.f},
+                {0.f, dimensions.y, dimensions.z},
+                {dimensions.x, dimensions.y, dimensions.z},
+                {dimensions.x, dimensions.y, 0.f},
+
+                {0.f, 0.f, 0.f},
+                {0.f, 0.f, dimensions.z},
+                {dimensions.x, 0.f, dimensions.z},
+                {dimensions.x, 0.f, 0.f}
+        };
+
+        for(int i = 0; i < 24; ++i)
+        {
+            // and THEN we use the origin offset to go and offset the vertex positions
+            colliderVertices[i].x -= originAsOffsetFromMinCorner.x;
+            colliderVertices[i].y -= originAsOffsetFromMinCorner.y;
+            colliderVertices[i].z -= originAsOffsetFromMinCorner.z;
+        }
+#pragma endregion
+        return colliderVertices;
     }
 };
+
+// - sphere with arbitrary radius
+// - curves?
+// - pyramids
 
 INTERNAL Mesh testM;
 
@@ -260,7 +303,3 @@ INTERNAL void EditorRender()
     testM.RebindBufferObjects(bo.first.data(), bo.second.data(), bo.first.size(), bo.second.size());
     testM.RenderMesh();
 }
-
-// - sphere with arbitrary radius
-// - curves?
-// - pyramids
