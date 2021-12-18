@@ -1,6 +1,7 @@
 /** Playstation 1 style renderer
 
 TODO:
+    - Line collider
     - Level editor + Primitive shapes
     - Animation
     - Audio
