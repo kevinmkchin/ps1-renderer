@@ -23,7 +23,7 @@ add_compile_definitions(
         SLOW_BUILD=1
 )
 
-add_executable(${PROJECT_NAME} src/main.cpp)
+add_executable(${PROJECT_NAME} code/main.cpp)
 
 target_link_directories(${PROJECT_NAME}
         PRIVATE lib/GLEW/lib/Release/x64

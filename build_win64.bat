@@ -2,7 +2,7 @@
 
 
 
-set SOURCE=..\src\main.cpp
+set SOURCE=..\code\main.cpp
 set PREPROCDEFINES = -DINTERNAL_BUILD=1 -DSLOW_BUILD=1
 
 rem Additional Include Directories - preceded by /I
