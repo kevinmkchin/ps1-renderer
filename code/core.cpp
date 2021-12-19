@@ -4,7 +4,7 @@ void Texture::UseTexture() const
     glBindTexture(GL_TEXTURE_2D, textureId);
 }
 
-INTERNAL std::unordered_map<std::string, Texture> gpuLoadedTextures;
+INTERNAL std::unordered_map<std::string, Texture> __gpuLoadedTextures;
 
 /** Deletes texture object from GPU memory; resets texture_id, width, height, bit_depth to 0. */
 INTERNAL void TextureDelete(Texture& texture)
@@ -15,10 +15,10 @@ INTERNAL void TextureDelete(Texture& texture)
     }
     glDeleteTextures(1, &texture.textureId);
 
-    auto gpuTextureIter = gpuLoadedTextures.find(texture.filePath);
-    if(gpuTextureIter != gpuLoadedTextures.end())
+    auto gpuTextureIter = __gpuLoadedTextures.find(texture.filePath);
+    if(gpuTextureIter != __gpuLoadedTextures.end())
     {
-        gpuLoadedTextures.erase(gpuTextureIter);
+        __gpuLoadedTextures.erase(gpuTextureIter);
     }
 
     texture.textureId = 0;
@@ -72,8 +72,8 @@ INTERNAL void TextureCreateFromBitmap(Texture&        texture,
     texture data into the texture object in GPU mem; and generates mip maps automatically. */
 INTERNAL void TextureCreateFromFile(Texture& texture, const char* textureFilePath)
 {
-    auto textureAlreadyLoaded = gpuLoadedTextures.find(std::string(textureFilePath));
-    if(textureAlreadyLoaded != gpuLoadedTextures.end())
+    auto textureAlreadyLoaded = __gpuLoadedTextures.find(std::string(textureFilePath));
+    if(textureAlreadyLoaded != __gpuLoadedTextures.end())
     {
         texture = textureAlreadyLoaded->second;
         return;
@@ -86,7 +86,7 @@ INTERNAL void TextureCreateFromFile(Texture& texture, const char* textureFilePat
     FreeImage(textureHandle); // texture data has been copied to GPU memory, so we can free image from memory
 
     texture.filePath = textureFilePath;
-    gpuLoadedTextures[textureFilePath] = texture;
+    __gpuLoadedTextures[textureFilePath] = texture;
 }
 
 
@@ -292,15 +292,14 @@ INTERNAL Mesh __assimpLoadMeshHelper(aiMesh* meshNode)
     return mesh;
 }
 
-INTERNAL std::unordered_map<std::string, MeshGroup> gpuLoadedModels;
+INTERNAL std::unordered_map<std::string, MeshGroup> __gpuLoadedModels;
 
 /** Load model from disk through Assimp
- * TODO(Kevin): probably add option to create a basic MeshCollider from the obj vertices info
  * */
 INTERNAL MeshGroup* MeshGroupAssimpLoad(const char* fileName)
 {
-    auto modelAlreadyLoaded = gpuLoadedModels.find(fileName);
-    if(modelAlreadyLoaded != gpuLoadedModels.end())
+    auto modelAlreadyLoaded = __gpuLoadedModels.find(fileName);
+    if(modelAlreadyLoaded != __gpuLoadedModels.end())
     {
         return &modelAlreadyLoaded->second;
     }
@@ -375,8 +374,8 @@ INTERNAL MeshGroup* MeshGroupAssimpLoad(const char* fileName)
     }
 
     meshGroupToLoadTo.filePath = fileName;
-    gpuLoadedModels[fileName] = meshGroupToLoadTo;
-    return &gpuLoadedModels[fileName];
+    __gpuLoadedModels[fileName] = meshGroupToLoadTo;
+    return &__gpuLoadedModels[fileName];
 }
 
 INTERNAL void MeshGroupDelete(MeshGroup* const modelToDelete)
@@ -390,10 +389,10 @@ INTERNAL void MeshGroupDelete(MeshGroup* const modelToDelete)
         TextureDelete(texture);
     }
 
-    auto gpuModelIter = gpuLoadedModels.find(modelToDelete->filePath);
-    if(gpuModelIter != gpuLoadedModels.end())
+    auto gpuModelIter = __gpuLoadedModels.find(modelToDelete->filePath);
+    if(gpuModelIter != __gpuLoadedModels.end())
     {
-        gpuLoadedModels.erase(gpuModelIter);
+        __gpuLoadedModels.erase(gpuModelIter);
     }
 }
 
@@ -915,8 +914,8 @@ INTERNAL void NotifyOwningObjectsAboutCollision(Collider* a, Collider* b, GJKEPA
     }
 }
 
-INTERNAL std::vector<Collider*> StaticColliders;
-INTERNAL std::vector<Collider*> DynamicColliders;
+GLOBAL_VAR std::vector<Collider*> StaticColliders;
+GLOBAL_VAR std::vector<Collider*> DynamicColliders;
 
 //TODO(Kevin): Broad-phase check with bounding spheres before doing GJK.
 

@@ -1,7 +1,13 @@
 
+INTERNAL GameCamera gameCamera;
+INTERNAL std::vector<GameObject*> gameObjectsA;
 
+INTERNAL DefaultGameObject objA;
+INTERNAL DefaultGameObject objB;
+INTERNAL MeshCollider colA;
+INTERNAL SphereCollider colB;
 
-INTERNAL void GameInit()
+INTERNAL void GameInitOnStartUp()
 {
     Shader::GLLoadShaderProgramFromFile(sceneShader, "shaders/scene.vert", "shaders/scene.frag");
     gameCamera.CameraCalculatePerspectiveMatrix();
@@ -38,6 +44,16 @@ INTERNAL void GameInit()
     TextureCreateFromFile(textureA, "data/primitives/TilesPlain0304.png");
 }
 
+INTERNAL void GameLoad()
+{
+    printf("game load\n");
+}
+
+INTERNAL void GameUnload()
+{
+    printf("game unload\n");
+}
+
 INTERNAL void GameUpdate()
 {
     gameCamera.CameraUpdate();
@@ -67,7 +83,7 @@ INTERNAL void GameRender()
     sceneShader.UseShader();
         sceneShader.GLBindMatrix4fv("viewMatrix", 1, gameCamera.viewMatrix.ptr());
         sceneShader.GLBindMatrix4fv("projMatrix", 1, gameCamera.perspectiveMatrix.ptr());
-        sceneShader.GLBind3f("modelColor", modelColor.x, modelColor.y, modelColor.z);
+        sceneShader.GLBind3f("modelColor", RGB(0,0,0));
         for(auto& gameObj : gameObjectsA)
         {
             gameObj->Render(sceneShader);

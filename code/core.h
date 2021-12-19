@@ -224,7 +224,7 @@ struct MeshCollider : Collider
     {
         mat4 modelMatrix = owningGameObject->GetModelMatrix();
         verticesWorldSpace.resize(verticesModelSpace.size());
-        // TODO(Kevin): can probably multi-thread vertex position calculation
+        // NOTE(Kevin): can probably multi-thread vertex position calculation
         for(int i = 0; i < verticesModelSpace.size(); ++i)
         {
             auto vertexMCS = verticesModelSpace[i];

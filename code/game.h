@@ -11,13 +11,5 @@ struct DefaultGameObject : GameObject
     }
 };
 
-INTERNAL GameCamera gameCamera;
-INTERNAL Shader sceneShader;
-INTERNAL std::vector<GameObject*> gameObjectsA;
-
-INTERNAL DefaultGameObject objA;
-INTERNAL DefaultGameObject objB;
-INTERNAL MeshCollider colA;
-INTERNAL SphereCollider colB;
-INTERNAL vec3 modelColor;
-INTERNAL Texture textureA;
+GLOBAL_VAR Shader sceneShader;
+GLOBAL_VAR Texture textureA;

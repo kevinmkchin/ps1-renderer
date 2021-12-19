@@ -293,13 +293,23 @@ struct EditorCubeObject : EditorObject
 INTERNAL Mesh testM;
 INTERNAL GameCamera editorCamera;
 
-INTERNAL void EditorInitialize()
+INTERNAL void EditorInitOnStartUp()
 {
     editorCamera.CameraCalculatePerspectiveMatrix();
     editorCamera.position = {-3.048528f, 1.879444f, 2.618031f };
     editorCamera.rotation = {0.0f, 31.56f, -21.f };
 
     MeshCreate(testM, nullptr, nullptr, 0, 0);
+}
+
+INTERNAL void EditorLoad()
+{
+    printf("editor load\n");
+}
+
+INTERNAL void EditorUnload()
+{
+    printf("editor unload\n");
 }
 
 INTERNAL void EditorUpdate()
@@ -317,7 +327,7 @@ INTERNAL void EditorRender()
     sceneShader.UseShader();
         sceneShader.GLBindMatrix4fv("viewMatrix", 1, editorCamera.viewMatrix.ptr());
         sceneShader.GLBindMatrix4fv("projMatrix", 1, editorCamera.perspectiveMatrix.ptr());
-        sceneShader.GLBind3f("modelColor", modelColor.x, modelColor.y, modelColor.z);
+        sceneShader.GLBind3f("modelColor", RGB(255,255,255));
 //        for(auto& gameObj : editorObjects)
 //        {
 //            gameObj->Render(sceneShader);

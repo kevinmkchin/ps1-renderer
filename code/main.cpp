@@ -43,6 +43,10 @@ BUILD MODES:
         1 - Slow code fine
 */
 
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+#endif
+
 #include <stdio.h>
 #include <string>
 #include <fstream>
@@ -67,16 +71,16 @@ BUILD MODES:
 #include "core.h"
 #include "game.h"
 
-INTERNAL bool gIsRunning = true;
-INTERNAL float gDeltaTime;
-INTERNAL const u8* gKeyState = nullptr; // Stores keyboard state this frame. Access via gKeystate[SDL_Scancode].
-INTERNAL i32 gMouseDeltaX;
-INTERNAL i32 gMouseDeltaY;
-INTERNAL GamepadState gGamepadStates[MAX_GAMEPAD_COUNT] = {};
+GLOBAL_VAR bool gIsRunning = true;
+GLOBAL_VAR float gDeltaTime;
+GLOBAL_VAR const u8* gKeyState = nullptr; // Stores keyboard state this frame. Access via gKeystate[SDL_Scancode].
+GLOBAL_VAR i32 gMouseDeltaX;
+GLOBAL_VAR i32 gMouseDeltaY;
+GLOBAL_VAR GamepadState gGamepadStates[MAX_GAMEPAD_COUNT] = {};
 
-INTERNAL noclip::console console;
-INTERNAL std::mutex consoleCommandQueueMutex;
-INTERNAL std::string consoleCommandQueue;
+GLOBAL_VAR noclip::console console;
+INTERNAL std::mutex __consoleCommandQueueMutex;
+INTERNAL std::string __consoleCommandQueue;
 
 #include "input.cpp"
 #include "file.cpp"
@@ -100,7 +104,7 @@ INTERNAL u32 internalColorTexture = 0;
 INTERNAL u32 internalDepthBuffer = 0;
 INTERNAL Mesh finalOutputQuad;
 INTERNAL Shader quadShader;
-INTERNAL bool editorModeActiveFlag = true;
+INTERNAL bool editorModeActiveFlag;
 
 INTERNAL bool SDLInitialize()
 {
@@ -221,7 +225,7 @@ INTERNAL void SDLProcessEvents()
                     SDL_GetMouseState(&x, &y);
                     float ix = (float) x * ((float) INTERNAL_RESOLUTION_WIDTH / (float)backbufferWidth);
                     float iy = (float) y * ((float) INTERNAL_RESOLUTION_HEIGHT / (float)backbufferHeight);
-                    EditorMousePick(ix, iy);
+                    EditorMousePick((int) ix, (int) iy);
                 }
             }
 
@@ -265,6 +269,25 @@ INTERNAL void SDLProcessEvents()
     }
 }
 
+INTERNAL void SwitchToEditor(bool activateEditor)
+{
+    if(activateEditor != editorModeActiveFlag)
+    {
+        if(activateEditor)
+        {
+            GameUnload();
+            editorModeActiveFlag = true;
+            EditorLoad();
+        }
+        else
+        {
+            EditorUnload();
+            editorModeActiveFlag = false;
+            GameLoad();
+        }
+    }
+}
+
 INTERNAL void PollConsoleInput()
 {
     while(gIsRunning)
@@ -272,18 +295,18 @@ INTERNAL void PollConsoleInput()
         std::string input;
         std::cin >> input;
 
-        std::lock_guard<std::mutex> lock(consoleCommandQueueMutex);
-        consoleCommandQueue += " " + input;
+        std::lock_guard<std::mutex> lock(__consoleCommandQueueMutex);
+        __consoleCommandQueue += " " + input;
     }
 }
 
 INTERNAL void CheckConsoleCommandQueue()
 {
-    std::lock_guard<std::mutex> lock(consoleCommandQueueMutex);
-    if(!consoleCommandQueue.empty())
+    std::lock_guard<std::mutex> lock(__consoleCommandQueueMutex);
+    if(!__consoleCommandQueue.empty())
     {
-        console.execute(consoleCommandQueue, std::cout);
-        consoleCommandQueue = std::string();
+        console.execute(__consoleCommandQueue, std::cout);
+        __consoleCommandQueue = std::string();
     }
 }
 
@@ -360,6 +383,14 @@ INTERNAL void BindConsoleCommandsAndVariables()
 {
     console.bind_cmd("fullscreen", SDLFullscreen);
 
+    console.bind_cmd("editor", [](std::istream& is, std::ostream& os){
+        SwitchToEditor(true);
+    });
+
+    console.bind_cmd("game", [](std::istream& is, std::ostream& os){
+        SwitchToEditor(false);
+    });
+
     console.bind_cmd("camstats", [](std::istream& is, std::ostream& os){
         printf("gameCamera position x: %f, y: %f, z: %f \n", gameCamera.position.x, gameCamera.position.y, gameCamera.position.z);
         printf("gameCamera rotation roll: %f, yaw: %f, pitch: %f \n", gameCamera.rotation.x, gameCamera.rotation.y, gameCamera.rotation.z);
@@ -378,8 +409,10 @@ int main(int argc, char* argv[])
     BindConsoleCommandsAndVariables();
     std::thread consoleInputThread(PollConsoleInput);
 
-    GameInit();
-    EditorInitialize();
+    EditorInitOnStartUp();
+    GameInitOnStartUp();
+    GameLoad();
+    editorModeActiveFlag = false;
 
     float msPerFrame = 1000.f / (float)TARGET_FPS;
     float msLastTick = (float)SDL_GetTicks();
