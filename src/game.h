@@ -11,7 +11,7 @@ struct DefaultGameObject : GameObject
     }
 };
 
-INTERNAL GameCamera camera;
+INTERNAL GameCamera gameCamera;
 INTERNAL Shader sceneShader;
 INTERNAL std::vector<GameObject*> gameObjectsA;
 

@@ -1,3 +1,4 @@
+/** Level geometry and Editor code */
 
 struct EditorObject
 {
@@ -290,37 +291,65 @@ struct EditorCubeObject : EditorObject
 // - pyramids
 
 INTERNAL Mesh testM;
+INTERNAL GameCamera editorCamera;
 
 INTERNAL void EditorInitialize()
 {
+    editorCamera.CameraCalculatePerspectiveMatrix();
+    editorCamera.position = {-3.048528f, 1.879444f, 2.618031f };
+    editorCamera.rotation = {0.0f, 31.56f, -21.f };
+
     MeshCreate(testM, nullptr, nullptr, 0, 0);
+}
+
+INTERNAL void EditorUpdate()
+{
+    editorCamera.CameraUpdate();
 }
 
 INTERNAL void EditorRender()
 {
-    EditorCubeObject defaultCube = EditorCubeObject(vec3(4.f, 0.4f, 2.f));
-    auto bo = defaultCube.GetBufferObjects();
-    testM.RebindBufferObjects(bo.first.data(), bo.second.data(), (u32)bo.first.size(), (u32)bo.second.size());
-    testM.RenderMesh();
+    glViewport(0, 0, INTERNAL_RESOLUTION_WIDTH, INTERNAL_RESOLUTION_HEIGHT);
+    glClearColor(RGB(46,88,120), 1.f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
+
+    sceneShader.UseShader();
+        sceneShader.GLBindMatrix4fv("viewMatrix", 1, editorCamera.viewMatrix.ptr());
+        sceneShader.GLBindMatrix4fv("projMatrix", 1, editorCamera.perspectiveMatrix.ptr());
+        sceneShader.GLBind3f("modelColor", modelColor.x, modelColor.y, modelColor.z);
+//        for(auto& gameObj : editorObjects)
+//        {
+//            gameObj->Render(sceneShader);
+//        }
+
+        sceneShader.GLBindMatrix4fv("modelMatrix", 1, mat4().ptr());
+        textureA.UseTexture();
+        EditorCubeObject defaultCube = EditorCubeObject(vec3(4.f, 0.4f, 2.f));
+        auto bo = defaultCube.GetBufferObjects();
+        testM.RebindBufferObjects(bo.first.data(), bo.second.data(), (u32)bo.first.size(), (u32)bo.second.size());
+        testM.RenderMesh();
+
+    glUseProgram(0);
 }
 
 INTERNAL void EditorMousePick(int x, int y, float rayLength = 100.f)
 {
     float xNDC = ((float) x - ((float)INTERNAL_RESOLUTION_WIDTH/2.f)) / ((float)INTERNAL_RESOLUTION_WIDTH/2.f);
     float yNDC = ((float) y - ((float)INTERNAL_RESOLUTION_HEIGHT/2.f)) / ((float)-INTERNAL_RESOLUTION_HEIGHT/2.f);
-    mat4 inverseViewMatrix = camera.viewMatrix.GetInverse();
-    mat4 inverseProjMatrix = camera.perspectiveMatrix.GetInverse();
+    mat4 inverseViewMatrix = editorCamera.viewMatrix.GetInverse();
+    mat4 inverseProjMatrix = editorCamera.perspectiveMatrix.GetInverse();
     vec4 rayCCS = vec4(xNDC, yNDC, -1.f, 1.f);
     vec4 rayVCS = vec4((inverseProjMatrix * rayCCS).xyz, 0.f);
     vec3 rayWCS = Normalize((inverseViewMatrix * rayVCS).xyz);
 
     LineCollider lc;
-    lc.a = camera.position;
-    lc.b = camera.position + rayWCS * rayLength;
+    lc.a = editorCamera.position;
+    lc.b = editorCamera.position + rayWCS * rayLength;
 
     // iterate editor/game objects to see which object was clicked on.
     std::vector<Collider*> collided;
-    for(auto c : DynamicColliders)
+    for(auto c : DynamicColliders) // TODO(Kevin): CollisionWorld probably needs to reset or change when switch to editor
     {
         if(GJK(c, &lc).hasCollision)
         {
@@ -334,7 +363,7 @@ INTERNAL void EditorMousePick(int x, int y, float rayLength = 100.f)
     {
         if(c->owningGameObject)
         {
-            float distance = Magnitude(camera.position - c->owningGameObject->GetPos());
+            float distance = Magnitude(editorCamera.position - c->owningGameObject->GetPos());
             if(distance < minDistanceSoFar)
             {
                 first = c->owningGameObject;
@@ -347,4 +376,9 @@ INTERNAL void EditorMousePick(int x, int y, float rayLength = 100.f)
     {
         printf("%f, %f, %f\n", first->GetPos().x, first->GetPos().y, first->GetPos().z);
     }
+}
+
+INTERNAL void EditorExportLevel()
+{
+
 }
