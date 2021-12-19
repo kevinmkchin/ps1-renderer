@@ -1,8 +1,29 @@
 /** Playstation 1 style renderer
 
 TODO:
-    - Mouse Pick
-    - Level editor + Primitive shapes
+    - Scene/Editor management - need an array of EditorObjects or GameObjects - figure out the architecture
+    - Level Editor
+        - creates the Visible level geometry and Collidable level geometry
+        - Save level geom as OPCODE + STRUCT DATA so we know what type of struct we are reading
+
+        Types of static level objects in game:
+        - visible meshgroup object no collider              : cosmetic/decorative complex level geometry
+        - visible mesh object no collider                   : cosmetic/decorative simple level geometry
+        - visible meshgroup object with collider            : complex level geometry with collisions
+        - visible mesh object with collider                 : simple level geometry with collisions
+        - hidden mesh (or no mesh?) object with collider    : trigger volumes, level geometry bounds
+
+        How to represent the above in editor?:
+
+
+        Additionally, editor can specify other objects too e.g. power ups and their locations:
+        - We can drop an editor object (no mesh, just a billboard facing the gameCamera indicating what power up it is)
+
+
+        When importing/exporting to/from editor and importing to game, these objects need to be saved or read from disk.
+
+
+
     - Animation
     - Audio
     - Text rendering with kc_truetypeassembler.h
@@ -42,6 +63,7 @@ BUILD MODES:
 #include <sexymathlibrary.h>
 
 #include "gamedefines.h"
+#include "bytebuffer.h"
 #include "shader.h"
 #include "core.h"
 #include "game.h"
@@ -79,6 +101,7 @@ INTERNAL u32 internalColorTexture = 0;
 INTERNAL u32 internalDepthBuffer = 0;
 INTERNAL Mesh finalOutputQuad;
 INTERNAL Shader quadShader;
+INTERNAL bool editorModeActiveFlag = true;
 
 INTERNAL bool SDLInitialize()
 {
@@ -178,7 +201,8 @@ INTERNAL void SDLProcessEvents()
                 if(mouseUp.button == SDL_BUTTON_RIGHT && mouseUp.state == SDL_RELEASED)
                 {
                     SDL_SetRelativeMouseMode(SDL_FALSE);
-                    camera.bMouseControl = false;
+                    gameCamera.bMouseControl = false;
+                    editorCamera.bMouseControl = false;
                 }
             }
 
@@ -188,7 +212,8 @@ INTERNAL void SDLProcessEvents()
                 if(mouseDown.button == SDL_BUTTON_RIGHT && mouseDown.state == SDL_PRESSED)
                 {
                     SDL_SetRelativeMouseMode(SDL_TRUE);
-                    camera.bMouseControl = true;
+                    gameCamera.bMouseControl = true;
+                    editorCamera.bMouseControl = true;
                 }
 
                 if(mouseDown.button == SDL_BUTTON_LEFT && mouseDown.state == SDL_PRESSED)
@@ -337,10 +362,10 @@ INTERNAL void BindConsoleCommandsAndVariables()
     console.bind_cmd("fullscreen", SDLFullscreen);
 
     console.bind_cmd("camstats", [](std::istream& is, std::ostream& os){
-        printf("camera position x: %f, y: %f, z: %f \n", camera.position.x, camera.position.y, camera.position.z);
-        printf("camera rotation roll: %f, yaw: %f, pitch: %f \n", camera.rotation.x, camera.rotation.y, camera.rotation.z);
-        printf("camera speed: %f\n", camera.moveSpeed);
-        printf("camera sensitivity: %f\n", camera.turnSpeed);
+        printf("gameCamera position x: %f, y: %f, z: %f \n", gameCamera.position.x, gameCamera.position.y, gameCamera.position.z);
+        printf("gameCamera rotation roll: %f, yaw: %f, pitch: %f \n", gameCamera.rotation.x, gameCamera.rotation.y, gameCamera.rotation.z);
+        printf("gameCamera speed: %f\n", gameCamera.moveSpeed);
+        printf("gameCamera sensitivity: %f\n", gameCamera.turnSpeed);
     });
 }
 
@@ -355,6 +380,7 @@ int main(int argc, char* argv[])
     std::thread consoleInputThread(PollConsoleInput);
 
     GameInit();
+    EditorInitialize();
 
     float msPerFrame = 1000.f / (float)TARGET_FPS;
     float msLastTick = (float)SDL_GetTicks();
@@ -374,10 +400,10 @@ int main(int argc, char* argv[])
             SDLProcessEvents();
             if(gIsRunning == false) { break; }
 
-            GameUpdate();
+            editorModeActiveFlag ? EditorUpdate() : GameUpdate();
 
             glBindFramebuffer(GL_FRAMEBUFFER, internalFBO);
-            GameRender();
+            editorModeActiveFlag ? EditorRender() : GameRender();
 
             DrawInternalBufferToBackBuffer();
 

@@ -4,9 +4,9 @@
 INTERNAL void GameInit()
 {
     Shader::GLLoadShaderProgramFromFile(sceneShader, "shaders/scene.vert", "shaders/scene.frag");
-    camera.CameraCalculatePerspectiveMatrix();
-    camera.position = { -3.048528f, 1.879444f, 2.618031f };
-    camera.rotation = { 0.0f, 31.56f, -21.f };
+    gameCamera.CameraCalculatePerspectiveMatrix();
+    gameCamera.position = {-3.048528f, 1.879444f, 2.618031f };
+    gameCamera.rotation = {0.0f, 31.56f, -21.f };
 
     objA.SetModel(MeshGroupAssimpLoad("data/primitives/cube.obj"));
     objA.SetScale(vec3(1.4f,1.4f,1.4f));
@@ -36,13 +36,12 @@ INTERNAL void GameInit()
     DynamicColliders.push_back(&colB);
 
     TextureCreateFromFile(textureA, "data/primitives/TilesPlain0304.png");
-
-    EditorInitialize();
 }
 
 INTERNAL void GameUpdate()
 {
-    camera.CameraUpdate();
+    gameCamera.CameraUpdate();
+
     for(auto& gameObj : gameObjectsA)
     {
         gameObj->Update();
@@ -66,14 +65,13 @@ INTERNAL void GameRender()
     glEnable(GL_DEPTH_TEST);
 
     sceneShader.UseShader();
-        sceneShader.GLBindMatrix4fv("viewMatrix", 1, camera.viewMatrix.ptr());
-        sceneShader.GLBindMatrix4fv("projMatrix", 1, camera.perspectiveMatrix.ptr());
+        sceneShader.GLBindMatrix4fv("viewMatrix", 1, gameCamera.viewMatrix.ptr());
+        sceneShader.GLBindMatrix4fv("projMatrix", 1, gameCamera.perspectiveMatrix.ptr());
         sceneShader.GLBind3f("modelColor", modelColor.x, modelColor.y, modelColor.z);
         for(auto& gameObj : gameObjectsA)
         {
             gameObj->Render(sceneShader);
         }
         textureA.UseTexture();
-        EditorRender();
     glUseProgram(0);
 }
