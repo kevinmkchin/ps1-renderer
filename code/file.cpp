@@ -189,8 +189,8 @@ void __byteBufferWriteImpl(ByteBuffer* buffer, void* data, size_t sz)
         ByteBufferResize(buffer, capacity);
     }
     memcpy(buffer->data + buffer->position, data, sz);
-    buffer->position += sz;
-    buffer->size += sz;
+    buffer->position += (u32)sz;
+    buffer->size += (u32)sz;
 }
 
 // Generic write function
