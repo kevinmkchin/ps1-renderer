@@ -18,7 +18,18 @@ struct EditorObject : GameObject
         auto bo = GetBufferObjects();
         mesh.RebindBufferObjects(bo.first.data(), bo.second.data(), (u32)bo.first.size(), (u32)bo.second.size());
         shader.GLBindMatrix4fv("modelMatrix", 1, GetModelMatrix().ptr());
+
+        if(!isVisible)
+        {
+            shader.GLBind3f("modelColor", RGB(0.f,255.f,0.f));
+            glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+        }
         mesh.RenderMesh();
+        if(!isVisible)
+        {
+            shader.GLBind3f("modelColor", RGB(0.f,0.f,0.f));
+            glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+        }
     }
 
     virtual void Initialize() = 0;
@@ -336,6 +347,7 @@ INTERNAL void EditorLoad()
     testEditorObj1.dimensions = vec3(4.f, 0.4f, 2.f);
     testEditorObj1.SetPos(vec3(23,-3,2));
     testEditorObj1.Initialize();
+    testEditorObj1.isVisible = false;
 
     testEditorObj2.dimensions = vec3(2.f, 2.f, 1.f);
     testEditorObj2.SetPos(vec3(5,-3,2));
@@ -344,6 +356,7 @@ INTERNAL void EditorLoad()
     testEditorObj3.dimensions = vec3(1,3,20);
     testEditorObj3.SetPos(vec3(10,-5,2));
     testEditorObj3.Initialize();
+    testEditorObj3.isVisible = false;
 
     testEditorObj4.dimensions = vec3(5, 2, 3);
     testEditorObj4.SetPos(vec3(0,0,0));

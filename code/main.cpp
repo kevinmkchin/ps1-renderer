@@ -1,7 +1,6 @@
 /** Playstation 1 style renderer
 
 TODO:
-    - Scene/Editor management - need an array of EditorObjects or GameObjects - figure out the architecture
     - Level Editor
         - creates the Visible level geometry and Collidable level geometry
         - Save level geom as OPCODE + STRUCT DATA so we know what type of struct we are reading
