@@ -1,5 +1,18 @@
 /** Level geometry and Editor code */
 
+enum EDIT_OBJ_CODE : u32
+{
+    EDIT_INVALID = 0x0000,
+
+    EDIT_VISIBLE = 0x0001,
+    EDIT_COLLIDABLE = 0x0002,
+
+    EDIT_MESHGROUP = 0x0010,
+    EDIT_BOX = 0x0020,
+    EDIT_PLANE = 0x0040,
+    EDIT_PYRAMID = 0x0080
+};
+
 struct EditorObject : GameObject
 {
     // PARENT
@@ -8,7 +21,6 @@ struct EditorObject : GameObject
 
     bool isVisible = true;
     bool hasCollision = true;
-    Mesh mesh;
 
     void Update() override {}
     void OnCollision(CollisionEventArgs collisionInfo) override {}
@@ -32,28 +44,32 @@ struct EditorObject : GameObject
         }
     }
 
-    virtual void Initialize() = 0;
-    virtual void CleanUp() = 0;
+    virtual void Initialize() = 0;  // Initialize for rendering purposes
+    virtual void CleanUp() = 0;     // Clean up for rendering purposes
     virtual std::pair<std::vector<float>, std::vector<u32>> GetBufferObjects() = 0;
     virtual std::vector<vec3> GetColliders() = 0;
+    EDIT_OBJ_CODE GetEditObjectCode() const { return editObjCode; }
+
+protected:
+    Mesh mesh;
+    Texture texture; // TODO(Kevin): use texture
+    EDIT_OBJ_CODE editObjCode = EDIT_INVALID;
 };
 
 // map from GameObject to EditorObject
 
-struct EditorCubeObject : EditorObject
+struct EditorBoxObject : EditorObject
 {
-// - cube with arbitrary xyz lengths
-//      - need to set vertex position XYZ based on size
-//      - need to set texture coordinates UVs based on size
-//      - normal vectors are constant
-//      - indices into the above ^ can stay constant
-//      - we need to set collider values appropriately based on above vao
-
     vec3 dimensions; // width, height, length
     vec3 originAsOffsetFromMinCorner = vec3(2.f, 0.2f, 1.f);
     vec2 textureScale = vec2(4.f, 2.f); // i.e. how many world units is one UV unit
     bool textureTileFlag = true;
     bool textureOrientationFlag = true;
+
+    EditorBoxObject()
+    {
+        editObjCode = EDIT_BOX;
+    }
 
     void Initialize() override
     {
@@ -324,13 +340,19 @@ struct EditorCubeObject : EditorObject
 // - curves?
 // - pyramids
 
+
+// TODO(Kevin): replace with custom mem alloc where we alloc a chunk of memory for all editor objects
+//  and use that instead of std::vector editorObjects
+#define MAX_EDITOR_OBJECT_COUNT 256
+INTERNAL EditorBoxObject editorBoxObjects[MAX_EDITOR_OBJECT_COUNT];
+
 INTERNAL GameCamera editorCamera;
 INTERNAL EditorObject* selectedEditObj = nullptr;
 INTERNAL std::vector<EditorObject*> editorObjects;
-INTERNAL EditorCubeObject testEditorObj1;
-INTERNAL EditorCubeObject testEditorObj2;
-INTERNAL EditorCubeObject testEditorObj3;
-INTERNAL EditorCubeObject testEditorObj4;
+INTERNAL EditorBoxObject testEditorObj1;
+INTERNAL EditorBoxObject testEditorObj2;
+INTERNAL EditorBoxObject testEditorObj3;
+INTERNAL EditorBoxObject testEditorObj4;
 INTERNAL Texture textureA;
 
 INTERNAL void EditorInitOnStartUp()
@@ -340,44 +362,80 @@ INTERNAL void EditorInitOnStartUp()
     editorCamera.rotation = {0.0f, 31.56f, -21.f };
 }
 
-INTERNAL void EditorLoad()
+INTERNAL void EditorImportMap(const std::string& mapName);
+INTERNAL void EditorLoad(const std::string& mapName)
 {
     printf("editor load\n");
 
-    testEditorObj1.dimensions = vec3(4.f, 0.4f, 2.f);
-    testEditorObj1.SetPos(vec3(23,-3,2));
-    testEditorObj1.Initialize();
-    testEditorObj1.isVisible = false;
+//    testEditorObj1.dimensions = vec3(4.f, 0.4f, 2.f);
+//    testEditorObj1.SetPos(vec3(23,-3,2));
+//    testEditorObj1.Initialize();
+//    testEditorObj1.isVisible = false;
+//
+//    testEditorObj2.dimensions = vec3(2.f, 2.f, 1.f);
+//    testEditorObj2.SetPos(vec3(5,-3,2));
+//    testEditorObj2.Initialize();
+//
+//    testEditorObj3.dimensions = vec3(1,3,20);
+//    testEditorObj3.SetPos(vec3(10,-5,2));
+//    testEditorObj3.Initialize();
+//    testEditorObj3.isVisible = false;
+//
+//    testEditorObj4.dimensions = vec3(5, 2, 3);
+//    testEditorObj4.SetPos(vec3(0,0,0));
+//    testEditorObj4.Initialize();
+//
+//    editorObjects.push_back(&testEditorObj1);
+//    editorObjects.push_back(&testEditorObj2);
+//    editorObjects.push_back(&testEditorObj3);
+//    editorObjects.push_back(&testEditorObj4);
 
-    testEditorObj2.dimensions = vec3(2.f, 2.f, 1.f);
-    testEditorObj2.SetPos(vec3(5,-3,2));
-    testEditorObj2.Initialize();
+    // Load map
+    EditorImportMap(mapName);
 
-    testEditorObj3.dimensions = vec3(1,3,20);
-    testEditorObj3.SetPos(vec3(10,-5,2));
-    testEditorObj3.Initialize();
-    testEditorObj3.isVisible = false;
-
-    testEditorObj4.dimensions = vec3(5, 2, 3);
-    testEditorObj4.SetPos(vec3(0,0,0));
-    testEditorObj4.Initialize();
-
-    editorObjects.push_back(&testEditorObj1);
-    editorObjects.push_back(&testEditorObj2);
-    editorObjects.push_back(&testEditorObj3);
-    editorObjects.push_back(&testEditorObj4);
-
+    // Load textures
     TextureCreateFromFile(textureA, "data/primitives/TilesPlain0304.png");
+
+    // InitializeAllEditorObjects
+    for(auto editObj : editorObjects)
+    {
+        editObj->Initialize();
+    }
 }
 
 INTERNAL void EditorUnload()
 {
     printf("editor unload\n");
 
-    testEditorObj1.CleanUp();
-    testEditorObj2.CleanUp();
-    testEditorObj3.CleanUp();
-    testEditorObj4.CleanUp();
+//    testEditorObj1.CleanUp();
+//    testEditorObj2.CleanUp();
+//    testEditorObj3.CleanUp();
+//    testEditorObj4.CleanUp();
+
+    // CleanUpAllEditorObjects
+    for(auto editObj : editorObjects)
+    {
+        editObj->CleanUp();
+    }
+
+    // Unload all textures
+    TextureDelete(textureA);
+
+    // Delete all EditorObjects
+//    for(auto editObj : editorObjects)
+//    {
+//    }
+}
+
+INTERNAL void EditorSwitchMap(const std::string& mapName)
+{
+    if(!editorModeActiveFlag)
+    {
+        printf("WARNING: Editor mode is not active...\n");
+        return;
+    }
+    EditorUnload();
+    EditorLoad(mapName);
 }
 
 INTERNAL void EditorUpdate()
@@ -461,17 +519,106 @@ INTERNAL void EditorMousePick(int x, int y, float rayLength = 100.f)
     }
 }
 
-INTERNAL void EditorExportLevel()
+INTERNAL void EditorExportMap(const std::string& mapName)
 {
+    if(!editorModeActiveFlag)
+    {
+        printf("WARNING: Editor mode is not active...\n");
+        return;
+    }
 
+    ByteBuffer exportBuffer = ByteBufferNew();
+    for(auto editObj : editorObjects)
+    {
+        u32 code = editObj->GetEditObjectCode()
+                | (editObj->isVisible ? EDIT_VISIBLE : EDIT_INVALID)
+                | (editObj->hasCollision ? EDIT_COLLIDABLE : EDIT_INVALID);
+        ByteBufferWrite(&exportBuffer, u32, code);
+
+        vec3 pos = editObj->GetPos();
+        quat rot = editObj->GetOrientation();
+        vec3 sca = editObj->GetScale();
+        ByteBufferWriteBulk(&exportBuffer, &pos, 3*sizeof(float));
+        ByteBufferWriteBulk(&exportBuffer, &rot, 4*sizeof(float));
+        ByteBufferWriteBulk(&exportBuffer, &sca, 3*sizeof(float));
+
+        switch (editObj->GetEditObjectCode())
+        {
+            case EDIT_BOX: {
+                auto* boxObj = (EditorBoxObject*)editObj;
+                vec3 dimensions = boxObj->dimensions;
+                vec3 origin = boxObj->originAsOffsetFromMinCorner;
+                vec2 textureScale = boxObj->textureScale;
+                ByteBufferWriteBulk(&exportBuffer, &dimensions, 3*sizeof(float));
+                ByteBufferWriteBulk(&exportBuffer, &origin, 3*sizeof(float));
+                ByteBufferWriteBulk(&exportBuffer, &textureScale, 2*sizeof(float));
+                ByteBufferWrite(&exportBuffer, bool, boxObj->textureTileFlag);
+                ByteBufferWrite(&exportBuffer, bool, boxObj->textureOrientationFlag);
+            } break;
+            default: {
+                printf("WARNING: An EditorObject doesn't have its editObjCode set or it is an unknown code.\n");
+                continue;
+            }
+        }
+    }
+    ByteBufferWriteToFile(&exportBuffer, (GAME_MAPS_DIRECTORY + mapName).c_str());
+    ByteBufferFree(&exportBuffer);
 }
 
-INTERNAL void EditorImportLevel()
+INTERNAL void EditorImportMap(const std::string& mapName)
 {
+    if(!editorModeActiveFlag)
+    {
+        printf("WARNING: Editor mode is not active...\n");
+        return;
+    }
 
+    ByteBuffer importBuffer;
+    ByteBufferReadFromFile(&importBuffer,  (GAME_MAPS_DIRECTORY + mapName).c_str());
+    u32 index = 0;
+    while(importBuffer.position < importBuffer.size)
+    {
+        u32 code = EDIT_INVALID;
+        ByteBufferRead(&importBuffer, u32, &code);
+
+        switch (code & 0xFFFFFFFFC)
+        {
+            case EDIT_BOX: {
+                EditorBoxObject* box = &editorBoxObjects[index];
+                vec3 pos;
+                quat rot;
+                vec3 sca;
+                ByteBufferReadBulk(&importBuffer, &pos, 3*sizeof(float));
+                ByteBufferReadBulk(&importBuffer, &rot, 4*sizeof(float));
+                ByteBufferReadBulk(&importBuffer, &sca, 3*sizeof(float));
+                ByteBufferReadBulk(&importBuffer, &box->dimensions, 3*sizeof(float));
+                ByteBufferReadBulk(&importBuffer, &box->originAsOffsetFromMinCorner, 3*sizeof(float));
+                ByteBufferReadBulk(&importBuffer, &box->textureScale, 2*sizeof(float));
+                ByteBufferRead(&importBuffer, bool, &box->textureTileFlag);
+                ByteBufferRead(&importBuffer, bool, &box->textureOrientationFlag);
+                box->isVisible = code & EDIT_VISIBLE;
+                box->hasCollision = code & EDIT_COLLIDABLE;
+                box->SetPos(pos);
+                box->SetOrientation(rot);
+                box->SetScale(sca);
+                editorObjects.push_back(box); // TODO(Kevin): remove line after I stop using std::vector editorObjects
+            }break;
+            default: {
+                printf("WARNING: Encountered invalid or unknown editObjCode while importing map.\n");
+                continue;
+            }
+        }
+
+        ++index;
+        if(index >= MAX_EDITOR_OBJECT_COUNT)
+        {
+            printf("WARNING: Exceeding MAX_EDITOR_OBJECT_COUNT of %d. Stopping import.\n", MAX_EDITOR_OBJECT_COUNT);
+        }
+    }
+    ByteBufferFree(&importBuffer);
 }
 
-INTERNAL void GameImportLevel()
+INTERNAL void GameImportMap()
 {
 
 }

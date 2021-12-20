@@ -76,6 +76,7 @@ GLOBAL_VAR const u8* gKeyState = nullptr; // Stores keyboard state this frame. A
 GLOBAL_VAR i32 gMouseDeltaX;
 GLOBAL_VAR i32 gMouseDeltaY;
 GLOBAL_VAR GamepadState gGamepadStates[MAX_GAMEPAD_COUNT] = {};
+GLOBAL_VAR bool editorModeActiveFlag;
 
 GLOBAL_VAR noclip::console console;
 INTERNAL std::mutex __consoleCommandQueueMutex;
@@ -103,7 +104,6 @@ INTERNAL u32 internalColorTexture = 0;
 INTERNAL u32 internalDepthBuffer = 0;
 INTERNAL Mesh finalOutputQuad;
 INTERNAL Shader quadShader;
-INTERNAL bool editorModeActiveFlag;
 
 INTERNAL bool SDLInitialize()
 {
@@ -276,7 +276,7 @@ INTERNAL void SwitchToEditor(bool activateEditor)
         {
             GameUnload();
             editorModeActiveFlag = true;
-            EditorLoad();
+            EditorLoad("peepee");
         }
         else
         {
@@ -382,13 +382,15 @@ INTERNAL void BindConsoleCommandsAndVariables()
 {
     console.bind_cmd("fullscreen", SDLFullscreen);
 
-    console.bind_cmd("editor", [](std::istream& is, std::ostream& os){
-        SwitchToEditor(true);
-    });
-
     console.bind_cmd("game", [](std::istream& is, std::ostream& os){
         SwitchToEditor(false);
     });
+
+    console.bind_cmd("editor", [](std::istream& is, std::ostream& os){
+        SwitchToEditor(true);
+    });
+    console.bind_cmd("export", EditorExportMap);
+    console.bind_cmd("import", EditorSwitchMap);
 
     console.bind_cmd("camstats", [](std::istream& is, std::ostream& os){
         printf("gameCamera position x: %f, y: %f, z: %f \n", gameCamera.position.x, gameCamera.position.y, gameCamera.position.z);

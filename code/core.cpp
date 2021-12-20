@@ -72,6 +72,12 @@ INTERNAL void TextureCreateFromBitmap(Texture&        texture,
     texture data into the texture object in GPU mem; and generates mip maps automatically. */
 INTERNAL void TextureCreateFromFile(Texture& texture, const char* textureFilePath)
 {
+    if(texture.textureId != 0)
+    {
+        printf("WARNING: Trying to load a Texture when there is already a texture loaded! Clearing texture first...\n");
+        TextureDelete(texture);
+    }
+
     auto textureAlreadyLoaded = __gpuLoadedTextures.find(std::string(textureFilePath));
     if(textureAlreadyLoaded != __gpuLoadedTextures.end())
     {

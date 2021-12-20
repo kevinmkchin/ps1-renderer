@@ -111,10 +111,10 @@ INTERNAL void ReadImage(BitmapHandle& imageHandle, const char* imageFilePath)
 
 struct ByteBuffer
 {
-    u8* data;
-    u32 position;  // basically the cursor
-    u32 size;      // currently populated size
-    u32 capacity;  // currently allocated size
+    u8* data = 0;
+    u32 position = 0;  // basically the cursor
+    u32 size = 0;      // currently populated size
+    u32 capacity = 0;  // currently allocated size
 };
 
 #define BYTE_BUFFER_DEFAULT_CAPACITY 1024
@@ -276,6 +276,7 @@ int ByteBufferReadFromFile(ByteBuffer* buffer, const char* filePath)
     }
 
     fread(bb.data, 1, sz, fp);
+    bb.size = sz;
     *buffer = bb;
 
     fclose(fp);
