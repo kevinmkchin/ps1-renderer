@@ -12,4 +12,3 @@ struct DefaultGameObject : GameObject
 };
 
 GLOBAL_VAR Shader sceneShader;
-GLOBAL_VAR Texture textureA;

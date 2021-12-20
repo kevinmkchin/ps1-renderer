@@ -40,8 +40,6 @@ INTERNAL void GameInitOnStartUp()
 
     DynamicColliders.push_back(&colA);
     DynamicColliders.push_back(&colB);
-
-    TextureCreateFromFile(textureA, "data/primitives/TilesPlain0304.png");
 }
 
 INTERNAL void GameLoad()
@@ -88,6 +86,5 @@ INTERNAL void GameRender()
         {
             gameObj->Render(sceneShader);
         }
-        textureA.UseTexture();
     glUseProgram(0);
 }

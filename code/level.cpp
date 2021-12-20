@@ -1,11 +1,28 @@
 /** Level geometry and Editor code */
 
-struct EditorObject
+struct EditorObject : GameObject
 {
     // PARENT
     // CHILDREN
     // WE CAN HAVE EMPTY EDITOR OBJECT WHICH HAS NON-EMPTY EDITOR OBJECTS AS CHILDREN
 
+    bool isVisible = true;
+    bool hasCollision = true;
+    Mesh mesh;
+
+    void Update() override {}
+    void OnCollision(CollisionEventArgs collisionInfo) override {}
+
+    void Render(const Shader& shader) override
+    {
+        auto bo = GetBufferObjects();
+        mesh.RebindBufferObjects(bo.first.data(), bo.second.data(), (u32)bo.first.size(), (u32)bo.second.size());
+        shader.GLBindMatrix4fv("modelMatrix", 1, GetModelMatrix().ptr());
+        mesh.RenderMesh();
+    }
+
+    virtual void Initialize() = 0;
+    virtual void CleanUp() = 0;
     virtual std::pair<std::vector<float>, std::vector<u32>> GetBufferObjects() = 0;
     virtual std::vector<vec3> GetColliders() = 0;
 };
@@ -27,9 +44,14 @@ struct EditorCubeObject : EditorObject
     bool textureTileFlag = true;
     bool textureOrientationFlag = true;
 
-    EditorCubeObject(vec3 initDimensions)
+    void Initialize() override
     {
-        dimensions = initDimensions;
+        MeshCreate(mesh, nullptr, nullptr, 0, 0);
+    }
+
+    void CleanUp() override
+    {
+        MeshDelete(mesh);
     }
 
     std::pair<std::vector<float>, std::vector<u32>> GetBufferObjects() override
@@ -286,30 +308,63 @@ struct EditorCubeObject : EditorObject
     }
 };
 
+// - planes and one-sided surfaces.
 // - sphere with arbitrary radius
 // - curves?
 // - pyramids
 
-INTERNAL Mesh testM;
 INTERNAL GameCamera editorCamera;
+INTERNAL EditorObject* selectedEditObj = nullptr;
+INTERNAL std::vector<EditorObject*> editorObjects;
+INTERNAL EditorCubeObject testEditorObj1;
+INTERNAL EditorCubeObject testEditorObj2;
+INTERNAL EditorCubeObject testEditorObj3;
+INTERNAL EditorCubeObject testEditorObj4;
+INTERNAL Texture textureA;
 
 INTERNAL void EditorInitOnStartUp()
 {
     editorCamera.CameraCalculatePerspectiveMatrix();
     editorCamera.position = {-3.048528f, 1.879444f, 2.618031f };
     editorCamera.rotation = {0.0f, 31.56f, -21.f };
-
-    MeshCreate(testM, nullptr, nullptr, 0, 0);
 }
 
 INTERNAL void EditorLoad()
 {
     printf("editor load\n");
+
+    testEditorObj1.dimensions = vec3(4.f, 0.4f, 2.f);
+    testEditorObj1.SetPos(vec3(23,-3,2));
+    testEditorObj1.Initialize();
+
+    testEditorObj2.dimensions = vec3(2.f, 2.f, 1.f);
+    testEditorObj2.SetPos(vec3(5,-3,2));
+    testEditorObj2.Initialize();
+
+    testEditorObj3.dimensions = vec3(1,3,20);
+    testEditorObj3.SetPos(vec3(10,-5,2));
+    testEditorObj3.Initialize();
+
+    testEditorObj4.dimensions = vec3(5, 2, 3);
+    testEditorObj4.SetPos(vec3(0,0,0));
+    testEditorObj4.Initialize();
+
+    editorObjects.push_back(&testEditorObj1);
+    editorObjects.push_back(&testEditorObj2);
+    editorObjects.push_back(&testEditorObj3);
+    editorObjects.push_back(&testEditorObj4);
+
+    TextureCreateFromFile(textureA, "data/primitives/TilesPlain0304.png");
 }
 
 INTERNAL void EditorUnload()
 {
     printf("editor unload\n");
+
+    testEditorObj1.CleanUp();
+    testEditorObj2.CleanUp();
+    testEditorObj3.CleanUp();
+    testEditorObj4.CleanUp();
 }
 
 INTERNAL void EditorUpdate()
@@ -325,20 +380,16 @@ INTERNAL void EditorRender()
     glEnable(GL_DEPTH_TEST);
 
     sceneShader.UseShader();
-        sceneShader.GLBindMatrix4fv("viewMatrix", 1, editorCamera.viewMatrix.ptr());
-        sceneShader.GLBindMatrix4fv("projMatrix", 1, editorCamera.perspectiveMatrix.ptr());
-        sceneShader.GLBind3f("modelColor", RGB(255,255,255));
-//        for(auto& gameObj : editorObjects)
-//        {
-//            gameObj->Render(sceneShader);
-//        }
 
-        sceneShader.GLBindMatrix4fv("modelMatrix", 1, mat4().ptr());
-        textureA.UseTexture();
-        EditorCubeObject defaultCube = EditorCubeObject(vec3(4.f, 0.4f, 2.f));
-        auto bo = defaultCube.GetBufferObjects();
-        testM.RebindBufferObjects(bo.first.data(), bo.second.data(), (u32)bo.first.size(), (u32)bo.second.size());
-        testM.RenderMesh();
+    sceneShader.GLBindMatrix4fv("viewMatrix", 1, editorCamera.viewMatrix.ptr());
+    sceneShader.GLBindMatrix4fv("projMatrix", 1, editorCamera.perspectiveMatrix.ptr());
+    sceneShader.GLBind3f("modelColor", RGB(0.f,0.f,0.f));
+
+    textureA.UseTexture();
+    for(auto editObj : editorObjects)
+    {
+        editObj->Render(sceneShader);
+    }
 
     glUseProgram(0);
 }
@@ -359,15 +410,24 @@ INTERNAL void EditorMousePick(int x, int y, float rayLength = 100.f)
 
     // iterate editor/game objects to see which object was clicked on.
     std::vector<Collider*> collided;
-    for(auto c : DynamicColliders) // TODO(Kevin): CollisionWorld probably needs to reset or change when switch to editor
+    std::vector<MeshCollider> collidersToCheck;
+    for(auto editObj : editorObjects)
     {
-        if(GJK(c, &lc).hasCollision)
+        MeshCollider col;
+        col.owningGameObject = editObj;
+        col.verticesModelSpace = editObj->GetColliders();
+        collidersToCheck.push_back(col);
+    }
+
+    for(auto& col : collidersToCheck)
+    {
+        if(GJK(&col, &lc).hasCollision)
         {
-            collided.push_back(c);
+            collided.push_back(&col);
         }
     }
 
-    GameObject* first = nullptr;
+    EditorObject* first = nullptr;
     float minDistanceSoFar = FLT_MAX;
     for(auto c : collided)
     {
@@ -376,7 +436,7 @@ INTERNAL void EditorMousePick(int x, int y, float rayLength = 100.f)
             float distance = Magnitude(editorCamera.position - c->owningGameObject->GetPos());
             if(distance < minDistanceSoFar)
             {
-                first = c->owningGameObject;
+                first = (EditorObject*) c->owningGameObject;
                 minDistanceSoFar = distance;
             }
         }
@@ -384,11 +444,21 @@ INTERNAL void EditorMousePick(int x, int y, float rayLength = 100.f)
 
     if(first)
     {
-        printf("%f, %f, %f\n", first->GetPos().x, first->GetPos().y, first->GetPos().z);
+        selectedEditObj = first;
     }
 }
 
 INTERNAL void EditorExportLevel()
+{
+
+}
+
+INTERNAL void EditorImportLevel()
+{
+
+}
+
+INTERNAL void GameImportLevel()
 {
 
 }
