@@ -57,7 +57,7 @@ struct CollisionEventArgs
 struct GameObject
 {
     GameObject()
-        : pos({ 0.f, 0.f, 0.f })
+        : position({0.f, 0.f, 0.f })
         , orientation(quat())
         , scale({ 1.f, 1.f, 1.f })
         , modelMatrix(mat4())
@@ -84,7 +84,7 @@ struct GameObject
         if(isModelMatrixOutdated)
         {
             modelMatrix = mat4();
-            modelMatrix *= TranslationMatrix(pos);
+            modelMatrix *= TranslationMatrix(position);
             modelMatrix *= RotationMatrix(orientation);
             modelMatrix *= ScaleMatrix(scale);
             isModelMatrixOutdated = false;
@@ -95,16 +95,16 @@ struct GameObject
 
     vec3 GetPos() const
     {
-        return pos;
+        return position;
     }
     void SetPos(const vec3& newPos)
     {
-        pos = newPos;
+        position = newPos;
         isModelMatrixOutdated = true;
     }
     void Move(const vec3& moveAmount)
     {
-        pos += moveAmount;
+        position += moveAmount;
         isModelMatrixOutdated = true;
     }
 
@@ -147,7 +147,7 @@ struct GameObject
     }
 
 protected:
-    vec3 pos; // World space
+    vec3 position; // World space
     quat orientation;
     vec3 scale;
 
@@ -170,7 +170,7 @@ private:
 
 struct GameCamera
 {
-    vec3  position;             // camera x y z pos in world space
+    vec3  position;             // camera x y z position in world space
     vec3  rotation;             // roll yaw pitch - in that order
     vec3  calculatedDirection;  // Intuitive direction - direction forward
     vec3  calculatedUp;
