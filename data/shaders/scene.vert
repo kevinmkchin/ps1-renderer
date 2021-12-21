@@ -10,9 +10,8 @@ out vec3 LIGHT;
 uniform mat4 modelMatrix;
 uniform mat4 viewMatrix;
 uniform mat4 projMatrix;
-
-#define INTERNAL_RESOLUTION_WIDTH 320
-#define INTERNAL_RESOLUTION_HEIGHT 240
+uniform int internalResolutionWidth;
+uniform int internalResolutionHeight;
 
 void main()
 {
@@ -21,7 +20,7 @@ void main()
     vec4 vertInClipSpace = projMatrix * viewMatrix * modelMatrix * vec4(vertex_pos, 1.0);
 
     /* Polygon Jittering */
-    vec2 grid = 0.5 * vec2(INTERNAL_RESOLUTION_WIDTH, INTERNAL_RESOLUTION_HEIGHT);
+    vec2 grid = 0.5 * vec2(internalResolutionWidth, internalResolutionHeight);
     vec3 vertInNDC = vertInClipSpace.xyz / vertInClipSpace.w;
     vertInNDC.xy = floor(vertInNDC.xy * grid) / grid;
     vertInClipSpace.xyz = vertInNDC * vertInClipSpace.w;

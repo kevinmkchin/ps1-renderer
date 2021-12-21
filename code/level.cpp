@@ -30,9 +30,11 @@ struct EditorObject : GameObject
         auto bo = GetBufferObjects();
         mesh.RebindBufferObjects(bo.first.data(), bo.second.data(), (u32)bo.first.size(), (u32)bo.second.size());
         shader.GLBindMatrix4fv("modelMatrix", 1, GetModelMatrix().ptr());
+        shader.GLBind1i("isColliderOnly", 0);
 
         if(!isVisible)
         {
+            shader.GLBind1i("isColliderOnly", 1);
             hasCollision ? shader.GLBind3f("modelColor", _RGB(0.f, 255.f, 0.f)) : shader.GLBind3f("modelColor", _RGB(255.f, 255.f, 255.f));
             glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
         }
@@ -534,21 +536,21 @@ INTERNAL void EditorUpdate()
 
 INTERNAL void EditorRender()
 {
-    glViewport(0, 0, INTERNAL_RESOLUTION_WIDTH, INTERNAL_RESOLUTION_HEIGHT);
+    glViewport(0, 0, backbufferWidth, backbufferHeight);
     glClearColor(_RGB(46, 88, 120), 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
 
-    sceneShader.UseShader();
+    editorShader.UseShader();
 
-    sceneShader.GLBindMatrix4fv("viewMatrix", 1, editorCamera.viewMatrix.ptr());
-    sceneShader.GLBindMatrix4fv("projMatrix", 1, editorCamera.perspectiveMatrix.ptr());
-    sceneShader.GLBind3f("modelColor", _RGB(0.f, 0.f, 0.f));
+    editorShader.GLBindMatrix4fv("viewMatrix", 1, editorCamera.viewMatrix.ptr());
+    editorShader.GLBindMatrix4fv("projMatrix", 1, editorCamera.perspectiveMatrix.ptr());
+    editorShader.GLBind3f("modelColor", _RGB(0.f, 0.f, 0.f));
 
     textureA.UseTexture();
     for(u32 i = 0; i < editorObjects.Count(); ++i)
     {
-        editorObjects[i]->Render(sceneShader);
+        editorObjects[i]->Render(editorShader);
     }
 
     glUseProgram(0);
