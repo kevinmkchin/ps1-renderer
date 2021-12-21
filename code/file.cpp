@@ -280,7 +280,7 @@ int ByteBufferReadFromFile(ByteBuffer* buffer, const char* filePath)
     }
 
     fread(bb.data, 1, sz, fp);
-    bb.size = sz;
+    bb.size = (u32)sz;
     *buffer = bb;
 
     fclose(fp);
