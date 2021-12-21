@@ -1,31 +1,23 @@
 /** Playstation 1 style renderer
 
 TODO:
+    - Save texture data to disk with map
+    - Load map to game
+    - Level Editor IMGUI to create new geometry and modify existing geom
     - Level Editor
         - creates the Visible level geometry and Collidable level geometry
-        - Save level geom as OPCODE + STRUCT DATA so we know what type of struct we are reading
-
         Types of static level objects in game:
         - visible meshgroup object no collider              : cosmetic/decorative complex level geometry
         - visible mesh object no collider                   : cosmetic/decorative simple level geometry
         - visible meshgroup object with collider            : complex level geometry with collisions
         - visible mesh object with collider                 : simple level geometry with collisions
         - hidden mesh (or no mesh?) object with collider    : trigger volumes, level geometry bounds
-
-        How to represent the above in editor?:
-
-
         Additionally, editor can specify other objects too e.g. power ups and their locations:
         - We can drop an editor object (no mesh, just a billboard facing the gameCamera indicating what power up it is)
-
-
-        When importing/exporting to/from editor and importing to game, these objects need to be saved or read from disk.
-
-
-
+    - Text rendering with kc_truetypeassembler.h
+    - Drop-down console port from XNGINE
     - Animation
     - Audio
-    - Text rendering with kc_truetypeassembler.h
 
 Rules:
      - unit vector (x: 1, y: 0, z: 0), aka positive X, is the "forward" direction for un-rotated objects

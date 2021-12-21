@@ -142,7 +142,7 @@ vertex_attrib_size: vertex coords size (e.g. 3 if x y z)
 texture_attrib_size: texture coords size (e.g. 2 if u v)
 draw_usage: affects optimization; GL_STATIC_DRAW buffer data
 only set once, GL_DYNAMIC_DRAW if buffer modified repeatedly */
-INTERNAL void MeshCreate(Mesh& mesh,
+INTERNAL Mesh MeshCreate(Mesh& mesh,
                          float* vertices,
                          u32* indices,
                          u32 verticesArrayCount,
@@ -193,6 +193,8 @@ INTERNAL void MeshCreate(Mesh& mesh,
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 /*bytes cuz uint32*/ * indicesArrayCount, indices, drawUsage);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0); // Unbind the VAO;
+
+    return mesh;
 }
 
 /** Clearing GPU memory: glDeleteBuffers and glDeleteVertexArrays deletes the buffer
@@ -222,6 +224,13 @@ INTERNAL void MeshDelete(Mesh& mesh)
 
 
 
+
+MeshGroup::MeshGroup(Mesh m, Texture t)
+{
+    meshes.push_back(m);
+    textures.push_back(t);
+    meshToTextureTable.push_back(0);
+}
 
 void MeshGroup::render()
 {
