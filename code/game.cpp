@@ -2,6 +2,9 @@
 INTERNAL GameCamera gameCamera;
 INTERNAL std::vector<GameObject*> gameObjectsA;
 
+INTERNAL PreAllocArray<DefaultGameObject> staticMapObjects;
+INTERNAL PreAllocArray<MeshCollider> staticMapColliders;
+
 INTERNAL DefaultGameObject objA;
 INTERNAL DefaultGameObject objB;
 INTERNAL MeshCollider colA;
@@ -10,6 +13,11 @@ INTERNAL SphereCollider colB;
 INTERNAL void GameInitOnStartUp()
 {
     Shader::GLLoadShaderProgramFromFile(sceneShader, "shaders/scene.vert", "shaders/scene.frag");
+
+    staticMapObjects.Allocate(MAX_EDITOR_OBJECT_COUNT);
+    staticMapColliders.Allocate(MAX_EDITOR_OBJECT_COUNT);
+    GameImportMap("peepee", staticMapObjects, staticMapColliders);
+
     gameCamera.CameraCalculatePerspectiveMatrix();
     gameCamera.position = {-3.048528f, 1.879444f, 2.618031f };
     gameCamera.rotation = {0.0f, 31.56f, -21.f };
@@ -23,7 +31,6 @@ INTERNAL void GameInitOnStartUp()
     gameObjectsA.push_back(&objB);
 
     colA.owningGameObject = &objA;
-    //colA.radius = 1.f;
     colA.verticesModelSpace = {
             {-0.5f, 0.5f, -0.5f},
             {-0.5f, 0.5f, 0.5f},
@@ -85,6 +92,10 @@ INTERNAL void GameRender()
         for(auto& gameObj : gameObjectsA)
         {
             gameObj->Render(sceneShader);
+        }
+        for(int i = 0; i < staticMapObjects.Count(); ++i)
+        {
+            staticMapObjects[i].Render(sceneShader);
         }
     glUseProgram(0);
 }

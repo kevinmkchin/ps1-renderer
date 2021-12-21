@@ -50,9 +50,9 @@ struct EditorObject : GameObject
     virtual std::vector<vec3> GetColliders() = 0;
     EDIT_OBJ_CODE GetEditObjectCode() const { return editObjCode; }
 
+    Texture texture; // TODO(Kevin): use texture
 protected:
     Mesh mesh;
-    Texture texture; // TODO(Kevin): use texture
     EDIT_OBJ_CODE editObjCode = EDIT_INVALID;
 };
 
@@ -530,6 +530,26 @@ INTERNAL void EditorExportMap(const std::string& mapName)
     ByteBufferFree(&exportBuffer);
 }
 
+INTERNAL void EditorReadBoxFromByteBuffer(ByteBuffer* importBuffer, u32 editObjCode, EditorBoxObject* box)
+{
+    vec3 pos;
+    quat rot;
+    vec3 sca;
+    ByteBufferReadBulk(importBuffer, &pos, 3*sizeof(float));
+    ByteBufferReadBulk(importBuffer, &rot, 4*sizeof(float));
+    ByteBufferReadBulk(importBuffer, &sca, 3*sizeof(float));
+    ByteBufferReadBulk(importBuffer, &box->dimensions, 3*sizeof(float));
+    ByteBufferReadBulk(importBuffer, &box->originAsOffsetFromMinCorner, 3*sizeof(float));
+    ByteBufferReadBulk(importBuffer, &box->textureScale, 2*sizeof(float));
+    ByteBufferRead(importBuffer, bool, &box->textureTileFlag);
+    ByteBufferRead(importBuffer, bool, &box->textureOrientationFlag);
+    box->isVisible = editObjCode & EDIT_VISIBLE;
+    box->hasCollision = editObjCode & EDIT_COLLIDABLE;
+    box->SetPos(pos);
+    box->SetOrientation(rot);
+    box->SetScale(sca);
+}
+
 INTERNAL void EditorImportMap(const std::string& mapName)
 {
     if(!editorModeActiveFlag)
@@ -549,22 +569,7 @@ INTERNAL void EditorImportMap(const std::string& mapName)
         {
             case EDIT_BOX: {
                 EditorBoxObject* box = &editorBoxObjects.PushBack(EditorBoxObject());
-                vec3 pos;
-                quat rot;
-                vec3 sca;
-                ByteBufferReadBulk(&importBuffer, &pos, 3*sizeof(float));
-                ByteBufferReadBulk(&importBuffer, &rot, 4*sizeof(float));
-                ByteBufferReadBulk(&importBuffer, &sca, 3*sizeof(float));
-                ByteBufferReadBulk(&importBuffer, &box->dimensions, 3*sizeof(float));
-                ByteBufferReadBulk(&importBuffer, &box->originAsOffsetFromMinCorner, 3*sizeof(float));
-                ByteBufferReadBulk(&importBuffer, &box->textureScale, 2*sizeof(float));
-                ByteBufferRead(&importBuffer, bool, &box->textureTileFlag);
-                ByteBufferRead(&importBuffer, bool, &box->textureOrientationFlag);
-                box->isVisible = code & EDIT_VISIBLE;
-                box->hasCollision = code & EDIT_COLLIDABLE;
-                box->SetPos(pos);
-                box->SetOrientation(rot);
-                box->SetScale(sca);
+                EditorReadBoxFromByteBuffer(&importBuffer, code, box);
                 editorObjects.PushBack(box);
             }break;
             default: {
@@ -582,7 +587,57 @@ INTERNAL void EditorImportMap(const std::string& mapName)
     ByteBufferFree(&importBuffer);
 }
 
-INTERNAL void GameImportMap()
+INTERNAL void GameImportMap(const std::string& mapName,
+                            PreAllocArray<DefaultGameObject>& staticMapObjects,
+                            PreAllocArray<MeshCollider>& staticMapColliders)
 {
+    if(editorModeActiveFlag)
+    {
+        printf("WARNING: Attempting to load map when game is not active...\n");
+        return;
+    }
 
+    ByteBuffer importBuffer;
+    ByteBufferReadFromFile(&importBuffer,  (GAME_MAPS_DIRECTORY + mapName).c_str());
+    while(importBuffer.position < importBuffer.size)
+    {
+        u32 code = EDIT_INVALID;
+        ByteBufferRead(&importBuffer, u32, &code);
+
+        switch (code & 0xFFFFFFFFC)
+        {
+            case EDIT_BOX: {
+                EditorBoxObject box;
+                EditorReadBoxFromByteBuffer(&importBuffer, code, &box);
+                DefaultGameObject addGameObj;
+                if(box.isVisible)
+                {
+                    auto bo = box.GetBufferObjects();
+                    auto vbo = bo.first;
+                    auto ibo = bo.second;
+                    Mesh m;
+                    MeshCreate(m, vbo.data(), ibo.data(), (u32)vbo.size(), (u32)ibo.size());
+                    MeshGroup* mg = new MeshGroup(m, Texture());
+
+                    addGameObj.SetModel(mg);
+                    addGameObj.SetPos(box.GetPos());
+                    addGameObj.SetOrientation(box.GetOrientation());
+                    addGameObj.SetScale(box.GetScale());
+                }
+                staticMapObjects.PushBack(addGameObj);
+                if(box.hasCollision)
+                {
+                    MeshCollider meshCollider;
+                    meshCollider.owningGameObject = &staticMapObjects[staticMapObjects.Count()-1];
+                    meshCollider.verticesModelSpace = box.GetColliders();
+                    staticMapColliders.PushBack(meshCollider);
+                }
+            }break;
+            default: {
+                printf("WARNING: Encountered invalid or unknown editObjCode while importing map.\n");
+                continue;
+            }
+        }
+    }
+    ByteBufferFree(&importBuffer);
 }

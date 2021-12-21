@@ -201,6 +201,7 @@ template<typename T> struct PreAllocArray
         return capacity;
     }
 
+private:
     T* data = NULL;
     u32 count = 0;    // in number of elements
     u32 capacity = 0; // in number of elements

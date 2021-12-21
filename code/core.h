@@ -42,6 +42,9 @@ struct MeshGroup
     std::vector<u16>      meshToTextureTable; // stores index of textures element corresponding to mesh
     std::string           filePath = "";
 
+    MeshGroup() = default;
+    MeshGroup(Mesh m, Texture t);
+
     void render();
 };
 
