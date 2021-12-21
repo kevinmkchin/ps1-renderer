@@ -122,8 +122,7 @@ struct ByteBuffer
 void ByteBufferInit(ByteBuffer* buffer)
 {
     // TODO(Kevin): If using custom memory alloc, replace the following line
-    buffer->data = (u8*) malloc(BYTE_BUFFER_DEFAULT_CAPACITY);
-    memset(buffer->data, 0, BYTE_BUFFER_DEFAULT_CAPACITY);
+    buffer->data = (u8*) calloc(BYTE_BUFFER_DEFAULT_CAPACITY, sizeof(u8));
     buffer->position = 0;
     buffer->size = 0;
     buffer->capacity = BYTE_BUFFER_DEFAULT_CAPACITY;
@@ -140,8 +139,12 @@ void ByteBufferFree(ByteBuffer* buffer)
 {
     if(buffer && buffer->data)
     {
+        // TODO(Kevin): use custom mem alloc
         free(buffer->data);
     }
+    buffer->size = 0;
+    buffer->position = 0;
+    buffer->capacity = 0;
 }
 
 void ByteBufferClear(ByteBuffer* buffer)
@@ -152,6 +155,7 @@ void ByteBufferClear(ByteBuffer* buffer)
 
 void ByteBufferResize(ByteBuffer* buffer, size_t sz)
 {
+    // TODO(Kevin): use custom mem alloc
     u8* data = (u8*)realloc(buffer->data, sz);
     if(data == NULL)
     {
