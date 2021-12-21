@@ -33,7 +33,7 @@ struct EditorObject : GameObject
 
         if(!isVisible)
         {
-            shader.GLBind3f("modelColor", RGB(0.f,255.f,0.f));
+            hasCollision ? shader.GLBind3f("modelColor", RGB(0.f,255.f,0.f)) : shader.GLBind3f("modelColor", RGB(255.f,255.f,255.f));
             glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
         }
         mesh.RenderMesh();
@@ -55,8 +55,6 @@ protected:
     Texture texture; // TODO(Kevin): use texture
     EDIT_OBJ_CODE editObjCode = EDIT_INVALID;
 };
-
-// map from GameObject to EditorObject
 
 struct EditorBoxObject : EditorObject
 {
@@ -340,23 +338,20 @@ struct EditorBoxObject : EditorObject
 // - curves?
 // - pyramids
 
-
-// TODO(Kevin): replace with custom mem alloc where we alloc a chunk of memory for all editor objects
-//  and use that instead of std::vector editorObjects
-#define MAX_EDITOR_OBJECT_COUNT 256
-INTERNAL EditorBoxObject editorBoxObjects[MAX_EDITOR_OBJECT_COUNT];
+#define MAX_EDITOR_OBJECT_COUNT 4096
+#define MAX_EDITOR_BOX_COUNT 1024
+INTERNAL PreAllocArray<EditorBoxObject> editorBoxObjects;
+INTERNAL PreAllocArray<EditorObject*> editorObjects;
 
 INTERNAL GameCamera editorCamera;
 INTERNAL EditorObject* selectedEditObj = nullptr;
-INTERNAL std::vector<EditorObject*> editorObjects;
-INTERNAL EditorBoxObject testEditorObj1;
-INTERNAL EditorBoxObject testEditorObj2;
-INTERNAL EditorBoxObject testEditorObj3;
-INTERNAL EditorBoxObject testEditorObj4;
 INTERNAL Texture textureA;
 
 INTERNAL void EditorInitOnStartUp()
 {
+    editorObjects.Allocate(MAX_EDITOR_OBJECT_COUNT);
+    editorBoxObjects.Allocate(MAX_EDITOR_BOX_COUNT);
+
     editorCamera.CameraCalculatePerspectiveMatrix();
     editorCamera.position = {-3.048528f, 1.879444f, 2.618031f };
     editorCamera.rotation = {0.0f, 31.56f, -21.f };
@@ -367,29 +362,6 @@ INTERNAL void EditorLoad(const std::string& mapName)
 {
     printf("editor load\n");
 
-//    testEditorObj1.dimensions = vec3(4.f, 0.4f, 2.f);
-//    testEditorObj1.SetPos(vec3(23,-3,2));
-//    testEditorObj1.Initialize();
-//    testEditorObj1.isVisible = false;
-//
-//    testEditorObj2.dimensions = vec3(2.f, 2.f, 1.f);
-//    testEditorObj2.SetPos(vec3(5,-3,2));
-//    testEditorObj2.Initialize();
-//
-//    testEditorObj3.dimensions = vec3(1,3,20);
-//    testEditorObj3.SetPos(vec3(10,-5,2));
-//    testEditorObj3.Initialize();
-//    testEditorObj3.isVisible = false;
-//
-//    testEditorObj4.dimensions = vec3(5, 2, 3);
-//    testEditorObj4.SetPos(vec3(0,0,0));
-//    testEditorObj4.Initialize();
-//
-//    editorObjects.push_back(&testEditorObj1);
-//    editorObjects.push_back(&testEditorObj2);
-//    editorObjects.push_back(&testEditorObj3);
-//    editorObjects.push_back(&testEditorObj4);
-
     // Load map
     EditorImportMap(mapName);
 
@@ -397,9 +369,9 @@ INTERNAL void EditorLoad(const std::string& mapName)
     TextureCreateFromFile(textureA, "data/primitives/TilesPlain0304.png");
 
     // InitializeAllEditorObjects
-    for(auto editObj : editorObjects)
+    for(u32 i = 0; i < editorObjects.Count(); ++i)
     {
-        editObj->Initialize();
+        editorObjects[i]->Initialize();
     }
 }
 
@@ -407,24 +379,17 @@ INTERNAL void EditorUnload()
 {
     printf("editor unload\n");
 
-//    testEditorObj1.CleanUp();
-//    testEditorObj2.CleanUp();
-//    testEditorObj3.CleanUp();
-//    testEditorObj4.CleanUp();
-
     // CleanUpAllEditorObjects
-    for(auto editObj : editorObjects)
+    for(u32 i = 0; i < editorObjects.Count(); ++i)
     {
-        editObj->CleanUp();
+        editorObjects[i]->CleanUp();
     }
+    // Reset editor object arrays
+    editorObjects.Clear();
+    editorBoxObjects.Clear();
 
     // Unload all textures
     TextureDelete(textureA);
-
-    // Delete all EditorObjects
-//    for(auto editObj : editorObjects)
-//    {
-//    }
 }
 
 INTERNAL void EditorSwitchMap(const std::string& mapName)
@@ -457,9 +422,9 @@ INTERNAL void EditorRender()
     sceneShader.GLBind3f("modelColor", RGB(0.f,0.f,0.f));
 
     textureA.UseTexture();
-    for(auto editObj : editorObjects)
+    for(u32 i = 0; i < editorObjects.Count(); ++i)
     {
-        editObj->Render(sceneShader);
+        editorObjects[i]->Render(sceneShader);
     }
 
     glUseProgram(0);
@@ -482,11 +447,11 @@ INTERNAL void EditorMousePick(int x, int y, float rayLength = 100.f)
     // iterate editor/game objects to see which object was clicked on.
     std::vector<Collider*> collided;
     std::vector<MeshCollider> collidersToCheck;
-    for(auto editObj : editorObjects)
+    for(u32 i = 0; i < editorObjects.Count(); ++i)
     {
         MeshCollider col;
-        col.owningGameObject = editObj;
-        col.verticesModelSpace = editObj->GetColliders();
+        col.owningGameObject = editorObjects[i];
+        col.verticesModelSpace = editorObjects[i]->GetColliders();
         collidersToCheck.push_back(col);
     }
 
@@ -528,24 +493,24 @@ INTERNAL void EditorExportMap(const std::string& mapName)
     }
 
     ByteBuffer exportBuffer = ByteBufferNew();
-    for(auto editObj : editorObjects)
+    for(u32 i = 0; i < editorObjects.Count(); ++i)
     {
-        u32 code = editObj->GetEditObjectCode()
-                | (editObj->isVisible ? EDIT_VISIBLE : EDIT_INVALID)
-                | (editObj->hasCollision ? EDIT_COLLIDABLE : EDIT_INVALID);
+        u32 code = editorObjects[i]->GetEditObjectCode()
+                | (editorObjects[i]->isVisible ? EDIT_VISIBLE : EDIT_INVALID)
+                | (editorObjects[i]->hasCollision ? EDIT_COLLIDABLE : EDIT_INVALID);
         ByteBufferWrite(&exportBuffer, u32, code);
 
-        vec3 pos = editObj->GetPos();
-        quat rot = editObj->GetOrientation();
-        vec3 sca = editObj->GetScale();
+        vec3 pos = editorObjects[i]->GetPos();
+        quat rot = editorObjects[i]->GetOrientation();
+        vec3 sca = editorObjects[i]->GetScale();
         ByteBufferWriteBulk(&exportBuffer, &pos, 3*sizeof(float));
         ByteBufferWriteBulk(&exportBuffer, &rot, 4*sizeof(float));
         ByteBufferWriteBulk(&exportBuffer, &sca, 3*sizeof(float));
 
-        switch (editObj->GetEditObjectCode())
+        switch (editorObjects[i]->GetEditObjectCode())
         {
             case EDIT_BOX: {
-                auto* boxObj = (EditorBoxObject*)editObj;
+                auto* boxObj = (EditorBoxObject*)editorObjects[i];
                 vec3 dimensions = boxObj->dimensions;
                 vec3 origin = boxObj->originAsOffsetFromMinCorner;
                 vec2 textureScale = boxObj->textureScale;
@@ -575,7 +540,6 @@ INTERNAL void EditorImportMap(const std::string& mapName)
 
     ByteBuffer importBuffer;
     ByteBufferReadFromFile(&importBuffer,  (GAME_MAPS_DIRECTORY + mapName).c_str());
-    u32 index = 0;
     while(importBuffer.position < importBuffer.size)
     {
         u32 code = EDIT_INVALID;
@@ -584,7 +548,7 @@ INTERNAL void EditorImportMap(const std::string& mapName)
         switch (code & 0xFFFFFFFFC)
         {
             case EDIT_BOX: {
-                EditorBoxObject* box = &editorBoxObjects[index];
+                EditorBoxObject* box = &editorBoxObjects.PushBack(EditorBoxObject());
                 vec3 pos;
                 quat rot;
                 vec3 sca;
@@ -601,7 +565,7 @@ INTERNAL void EditorImportMap(const std::string& mapName)
                 box->SetPos(pos);
                 box->SetOrientation(rot);
                 box->SetScale(sca);
-                editorObjects.push_back(box); // TODO(Kevin): remove line after I stop using std::vector editorObjects
+                editorObjects.PushBack(box);
             }break;
             default: {
                 printf("WARNING: Encountered invalid or unknown editObjCode while importing map.\n");
@@ -609,10 +573,10 @@ INTERNAL void EditorImportMap(const std::string& mapName)
             }
         }
 
-        ++index;
-        if(index >= MAX_EDITOR_OBJECT_COUNT)
+        if(editorObjects.Count() >= editorObjects.Capacity())
         {
-            printf("WARNING: Exceeding MAX_EDITOR_OBJECT_COUNT of %d. Stopping import.\n", MAX_EDITOR_OBJECT_COUNT);
+            printf("WARNING: Exceeding MAX_EDITOR_OBJECT_COUNT of %d. Stopping import.\n", editorObjects.Capacity());
+            break;
         }
     }
     ByteBufferFree(&importBuffer);

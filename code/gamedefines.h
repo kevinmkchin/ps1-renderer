@@ -100,3 +100,108 @@ struct GamepadState
         return (previousButtonState & button) && ((buttonState & button) == 0);
     }
 };
+
+template<typename T> struct PreAllocArray
+{
+    /** An array which pre-allocates memory before use.
+     * No dynamic resizing allowed. This is essentially a
+     * wrapper for a C-style array. */
+
+    void Allocate(u32 numOfElements)
+    {
+        if(data)
+        {
+            Free();
+        }
+        // TODO(Kevin): use custom mem alloc
+        data = (T*) calloc(numOfElements, sizeof(T));
+        count = 0;
+        capacity = numOfElements;
+
+        for(int i = 0; i < numOfElements; ++i)
+        {
+            new (data + i) T; // placement new required for polymorphism
+        }
+    }
+
+    void Free()
+    {
+        if(data)
+        {
+            // TODO(Kevin): use custom mem alloc
+            free(data);
+            count = 0;
+            capacity = 0;
+        }
+    }
+
+    void Clear()
+    {
+        count = 0;
+    }
+
+    T& At(const u32 index)
+    {
+        if(index < capacity)
+        {
+            return *(data + index);
+        }
+        throw std::out_of_range("PreAllocArray: Index out of range.");
+    }
+
+    T& operator[](const u32 index)
+    {
+        return At(index);
+    }
+
+    T& PushBack(T elem)
+    {
+        if(count < capacity)
+        {
+            *(data+count) = elem;
+            return *(data + count++);
+        }
+        throw std::out_of_range("PreAllocArray: Cannot PushBack. Array is full.");
+    }
+
+    T PopBack()
+    {
+        return *(data + count--);
+    }
+
+    T PopAt(u32 index)
+    {
+        // Does not preserve order
+        if(index < capacity)
+        {
+            T a = *(data + index);
+            *(data + index) = *(data + --count);
+            return a;
+        }
+        throw std::out_of_range("PreAllocArray: Index out of range.");
+    }
+
+    u32 Count() const
+    {
+        return count;
+    }
+
+    void IncrementCount()
+    {
+        ++count;
+    }
+
+    void DecrementCount()
+    {
+        --count;
+    }
+
+    u32 Capacity() const
+    {
+        return capacity;
+    }
+
+    T* data = NULL;
+    u32 count = 0;    // in number of elements
+    u32 capacity = 0; // in number of elements
+};
