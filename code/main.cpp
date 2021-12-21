@@ -304,7 +304,7 @@ INTERNAL void SwitchToEditor(bool activateEditor)
         {
             GameUnload();
             editorModeActiveFlag = true;
-            EditorLoad("peepee");
+            EditorLoad("");
         }
         else
         {

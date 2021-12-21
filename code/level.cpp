@@ -343,6 +343,7 @@ struct EditorBoxObject : EditorObject
 INTERNAL PreAllocArray<EditorBoxObject> editorBoxObjects;
 INTERNAL PreAllocArray<EditorObject*> editorObjects;
 
+INTERNAL std::string loadedMapPath = "no map loaded...";
 INTERNAL GameCamera editorCamera;
 INTERNAL EditorObject* selectedEditObj = nullptr;
 INTERNAL Texture textureA;
@@ -357,13 +358,17 @@ INTERNAL void EditorInitOnStartUp()
     editorCamera.rotation = {0.0f, 31.56f, -21.f };
 }
 
+INTERNAL void EditorExportMap(const std::string& mapName);
 INTERNAL void EditorImportMap(const std::string& mapName);
 INTERNAL void EditorLoad(const std::string& mapName)
 {
     printf("editor load\n");
 
     // Load map
-    EditorImportMap(mapName);
+    if(!mapName.empty())
+    {
+        EditorImportMap(mapName);
+    }
 
     // Load textures
     TextureCreateFromFile(textureA, "data/primitives/TilesPlain0304.png");
@@ -379,6 +384,8 @@ INTERNAL void EditorUnload()
 {
     printf("editor unload\n");
 
+    selectedEditObj = nullptr;
+
     // CleanUpAllEditorObjects
     for(u32 i = 0; i < editorObjects.Count(); ++i)
     {
@@ -387,6 +394,8 @@ INTERNAL void EditorUnload()
     // Reset editor object arrays
     editorObjects.Clear();
     editorBoxObjects.Clear();
+
+    loadedMapPath = "no map loaded...";
 
     // Unload all textures
     TextureDelete(textureA);
@@ -403,35 +412,123 @@ INTERNAL void EditorSwitchMap(const std::string& mapName)
     EditorLoad(mapName);
 }
 
+#include <shobjidl.h>
+#include <codecvt>
+
+
 INTERNAL void EditorUpdate()
 {
     editorCamera.CameraUpdate();
 
     // Create a window called "My First Tool", with a menu bar.
-    bool my_tool_active = true;
-    ImGui::Begin("My First Tool", &my_tool_active, ImGuiWindowFlags_MenuBar);
+    ImGui::Begin("Editor", nullptr, ImGuiWindowFlags_MenuBar);
     if (ImGui::BeginMenuBar())
     {
         if (ImGui::BeginMenu("File"))
         {
-            if (ImGui::MenuItem("Open..", "Ctrl+O")) { /* Do stuff */ }
-            if (ImGui::MenuItem("Save", "Ctrl+S"))   { /* Do stuff */ }
-            if (ImGui::MenuItem("Close", "Ctrl+W"))  { my_tool_active = false; }
+            if (ImGui::MenuItem("Open..", "Ctrl+O"))
+            {
+                IFileOpenDialog *pFileOpen;
+                HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL,
+                                      IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
+                if (SUCCEEDED(hr))
+                {
+                    // Show the Open dialog box.
+                    hr = pFileOpen->Show(NULL);
+                    // Get the file name from the dialog box.
+                    if (SUCCEEDED(hr))
+                    {
+                        IShellItem *pItem;
+                        hr = pFileOpen->GetResult(&pItem);
+                        if (SUCCEEDED(hr))
+                        {
+                            PWSTR pszFilePath;
+                            hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+
+                            if (SUCCEEDED(hr))
+                            {
+                                std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converterX;
+                                std::string filePathString = converterX.to_bytes(pszFilePath);
+                                EditorSwitchMap(filePathString);
+                                CoTaskMemFree(pszFilePath);
+                            }
+                            pItem->Release();
+                        }
+                    }
+                    pFileOpen->Release();
+                }
+                CoUninitialize();
+            }
+            if (ImGui::MenuItem("Save", "Ctrl+S"))
+            {
+                IFileSaveDialog* pFileSave;
+                HRESULT hr = CoCreateInstance(CLSID_FileSaveDialog, NULL, CLSCTX_ALL,
+                                              IID_IFileSaveDialog, reinterpret_cast<void**>(&pFileSave));
+                if (SUCCEEDED(hr))
+                {
+                    // Show the Open dialog box.
+                    hr = pFileSave->Show(NULL);
+                    // Get the file name from the dialog box.
+                    if (SUCCEEDED(hr))
+                    {
+                        IShellItem *pItem;
+                        hr = pFileSave->GetResult(&pItem);
+                        if (SUCCEEDED(hr))
+                        {
+                            PWSTR pszFilePath;
+                            hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+
+                            if (SUCCEEDED(hr))
+                            {
+                                std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converterX;
+                                std::string filePathString = converterX.to_bytes(pszFilePath);
+                                EditorExportMap(filePathString);
+                                CoTaskMemFree(pszFilePath);
+                            }
+                            pItem->Release();
+                        }
+                    }
+                    pFileSave->Release();
+                }
+                CoUninitialize();
+            }
+            if (ImGui::MenuItem("Shut down"))  { gIsRunning = false; }
             ImGui::EndMenu();
         }
         ImGui::EndMenuBar();
     }
 
-// Plot some values
-    const float my_values[] = { 0.2f, 0.1f, 1.0f, 0.5f, 0.9f, 2.2f };
-    ImGui::PlotLines("Frame Times", my_values, IM_ARRAYSIZE(my_values));
+    ImGui::Text(loadedMapPath.c_str());
+    ImGui::Text("Selected object: 0x%x", selectedEditObj);
 
-// Display contents in a scrolling region
-    ImGui::TextColored(ImVec4(1,1,0,1), "Important Stuff");
-    ImGui::BeginChild("Scrolling");
-    for (int n = 0; n < 50; n++)
-        ImGui::Text("%04d: Some text", n);
-    ImGui::EndChild();
+    if(selectedEditObj)
+    {
+        vec3 selectedPos = selectedEditObj->GetPos();
+        ImGui::DragFloat3("Pos", &selectedPos.x,0.01f);
+        selectedEditObj->SetPos(selectedPos);
+        vec3 selectedRot = QuatToEuler(selectedEditObj->GetOrientation()) * SML_RAD2DEG;
+        ImGui::DragFloat3("Rot", &selectedRot.x,0.2f);
+        selectedEditObj->SetOrientation(EulerToQuat(selectedRot * SML_DEG2RAD));
+        vec3 selectedScale = selectedEditObj->GetScale();
+        ImGui::DragFloat3("Scale", &selectedScale.x, 0.01f);
+        selectedEditObj->SetScale(selectedScale);
+        ImGui::Checkbox("Visible", &selectedEditObj->isVisible);
+        ImGui::Checkbox("Collidable", &selectedEditObj->hasCollision);
+        ImGui::Separator();
+        switch(selectedEditObj->GetEditObjectCode())
+        {
+            case EDIT_BOX:{
+                EditorBoxObject* box = (EditorBoxObject*) selectedEditObj;
+                ImGui::DragFloat3("Dimensions", &box->dimensions.x,0.01f);
+                ImGui::DragFloat3("Origin offset", &box->originAsOffsetFromMinCorner.x,0.01f);
+                ImGui::DragFloat2("Texture scale", &box->textureScale.x,0.01f);
+                ImGui::Checkbox("Tile texture", &box->textureTileFlag);
+                ImGui::Checkbox("Texture orientation", &box->textureOrientationFlag);
+            }break;
+            default:{}break;
+        }
+    }
+
     ImGui::End();
 }
 
@@ -551,7 +648,8 @@ INTERNAL void EditorExportMap(const std::string& mapName)
             }
         }
     }
-    ByteBufferWriteToFile(&exportBuffer, (GAME_MAPS_DIRECTORY + mapName).c_str());
+    std::string mapPath = mapName.at(1) == ':' ? mapName : GAME_MAPS_DIRECTORY + mapName;
+    ByteBufferWriteToFile(&exportBuffer, mapPath.c_str());
     ByteBufferFree(&exportBuffer);
 }
 
@@ -584,7 +682,9 @@ INTERNAL void EditorImportMap(const std::string& mapName)
     }
 
     ByteBuffer importBuffer;
-    ByteBufferReadFromFile(&importBuffer,  (GAME_MAPS_DIRECTORY + mapName).c_str());
+    std::string mapPath = mapName.at(1) == ':' ? mapName : GAME_MAPS_DIRECTORY + mapName;
+    ByteBufferReadFromFile(&importBuffer, mapPath.c_str());
+    loadedMapPath = mapPath;
     while(importBuffer.position < importBuffer.size)
     {
         u32 code = EDIT_INVALID;
@@ -598,7 +698,6 @@ INTERNAL void EditorImportMap(const std::string& mapName)
                 editorObjects.PushBack(box);
             }break;
             default: {
-                printf("WARNING: Encountered invalid or unknown editObjCode while importing map.\n");
                 continue;
             }
         }
@@ -659,7 +758,6 @@ INTERNAL void GameImportMap(const std::string& mapName,
                 }
             }break;
             default: {
-                printf("WARNING: Encountered invalid or unknown editObjCode while importing map.\n");
                 continue;
             }
         }
