@@ -23,17 +23,7 @@ add_compile_definitions(
         SLOW_BUILD=1
 )
 
-add_executable(${PROJECT_NAME}
-        code/main.cpp
-
-        code/imgui/imgui.cpp
-        code/imgui/imgui_demo.cpp
-        code/imgui/imgui_draw.cpp
-        code/imgui/imgui_tables.cpp
-        code/imgui/imgui_widgets.cpp
-        code/imgui/imgui_impl_sdl.cpp
-        code/imgui/imgui_impl_opengl3.cpp
-        )
+add_executable(${PROJECT_NAME} code/main.cpp)
 
 target_link_directories(${PROJECT_NAME}
         PRIVATE lib/GLEW/lib/Release/x64

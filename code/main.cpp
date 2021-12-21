@@ -46,11 +46,20 @@ BUILD MODES:
 #include <mutex>
 #include <thread>
 
+#include <GL/glew.h>
+
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl.h"
 #include "imgui/imgui_impl_opengl3.h"
+#include "imgui/imgui.cpp"
+#include "imgui/imgui_demo.cpp"
+#include "imgui/imgui_draw.cpp"
+#include "imgui/imgui_tables.cpp"
+#include "imgui/imgui_widgets.cpp"
+#include "imgui/imgui_impl_sdl.cpp"
+#define IMGUI_IMPL_OPENGL_LOADER_CUSTOM
+#include "imgui/imgui_impl_opengl3.cpp"
 
-#include <GL/glew.h>
 #include <SDL.h>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
