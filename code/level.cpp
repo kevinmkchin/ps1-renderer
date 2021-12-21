@@ -457,10 +457,8 @@ INTERNAL void EditorRender()
     glUseProgram(0);
 }
 
-INTERNAL void EditorMousePick(int x, int y, float rayLength = 100.f)
+INTERNAL void EditorMousePick(float xNDC, float yNDC, float rayLength = 100.f)
 {
-    float xNDC = ((float) x - ((float)INTERNAL_RESOLUTION_WIDTH/2.f)) / ((float)INTERNAL_RESOLUTION_WIDTH/2.f);
-    float yNDC = ((float) y - ((float)INTERNAL_RESOLUTION_HEIGHT/2.f)) / ((float)-INTERNAL_RESOLUTION_HEIGHT/2.f);
     mat4 inverseViewMatrix = editorCamera.viewMatrix.GetInverse();
     mat4 inverseProjMatrix = editorCamera.perspectiveMatrix.GetInverse();
     vec4 rayCCS = vec4(xNDC, yNDC, -1.f, 1.f);

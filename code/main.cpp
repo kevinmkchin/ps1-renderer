@@ -180,6 +180,30 @@ INTERNAL void SDLFullscreen(int mode)
     }
 }
 
+INTERNAL vec2 ScreenSpaceToInternalNDC(int x, int y)
+{
+    float xCentered = (float) x - ((float)backbufferWidth/2.f);
+    float yCentered = -((float) y - ((float)backbufferHeight/2.f));
+    float internal_ratio = (float)INTERNAL_RESOLUTION_WIDTH / (float)INTERNAL_RESOLUTION_HEIGHT;
+    float screen_ratio = (float)backbufferWidth / (float)backbufferHeight;
+    if(screen_ratio > internal_ratio)
+    {
+        float ratio = (float)backbufferHeight / (float)INTERNAL_RESOLUTION_HEIGHT;
+        float internalResScreenPixelWidth = ratio * (float)INTERNAL_RESOLUTION_WIDTH;
+        float xNDC = xCentered / (internalResScreenPixelWidth / 2.f);
+        float yNDC = yCentered / ((float)backbufferHeight / 2.f);
+        return vec2(xNDC, yNDC);
+    }
+    else
+    {
+        float ratio = (float)backbufferWidth / (float)INTERNAL_RESOLUTION_WIDTH;
+        float internalResScreenPixelHeight = ratio * (float)INTERNAL_RESOLUTION_HEIGHT;
+        float xNDC = xCentered / ((float)backbufferWidth / 2.f);
+        float yNDC = yCentered / (internalResScreenPixelHeight / 2.f);
+        return vec2(xNDC, yNDC);
+    }
+}
+
 INTERNAL void SDLProcessEvents()
 {
     SDLUpdateGamepads();
@@ -219,11 +243,16 @@ INTERNAL void SDLProcessEvents()
 
                 if(mouseDown.button == SDL_BUTTON_LEFT && mouseDown.state == SDL_PRESSED)
                 {
-                    int x, y;
-                    SDL_GetMouseState(&x, &y);
-                    float ix = (float) x * ((float) INTERNAL_RESOLUTION_WIDTH / (float)backbufferWidth);
-                    float iy = (float) y * ((float) INTERNAL_RESOLUTION_HEIGHT / (float)backbufferHeight);
-                    EditorMousePick((int) ix, (int) iy);
+                    if(editorModeActiveFlag)
+                    {
+                        int x, y;
+                        SDL_GetMouseState(&x, &y);
+                        vec2 internalNDC = ScreenSpaceToInternalNDC(x,y);
+                        if(SML_abs(internalNDC.x) <= 1.f && SML_abs(internalNDC.y) <= 1.f)
+                        {
+                            EditorMousePick(internalNDC.x, internalNDC.y);
+                        }
+                    }
                 }
             }
 
