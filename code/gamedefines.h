@@ -29,7 +29,7 @@ typedef i32           bool32;
 #define ASSERT(predicate)
 #endif
 
-#define RGB(r,g,b) ((float)r)/255.f, ((float)g)/255.f, ((float)b)/255.f
+#define _RGB(r,g,b) ((float)r)/255.f, ((float)g)/255.f, ((float)b)/255.f
 
 #define printf printf
 
@@ -118,7 +118,7 @@ template<typename T> struct PreAllocArray
         count = 0;
         capacity = numOfElements;
 
-        for(int i = 0; i < numOfElements; ++i)
+        for(u32 i = 0; i < numOfElements; ++i)
         {
             new (data + i) T; // placement new required for polymorphism
         }

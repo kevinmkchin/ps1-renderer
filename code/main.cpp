@@ -46,6 +46,10 @@ BUILD MODES:
 #include <mutex>
 #include <thread>
 
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_sdl.h"
+#include "imgui/imgui_impl_opengl3.h"
+
 #include <GL/glew.h>
 #include <SDL.h>
 #include <assimp/Importer.hpp>
@@ -187,6 +191,8 @@ INTERNAL void SDLProcessEvents()
     SDL_Event event;
     while(SDL_PollEvent(&event))
     {
+        ImGui_ImplSDL2_ProcessEvent(&event);
+
         switch(event.type)
         {
             case SDL_MOUSEBUTTONUP:
@@ -195,6 +201,7 @@ INTERNAL void SDLProcessEvents()
                 if(mouseUp.button == SDL_BUTTON_RIGHT && mouseUp.state == SDL_RELEASED)
                 {
                     SDL_SetRelativeMouseMode(SDL_FALSE);
+                    SDL_WarpMouseInWindow(window, backbufferWidth/2, backbufferHeight/2);
                     gameCamera.bMouseControl = false;
                     editorCamera.bMouseControl = false;
                 }
@@ -399,6 +406,12 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGui::StyleColorsLight();
+    ImGui_ImplSDL2_InitForOpenGL(window, openglContext);
+    ImGui_ImplOpenGL3_Init("#version 330");
+
     BindConsoleCommandsAndVariables();
     std::thread consoleInputThread(PollConsoleInput);
 
@@ -425,6 +438,13 @@ int main(int argc, char* argv[])
             SDLProcessEvents();
             if(gIsRunning == false) { break; }
 
+            ImGui_ImplOpenGL3_NewFrame();
+            ImGui_ImplSDL2_NewFrame();
+            ImGui::NewFrame();
+
+            bool show_demo_window = true;
+            ImGui::ShowDemoWindow(&show_demo_window);
+
             editorModeActiveFlag ? EditorUpdate() : GameUpdate();
 
             glBindFramebuffer(GL_FRAMEBUFFER, internalFBO);
@@ -432,9 +452,16 @@ int main(int argc, char* argv[])
 
             DrawInternalBufferToBackBuffer();
 
+            ImGui::Render();
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
             SDL_GL_SwapWindow(window);
         }
     }
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
 
     SDL_DestroyWindow(window);
     SDL_GL_DeleteContext(openglContext);

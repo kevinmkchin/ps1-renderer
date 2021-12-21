@@ -33,13 +33,13 @@ struct EditorObject : GameObject
 
         if(!isVisible)
         {
-            hasCollision ? shader.GLBind3f("modelColor", RGB(0.f,255.f,0.f)) : shader.GLBind3f("modelColor", RGB(255.f,255.f,255.f));
+            hasCollision ? shader.GLBind3f("modelColor", _RGB(0.f, 255.f, 0.f)) : shader.GLBind3f("modelColor", _RGB(255.f, 255.f, 255.f));
             glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
         }
         mesh.RenderMesh();
         if(!isVisible)
         {
-            shader.GLBind3f("modelColor", RGB(0.f,0.f,0.f));
+            shader.GLBind3f("modelColor", _RGB(0.f, 0.f, 0.f));
             glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
         }
     }
@@ -59,8 +59,8 @@ protected:
 struct EditorBoxObject : EditorObject
 {
     vec3 dimensions; // width, height, length
-    vec3 originAsOffsetFromMinCorner = vec3(2.f, 0.2f, 1.f);
-    vec2 textureScale = vec2(4.f, 2.f); // i.e. how many world units is one UV unit
+    vec3 originAsOffsetFromMinCorner = vec3(0.f, 0.f, 0.f);
+    vec2 textureScale = vec2(1.f, 1.f); // i.e. how many world units is one UV unit
     bool textureTileFlag = true;
     bool textureOrientationFlag = true;
 
@@ -411,7 +411,7 @@ INTERNAL void EditorUpdate()
 INTERNAL void EditorRender()
 {
     glViewport(0, 0, INTERNAL_RESOLUTION_WIDTH, INTERNAL_RESOLUTION_HEIGHT);
-    glClearColor(RGB(46,88,120), 1.f);
+    glClearColor(_RGB(46, 88, 120), 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
 
@@ -419,7 +419,7 @@ INTERNAL void EditorRender()
 
     sceneShader.GLBindMatrix4fv("viewMatrix", 1, editorCamera.viewMatrix.ptr());
     sceneShader.GLBindMatrix4fv("projMatrix", 1, editorCamera.perspectiveMatrix.ptr());
-    sceneShader.GLBind3f("modelColor", RGB(0.f,0.f,0.f));
+    sceneShader.GLBind3f("modelColor", _RGB(0.f, 0.f, 0.f));
 
     textureA.UseTexture();
     for(u32 i = 0; i < editorObjects.Count(); ++i)
