@@ -12,8 +12,6 @@ INTERNAL SphereCollider colB;
 
 INTERNAL void GameInitOnStartUp()
 {
-    Shader::GLLoadShaderProgramFromFile(sceneShader, "shaders/scene.vert", "shaders/scene.frag");
-
     staticMapObjects.Allocate(MAX_EDITOR_OBJECT_COUNT);
     staticMapColliders.Allocate(MAX_EDITOR_OBJECT_COUNT);
     GameImportMap("peepee", staticMapObjects, staticMapColliders);
@@ -80,7 +78,7 @@ INTERNAL void GameUpdate()
 
 INTERNAL void GameRender()
 {
-    glViewport(0, 0, INTERNAL_RESOLUTION_WIDTH, INTERNAL_RESOLUTION_HEIGHT);
+    glViewport(0, 0, internalResolutionWidth, internalResolutionHeight);
     glClearColor(_RGB(46, 88, 120), 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
@@ -88,6 +86,8 @@ INTERNAL void GameRender()
     sceneShader.UseShader();
         sceneShader.GLBindMatrix4fv("viewMatrix", 1, gameCamera.viewMatrix.ptr());
         sceneShader.GLBindMatrix4fv("projMatrix", 1, gameCamera.perspectiveMatrix.ptr());
+        sceneShader.GLBind1i("internalResolutionWidth", internalResolutionWidth);
+        sceneShader.GLBind1i("internalResolutionHeight", internalResolutionHeight);
         sceneShader.GLBind3f("modelColor", _RGB(0, 0, 0));
         for(auto& gameObj : gameObjectsA)
         {

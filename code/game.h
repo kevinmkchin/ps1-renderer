@@ -10,5 +10,3 @@ struct DefaultGameObject : GameObject
 
     }
 };
-
-GLOBAL_VAR Shader sceneShader;

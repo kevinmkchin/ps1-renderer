@@ -490,9 +490,13 @@ void GameCamera::CameraUpdate()
 
 void GameCamera::CameraCalculatePerspectiveMatrix()
 {
-    float fov = 90.f;
-    float aspect_ratio = (float)INTERNAL_RESOLUTION_WIDTH / (float)INTERNAL_RESOLUTION_HEIGHT;
-    perspectiveMatrix = ProjectionMatrixPerspective((fov / 2.f) * SML_DEG2RAD, aspect_ratio, nearClip, farClip);
+    float aspect_ratio = (float)internalResolutionWidth / (float)internalResolutionHeight;
+    perspectiveMatrix = ProjectionMatrixPerspective((FOV / 2.f) * SML_DEG2RAD, aspect_ratio, nearClip, farClip);
+}
+
+void GameCamera::CameraCalculatePerspectiveMatrix(float aspectRatio)
+{
+    perspectiveMatrix = ProjectionMatrixPerspective((FOV / 2.f) * SML_DEG2RAD, aspectRatio, nearClip, farClip);
 }
 
 void GameCamera::CameraCalculateViewMatrix()

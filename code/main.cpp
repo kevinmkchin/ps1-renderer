@@ -51,14 +51,6 @@ BUILD MODES:
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl.h"
 #include "imgui/imgui_impl_opengl3.h"
-#include "imgui/imgui.cpp"
-#include "imgui/imgui_demo.cpp"
-#include "imgui/imgui_draw.cpp"
-#include "imgui/imgui_tables.cpp"
-#include "imgui/imgui_widgets.cpp"
-#include "imgui/imgui_impl_sdl.cpp"
-#define IMGUI_IMPL_OPENGL_LOADER_CUSTOM
-#include "imgui/imgui_impl_opengl3.cpp"
 
 #include <SDL.h>
 #include <assimp/Importer.hpp>
@@ -75,6 +67,11 @@ BUILD MODES:
 #include "core.h"
 #include "game.h"
 
+GLOBAL_VAR u32 internalResolutionWidth = 320;
+GLOBAL_VAR u32 internalResolutionHeight = 240;
+GLOBAL_VAR i32 backbufferWidth = INDEX_NONE;
+GLOBAL_VAR i32 backbufferHeight = INDEX_NONE;
+GLOBAL_VAR float FOV = 90.f;
 GLOBAL_VAR bool gIsRunning = true;
 GLOBAL_VAR float gDeltaTime;
 GLOBAL_VAR const u8* gKeyState = nullptr; // Stores keyboard state this frame. Access via gKeystate[SDL_Scancode].
@@ -86,6 +83,10 @@ GLOBAL_VAR bool editorModeActiveFlag;
 GLOBAL_VAR noclip::console console;
 INTERNAL std::mutex __consoleCommandQueueMutex;
 INTERNAL std::string __consoleCommandQueue;
+
+GLOBAL_VAR Shader sceneShader;
+GLOBAL_VAR Shader editorShader;
+INTERNAL Shader quadShader;
 
 #include "input.cpp"
 #include "file.cpp"
@@ -102,13 +103,10 @@ INTERNAL std::string __consoleCommandQueue;
 
 INTERNAL SDL_Window* window = nullptr;
 INTERNAL SDL_GLContext openglContext = nullptr;
-INTERNAL i32 backbufferWidth = INDEX_NONE;
-INTERNAL i32 backbufferHeight = INDEX_NONE;
 INTERNAL u32 internalFBO = 0;
 INTERNAL u32 internalColorTexture = 0;
 INTERNAL u32 internalDepthBuffer = 0;
 INTERNAL Mesh finalOutputQuad;
-INTERNAL Shader quadShader;
 
 INTERNAL bool SDLInitialize()
 {
@@ -120,12 +118,12 @@ INTERNAL bool SDLInitialize()
     }
 
     // OpenGL Context Attributes
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3); // version major
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3); // version minor
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE); // core means not backward compatible. not using deprecated code.
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // allow forward compatibility
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1); // double buffering is on by default, but let's just call this anyway
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24); // depth buffer precision of 24 bits
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
     // Setup SDL Window
     if ((window = SDL_CreateWindow(
@@ -174,6 +172,7 @@ INTERNAL bool GLEWInitialize()
 INTERNAL void SDLWindowSizeChanged()
 {
     SDL_GL_GetDrawableSize(window, &backbufferWidth, &backbufferHeight);
+    editorCamera.CameraCalculatePerspectiveMatrix((float)backbufferWidth/(float)backbufferHeight);
 }
 
 INTERNAL void SDLFullscreen(int mode)
@@ -193,24 +192,155 @@ INTERNAL vec2 ScreenSpaceToInternalNDC(int x, int y)
 {
     float xCentered = (float) x - ((float)backbufferWidth/2.f);
     float yCentered = -((float) y - ((float)backbufferHeight/2.f));
-    float internal_ratio = (float)INTERNAL_RESOLUTION_WIDTH / (float)INTERNAL_RESOLUTION_HEIGHT;
+    float internal_ratio = (float)internalResolutionWidth / (float)internalResolutionHeight;
     float screen_ratio = (float)backbufferWidth / (float)backbufferHeight;
     if(screen_ratio > internal_ratio)
     {
-        float ratio = (float)backbufferHeight / (float)INTERNAL_RESOLUTION_HEIGHT;
-        float internalResScreenPixelWidth = ratio * (float)INTERNAL_RESOLUTION_WIDTH;
+        float ratio = (float)backbufferHeight / (float)internalResolutionHeight;
+        float internalResScreenPixelWidth = ratio * (float)internalResolutionWidth;
         float xNDC = xCentered / (internalResScreenPixelWidth / 2.f);
         float yNDC = yCentered / ((float)backbufferHeight / 2.f);
         return vec2(xNDC, yNDC);
     }
     else
     {
-        float ratio = (float)backbufferWidth / (float)INTERNAL_RESOLUTION_WIDTH;
-        float internalResScreenPixelHeight = ratio * (float)INTERNAL_RESOLUTION_HEIGHT;
+        float ratio = (float)backbufferWidth / (float)internalResolutionWidth;
+        float internalResScreenPixelHeight = ratio * (float)internalResolutionHeight;
         float xNDC = xCentered / ((float)backbufferWidth / 2.f);
         float yNDC = yCentered / (internalResScreenPixelHeight / 2.f);
         return vec2(xNDC, yNDC);
     }
+}
+
+INTERNAL void SwitchToEditor(bool activateEditor)
+{
+    if(activateEditor != editorModeActiveFlag)
+    {
+        if(activateEditor)
+        {
+            GameUnload();
+            editorModeActiveFlag = true;
+            EditorLoad("");
+        }
+        else
+        {
+            EditorUnload();
+            editorModeActiveFlag = false;
+            GameLoad();
+        }
+    }
+}
+
+INTERNAL void PollConsoleInput()
+{
+    while(gIsRunning)
+    {
+        std::string input;
+        std::cin >> input;
+
+        std::lock_guard<std::mutex> lock(__consoleCommandQueueMutex);
+        __consoleCommandQueue += " " + input;
+    }
+}
+
+INTERNAL void CheckConsoleCommandQueue()
+{
+    std::lock_guard<std::mutex> lock(__consoleCommandQueueMutex);
+    if(!__consoleCommandQueue.empty())
+    {
+        console.execute(__consoleCommandQueue, std::cout);
+        __consoleCommandQueue = std::string();
+    }
+}
+
+INTERNAL bool CreateInternalFramebuffer()
+{
+    glGenFramebuffers(1, &internalFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, internalFBO);
+        glGenTextures(1, &internalColorTexture);
+        glBindTexture(GL_TEXTURE_2D, internalColorTexture);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, internalResolutionWidth, internalResolutionHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, internalColorTexture, 0);
+            u32 colorAttachments[1] = { GL_COLOR_ATTACHMENT0 };
+            glDrawBuffers(1, colorAttachments);
+        glGenRenderbuffers(1, &internalDepthBuffer);
+        glBindRenderbuffer(GL_RENDERBUFFER, internalDepthBuffer);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, internalResolutionWidth, internalResolutionHeight);
+            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, internalDepthBuffer);
+        if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        {
+            printf("Internal FrameBuffer Object failed to create.");
+            return false;
+        }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    MeshCreate(finalOutputQuad, refQuadVertices, refQuadIndices, 16, 6, 2, 2, 0);
+
+    return true;
+}
+
+INTERNAL void UpdateInternalFramebufferSize()
+{
+    glBindFramebuffer(GL_FRAMEBUFFER, internalFBO);
+    glBindTexture(GL_TEXTURE_2D, internalColorTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, internalResolutionWidth, internalResolutionHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glBindRenderbuffer(GL_RENDERBUFFER, internalDepthBuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, internalResolutionWidth, internalResolutionHeight);
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    {
+        printf("Failed to change size of Internal FrameBuffer Object.\n");
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+INTERNAL void DrawInternalBufferToBackBuffer()
+{
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f); 
+        glClear(GL_COLOR_BUFFER_BIT);
+        glDisable(GL_DEPTH_TEST);
+        glViewport(0, 0, backbufferWidth, backbufferHeight);
+        quadShader.UseShader();
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, internalColorTexture);
+            float internal_ratio = (float)internalResolutionWidth / (float)internalResolutionHeight;
+            float screen_ratio = (float)backbufferWidth / (float)backbufferHeight;
+            float finalOutputQuadVertices[16] = {
+                -1.f, -1.f, 0.f, 0.f,
+                1.f, -1.f, 1.f, 0.f,
+                -1.f, 1.f, 0.f, 1.f,
+                1.f, 1.f, 1.f, 1.f
+            };
+            if(screen_ratio > internal_ratio)
+            {
+                float w = backbufferHeight * internal_ratio;
+                float f = (backbufferWidth - w) / backbufferWidth;
+                finalOutputQuadVertices[0] = -1.f + f;
+                finalOutputQuadVertices[4] = 1.f - f;
+                finalOutputQuadVertices[8] = -1.f + f;
+                finalOutputQuadVertices[12] = 1.f - f;
+            }
+            else
+            {
+                float h = backbufferWidth / internal_ratio;
+                float f = (backbufferHeight - h) / backbufferHeight;
+                finalOutputQuadVertices[1] = -1.f + f;
+                finalOutputQuadVertices[5] = -1.f + f;
+                finalOutputQuadVertices[9] = 1.f - f;
+                finalOutputQuadVertices[13] = 1.f - f;
+            }
+            finalOutputQuad.RebindBufferObjects(finalOutputQuadVertices, refQuadIndices, 16, 6);
+            finalOutputQuad.RenderMesh();
+        glUseProgram(0);
+}
+
+INTERNAL void ChangeInternalResolution(u32 width, u32 height)
+{
+    internalResolutionWidth = width;
+    internalResolutionHeight = height;
+    UpdateInternalFramebufferSize();
+    gameCamera.CameraCalculatePerspectiveMatrix();
 }
 
 INTERNAL void SDLProcessEvents()
@@ -305,119 +435,11 @@ INTERNAL void SDLProcessEvents()
     }
 }
 
-INTERNAL void SwitchToEditor(bool activateEditor)
-{
-    if(activateEditor != editorModeActiveFlag)
-    {
-        if(activateEditor)
-        {
-            GameUnload();
-            editorModeActiveFlag = true;
-            EditorLoad("");
-        }
-        else
-        {
-            EditorUnload();
-            editorModeActiveFlag = false;
-            GameLoad();
-        }
-    }
-}
-
-INTERNAL void PollConsoleInput()
-{
-    while(gIsRunning)
-    {
-        std::string input;
-        std::cin >> input;
-
-        std::lock_guard<std::mutex> lock(__consoleCommandQueueMutex);
-        __consoleCommandQueue += " " + input;
-    }
-}
-
-INTERNAL void CheckConsoleCommandQueue()
-{
-    std::lock_guard<std::mutex> lock(__consoleCommandQueueMutex);
-    if(!__consoleCommandQueue.empty())
-    {
-        console.execute(__consoleCommandQueue, std::cout);
-        __consoleCommandQueue = std::string();
-    }
-}
-
-INTERNAL bool CreateInternalFramebuffer()
-{
-    glGenFramebuffers(1, &internalFBO);
-    glBindFramebuffer(GL_FRAMEBUFFER, internalFBO);
-        glGenTextures(1, &internalColorTexture);
-        glBindTexture(GL_TEXTURE_2D, internalColorTexture);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, INTERNAL_RESOLUTION_WIDTH, INTERNAL_RESOLUTION_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, internalColorTexture, 0);
-            u32 colorAttachments[1] = { GL_COLOR_ATTACHMENT0 };
-            glDrawBuffers(1, colorAttachments);
-        glGenRenderbuffers(1, &internalDepthBuffer);
-        glBindRenderbuffer(GL_RENDERBUFFER, internalDepthBuffer);
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, INTERNAL_RESOLUTION_WIDTH, INTERNAL_RESOLUTION_HEIGHT);
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, internalDepthBuffer);
-        if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-        {
-            printf("Internal FrameBuffer Object failed to create.");
-            return false;
-        }
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    Shader::GLLoadShaderProgramFromFile(quadShader, "shaders/quad.vert", "shaders/quad.frag");
-    MeshCreate(finalOutputQuad, refQuadVertices, refQuadIndices, 16, 6, 2, 2, 0);
-
-    return true;
-}
-
-INTERNAL void DrawInternalBufferToBackBuffer()
-{
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f); 
-        glClear(GL_COLOR_BUFFER_BIT);
-        glDisable(GL_DEPTH_TEST);
-        glViewport(0, 0, backbufferWidth, backbufferHeight);
-        quadShader.UseShader();
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, internalColorTexture);
-            float internal_ratio = (float)INTERNAL_RESOLUTION_WIDTH / (float)INTERNAL_RESOLUTION_HEIGHT;
-            float screen_ratio = (float)backbufferWidth / (float)backbufferHeight;
-            float finalOutputQuadVertices[16] = {
-                -1.f, -1.f, 0.f, 0.f,
-                1.f, -1.f, 1.f, 0.f,
-                -1.f, 1.f, 0.f, 1.f,
-                1.f, 1.f, 1.f, 1.f
-            };
-            if(screen_ratio > internal_ratio)
-            {
-                float w = backbufferHeight * internal_ratio;
-                float f = (backbufferWidth - w) / backbufferWidth;
-                finalOutputQuadVertices[0] = -1.f + f;
-                finalOutputQuadVertices[4] = 1.f - f;
-                finalOutputQuadVertices[8] = -1.f + f;
-                finalOutputQuadVertices[12] = 1.f - f;
-            }
-            else
-            {
-                float h = backbufferWidth / internal_ratio;
-                float f = (backbufferHeight - h) / backbufferHeight;
-                finalOutputQuadVertices[1] = -1.f + f;
-                finalOutputQuadVertices[5] = -1.f + f;
-                finalOutputQuadVertices[9] = 1.f - f;
-                finalOutputQuadVertices[13] = 1.f - f;
-            }
-            finalOutputQuad.RebindBufferObjects(finalOutputQuadVertices, refQuadIndices, 16, 6);
-            finalOutputQuad.RenderMesh();
-        glUseProgram(0);
-}
-
 INTERNAL void BindConsoleCommandsAndVariables()
 {
     console.bind_cmd("fullscreen", SDLFullscreen);
+
+    console.bind_cmd("internal_resolution_size", ChangeInternalResolution);
 
     console.bind_cmd("game", [](std::istream& is, std::ostream& os){
         SwitchToEditor(false);
@@ -478,6 +500,10 @@ int main(int argc, char* argv[])
     BindConsoleCommandsAndVariables();
     std::thread consoleInputThread(PollConsoleInput);
 
+    Shader::GLLoadShaderProgramFromFile(quadShader, "shaders/quad.vert", "shaders/quad.frag");
+    Shader::GLLoadShaderProgramFromFile(sceneShader, "shaders/scene.vert", "shaders/scene.frag");
+    Shader::GLLoadShaderProgramFromFile(editorShader, "shaders/editor.vert", "shaders/editor.frag");
+
     EditorInitOnStartUp();
     GameInitOnStartUp();
     GameLoad();
@@ -504,9 +530,9 @@ int main(int argc, char* argv[])
             DearImGuiBeginNewFrame();
 
             editorModeActiveFlag ? EditorUpdate() : GameUpdate();
-            glBindFramebuffer(GL_FRAMEBUFFER, internalFBO);
+            if(!editorModeActiveFlag) glBindFramebuffer(GL_FRAMEBUFFER, internalFBO);
             editorModeActiveFlag ? EditorRender() : GameRender();
-            DrawInternalBufferToBackBuffer();
+            if(!editorModeActiveFlag) DrawInternalBufferToBackBuffer();
 
             DearImGuiEndNewFrame();
 
@@ -526,3 +552,12 @@ int main(int argc, char* argv[])
 }
 
 #pragma endregion //PLATFORM_LAYER
+
+#include "imgui/imgui.cpp"
+#include "imgui/imgui_demo.cpp"
+#include "imgui/imgui_draw.cpp"
+#include "imgui/imgui_tables.cpp"
+#include "imgui/imgui_widgets.cpp"
+#include "imgui/imgui_impl_sdl.cpp"
+#define IMGUI_IMPL_OPENGL_LOADER_CUSTOM
+#include "imgui/imgui_impl_opengl3.cpp"

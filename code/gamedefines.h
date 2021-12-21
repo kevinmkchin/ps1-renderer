@@ -48,8 +48,6 @@ INTERNAL float refQuadVertices[16] = {
 
 /** GAME **/
 #define TARGET_FPS 60
-#define INTERNAL_RESOLUTION_WIDTH 320
-#define INTERNAL_RESOLUTION_HEIGHT 240
 #define GAME_MAPS_DIRECTORY "data/maps/"
 
 /** INPUT **/
