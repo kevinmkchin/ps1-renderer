@@ -81,19 +81,19 @@ INTERNAL void GameUpdate()
 INTERNAL void GameRender()
 {
     glViewport(0, 0, INTERNAL_RESOLUTION_WIDTH, INTERNAL_RESOLUTION_HEIGHT);
-    glClearColor(RGB(46,88,120), 1.f);
+    glClearColor(_RGB(46, 88, 120), 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
 
     sceneShader.UseShader();
         sceneShader.GLBindMatrix4fv("viewMatrix", 1, gameCamera.viewMatrix.ptr());
         sceneShader.GLBindMatrix4fv("projMatrix", 1, gameCamera.perspectiveMatrix.ptr());
-        sceneShader.GLBind3f("modelColor", RGB(0,0,0));
+        sceneShader.GLBind3f("modelColor", _RGB(0, 0, 0));
         for(auto& gameObj : gameObjectsA)
         {
             gameObj->Render(sceneShader);
         }
-        for(int i = 0; i < staticMapObjects.Count(); ++i)
+        for(u32 i = 0; i < staticMapObjects.Count(); ++i)
         {
             staticMapObjects[i].Render(sceneShader);
         }
