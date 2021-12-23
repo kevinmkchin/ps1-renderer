@@ -183,7 +183,7 @@ struct GameCamera
     float nearClip              = 0.1f;
     float farClip               = 2000.f;
     float moveSpeed             = 6.f;
-    float turnSpeed             = 0.15f;
+    float turnSpeed             = 0.04f;
     bool bMouseControl          = false;
 
     void CameraUpdate();
