@@ -15,7 +15,7 @@ set ADDDEPENDENCIES=Shell32.lib opengl32.lib glew32.lib SDL2.lib SDL2main.lib as
 rem Binary Output Directory
 set OUTPUTDIR="debug"
 rem Output Executable Name
-set OUTPUTEXE="ps1.exe"
+set OUTPUTEXE="primevil.exe"
 
 rem Linker Options
 set LINKEROPTIONS=/SUBSYSTEM:CONSOLE %ADDLIBPATHS% %ADDDEPENDENCIES%

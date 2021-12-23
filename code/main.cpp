@@ -1,9 +1,12 @@
-/** Playstation 1 style renderer
+/** PRIMEVIL
 
 TODO:
+    - Accumulate Keyboard and gamepad inputs in real time and then reset them at the end of a tick.
+    - Add comments to global variables so i know wtf they are
+    - make input polling be separate from game ticks
+    - Level Editor IMGUI to create new geometry
     - Save texture data to disk with map
     - Load map to game
-    - Level Editor IMGUI to create new geometry and modify existing geom
     - Level Editor
         - creates the Visible level geometry and Collidable level geometry
         Types of static level objects in game:
@@ -15,7 +18,7 @@ TODO:
         Additionally, editor can specify other objects too e.g. power ups and their locations:
         - We can drop an editor object (no mesh, just a billboard facing the gameCamera indicating what power up it is)
     - Text rendering with kc_truetypeassembler.h
-    - Drop-down console port from XNGINE
+    - Drop-down console port from XNGINE (tilde)
     - Animation
     - Audio
 
@@ -46,12 +49,11 @@ BUILD MODES:
 #include <mutex>
 #include <thread>
 
-#include <GL/glew.h>
-
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_sdl.h"
 #include "imgui/imgui_impl_opengl3.h"
 
+#include <GL/glew.h>
 #include <SDL.h>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -75,8 +77,7 @@ GLOBAL_VAR float FOV = 90.f;
 GLOBAL_VAR bool gIsRunning = true;
 GLOBAL_VAR float gDeltaTime;
 GLOBAL_VAR const u8* gKeyState = nullptr; // Stores keyboard state this frame. Access via gKeystate[SDL_Scancode].
-GLOBAL_VAR i32 gMouseDeltaX;
-GLOBAL_VAR i32 gMouseDeltaY;
+GLOBAL_VAR vec2 gMouseDelta;
 GLOBAL_VAR GamepadState gGamepadStates[MAX_GAMEPAD_COUNT] = {};
 GLOBAL_VAR bool editorModeActiveFlag;
 
@@ -97,7 +98,7 @@ INTERNAL Shader quadShader;
 
 #pragma region PLATFORM_LAYER
 
-#define WINDOW_TITLE "ps1 style renderer"
+#define WINDOW_TITLE "PRIMEVIL GAME"
 #define WINDOW_INITIAL_WIDTH 960
 #define WINDOW_INITIAL_HEIGHT 720
 
@@ -210,6 +211,13 @@ INTERNAL vec2 ScreenSpaceToInternalNDC(int x, int y)
         float yNDC = yCentered / (internalResScreenPixelHeight / 2.f);
         return vec2(xNDC, yNDC);
     }
+}
+
+INTERNAL vec2 ScreenSpaceToScreenNDC(int x, int y)
+{
+    float xNDC = ((float) x - ((float)backbufferWidth/2.f)) / ((float)backbufferWidth/2.f);
+    float yNDC = ((float) y - ((float)backbufferHeight/2.f)) / ((float)-backbufferHeight/2.f);
+    return vec2(xNDC, yNDC);
 }
 
 INTERNAL void SwitchToEditor(bool activateEditor)
@@ -343,14 +351,8 @@ INTERNAL void ChangeInternalResolution(u32 width, u32 height)
     gameCamera.CameraCalculatePerspectiveMatrix();
 }
 
-INTERNAL void SDLProcessEvents()
+INTERNAL void SDLProcessEventsRealtime()
 {
-    SDLUpdateGamepads();
-
-    // Store Mouse state
-    gMouseDeltaX = 0;
-    gMouseDeltaY = 0;
-
     SDL_Event event;
     while(SDL_PollEvent(&event))
     {
@@ -384,12 +386,15 @@ INTERNAL void SDLProcessEvents()
                 {
                     if(editorModeActiveFlag)
                     {
-                        int x, y;
-                        SDL_GetMouseState(&x, &y);
-                        vec2 internalNDC = ScreenSpaceToInternalNDC(x,y);
-                        if(SML_abs(internalNDC.x) <= 1.f && SML_abs(internalNDC.y) <= 1.f)
+                        if(!ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow))
                         {
-                            EditorMousePick(internalNDC.x, internalNDC.y);
+                            int x, y;
+                            SDL_GetMouseState(&x, &y);
+                            vec2 screenNDC = ScreenSpaceToScreenNDC(x,y);
+                            if(SML_abs(screenNDC.x) <= 1.f && SML_abs(screenNDC.y) <= 1.f)
+                            {
+                                EditorMousePick(screenNDC.x, screenNDC.y);
+                            }
                         }
                     }
                 }
@@ -398,8 +403,10 @@ INTERNAL void SDLProcessEvents()
             case SDL_MOUSEMOTION:
             {
                 SDL_MouseMotionEvent mouseMotion = event.motion;
-                gMouseDeltaX = mouseMotion.xrel;
-                gMouseDeltaY = mouseMotion.yrel;
+                if(SML_abs(mouseMotion.xrel) < 50 && SML_abs(mouseMotion.yrel) < 50)
+                {
+                    gMouseDelta += vec2((float)mouseMotion.xrel, (float)mouseMotion.yrel);
+                }
             } break;
 
             case SDL_WINDOWEVENT:
@@ -433,6 +440,19 @@ INTERNAL void SDLProcessEvents()
     {
         gIsRunning = false;
     }
+}
+
+INTERNAL void SDLProcessEventsOnTick()
+{
+    SDLUpdateGamepads();
+}
+
+INTERNAL void ResetInputDeltas()
+{
+    /* We accumulate input delta in realtime, but we only read/check
+     * the delta on tick. This means after we read/check the input delta,
+     * we should reset them back to their initial values. */
+    gMouseDelta = vec2(0.f,0.f);
 }
 
 INTERNAL void BindConsoleCommandsAndVariables()
@@ -518,13 +538,16 @@ int main(int argc, char* argv[])
         msSinceLastUpdate += msThisTick - msLastTick;
         msLastTick = msThisTick;
 
+        SDLProcessEventsRealtime();
+
         while(msSinceLastUpdate > msPerFrame)
         {
+            SDLProcessEventsOnTick();
+
             msSinceLastUpdate -= msPerFrame;
             gDeltaTime = msPerFrame / 1000.f;
 
             CheckConsoleCommandQueue();
-            SDLProcessEvents();
             if(gIsRunning == false) { break; }
 
             DearImGuiBeginNewFrame();
@@ -537,6 +560,8 @@ int main(int argc, char* argv[])
             DearImGuiEndNewFrame();
 
             SDL_GL_SwapWindow(window);
+
+            ResetInputDeltas();
         }
     }
 

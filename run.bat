@@ -2,9 +2,9 @@
 
 
 IF "%1"=="vs" (
-    devenv build\debug\ps1.exe
+    devenv build\debug\primevil.exe
 ) ELSE (
     pushd build\debug
-    START /D ..\..\data ps1.exe 
+    START /D ..\..\data primevil.exe 
     popd
 )

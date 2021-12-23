@@ -419,11 +419,8 @@ void GameCamera::CameraUpdate()
 {
     if(bMouseControl)
     {
-        if(SML_abs(gMouseDeltaX) < 50.f && SML_abs(gMouseDeltaY) < 50.f) // don't move if mouse delta is too big to be normal
-        {
-            rotation.y /*yaw*/ -= ((float)gMouseDeltaX) * turnSpeed * 0.8f;
-            rotation.z /*pitch*/ -= ((float)gMouseDeltaY) * turnSpeed * 0.8f;
-        }
+        rotation.y /*yaw*/ -= ((float)gMouseDelta.x) * turnSpeed;
+        rotation.z /*pitch*/ -= ((float)gMouseDelta.y) * turnSpeed;
         if(gGamepadStates[0].isConnected)
         {
             rotation.y -= gGamepadStates[0].rightThumbStickDir.x * turnSpeed * gDeltaTime * 260.f;
