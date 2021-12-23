@@ -1,3 +1,55 @@
+#include "input.h"
+
+/** INPUT **/
+
+// Stores the mouse delta accumulated between each frame
+GLOBAL_VAR vec2 gMouseDelta;
+
+// Keyboard State - Access via SDL_Scancode
+GLOBAL_VAR u8 gCurrentKeyState[256];
+GLOBAL_VAR u8 gJustPressedKeyState[256];
+GLOBAL_VAR u8 gJustReleasedKeyState[256];
+
+// Gamepad State - Look inside GamepadState
+GLOBAL_VAR GamepadState gGamepadStates[MAX_GAMEPAD_COUNT] = {};
+
+
+/** Mouse **/
+
+INTERNAL void ProcessSDLMouseMotionEvent(SDL_MouseMotionEvent mouseMotionEvent)
+{
+    if(SML_abs(mouseMotionEvent.xrel) < 50 && SML_abs(mouseMotionEvent.yrel) < 50)
+    {
+        gMouseDelta += vec2((float)mouseMotionEvent.xrel, (float)mouseMotionEvent.yrel);
+    }
+}
+
+
+/** Keyboard **/
+
+INTERNAL void ProcessSDLKeyDownEvent(SDL_KeyboardEvent keyEvent)
+{
+    SDL_Scancode key = keyEvent.keysym.scancode;
+    gCurrentKeyState[key] = 1;
+    gJustPressedKeyState[key] = 1; 
+}
+
+INTERNAL void ProcessSDLKeyUpEvent(SDL_KeyboardEvent keyEvent)
+{
+    // Never set JustPressed or JustReleased to 0 here.
+    SDL_Scancode key = keyEvent.keysym.scancode;
+    gCurrentKeyState[key] = 0;
+    gJustReleasedKeyState[key] = 1;
+}
+
+INTERNAL void ResetKeyboardStates()
+{
+    memset(gJustPressedKeyState, 0, 256);
+    memset(gJustReleasedKeyState, 0, 256);
+}
+
+
+/** Gamepad **/
 
 INTERNAL i16 SDL_JOYSTICK_DEAD_ZONE = 8000;
 

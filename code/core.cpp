@@ -457,27 +457,27 @@ void GameCamera::CameraUpdate()
         }
     }
 
-    if (gKeyState[SDL_SCANCODE_W])
+    if (gCurrentKeyState[SDL_SCANCODE_W])
     {
         position += calculatedDirection * moveSpeed * gDeltaTime;
     }
-    if (gKeyState[SDL_SCANCODE_A])
+    if (gCurrentKeyState[SDL_SCANCODE_A])
     {
         position += -calculatedRight * moveSpeed * gDeltaTime;
     }
-    if (gKeyState[SDL_SCANCODE_S])
+    if (gCurrentKeyState[SDL_SCANCODE_S])
     {
         position += -calculatedDirection * moveSpeed * gDeltaTime;
     }
-    if (gKeyState[SDL_SCANCODE_D])
+    if (gCurrentKeyState[SDL_SCANCODE_D])
     {
         position += calculatedRight * moveSpeed * gDeltaTime;
     }
-    if (gKeyState[SDL_SCANCODE_Q])
+    if (gCurrentKeyState[SDL_SCANCODE_Q])
     {
         position.y += -moveSpeed * gDeltaTime;
     }
-    if (gKeyState[SDL_SCANCODE_E])
+    if (gCurrentKeyState[SDL_SCANCODE_E])
     {
         position.y += moveSpeed * gDeltaTime;
     }
