@@ -67,8 +67,8 @@ INTERNAL void GameUpdate()
     }
 
     gameObjectsA[0]->Move(
-            {(gKeyState[SDL_SCANCODE_RIGHT] * 1.f + -gKeyState[SDL_SCANCODE_LEFT] * 1.f) * gDeltaTime,
-             (gKeyState[SDL_SCANCODE_UP] * 1.f + -gKeyState[SDL_SCANCODE_DOWN] * 1.f) * gDeltaTime,
+            {(gCurrentKeyState[SDL_SCANCODE_RIGHT] * 1.f + -gCurrentKeyState[SDL_SCANCODE_LEFT] * 1.f) * gDeltaTime,
+             (gCurrentKeyState[SDL_SCANCODE_UP] * 1.f + -gCurrentKeyState[SDL_SCANCODE_DOWN] * 1.f) * gDeltaTime,
               0.f });
     quat rot = EulerToQuat(vec3(0.f, 30.f, -47.f) * SML_DEG2RAD * gDeltaTime);
     gameObjectsA[0]->Rotate(rot);

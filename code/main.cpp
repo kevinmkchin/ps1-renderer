@@ -1,7 +1,7 @@
 /** PRIMEVIL
 
 TODO:
-    - Accumulate Keyboard and gamepad inputs in real time and then reset them at the end of a tick.
+    - Properly accumulate gamepad inputs in real time, reset them at end of tick. Use SDL PollEvents to update gamepad state.
     - Add comments to global variables so i know wtf they are
     - make input polling be separate from game ticks
     - Level Editor IMGUI to create new geometry
@@ -76,9 +76,6 @@ GLOBAL_VAR i32 backbufferHeight = INDEX_NONE;
 GLOBAL_VAR float FOV = 90.f;
 GLOBAL_VAR bool gIsRunning = true;
 GLOBAL_VAR float gDeltaTime;
-GLOBAL_VAR const u8* gKeyState = nullptr; // Stores keyboard state this frame. Access via gKeystate[SDL_Scancode].
-GLOBAL_VAR vec2 gMouseDelta;
-GLOBAL_VAR GamepadState gGamepadStates[MAX_GAMEPAD_COUNT] = {};
 GLOBAL_VAR bool editorModeActiveFlag;
 
 GLOBAL_VAR noclip::console console;
@@ -148,8 +145,6 @@ INTERNAL bool SDLInitialize()
         return false;
     }
     printf("SDL Window & OpenGL context created.\n");
-
-    gKeyState = SDL_GetKeyboardState(nullptr);
 
     return true;
 }
@@ -402,11 +397,22 @@ INTERNAL void SDLProcessEventsRealtime()
 
             case SDL_MOUSEMOTION:
             {
-                SDL_MouseMotionEvent mouseMotion = event.motion;
-                if(SML_abs(mouseMotion.xrel) < 50 && SML_abs(mouseMotion.yrel) < 50)
+                ProcessSDLMouseMotionEvent(event.motion);
+            } break;
+
+            case SDL_KEYDOWN:
+            {
+                ProcessSDLKeyDownEvent(event.key);
+
+                if (event.key.keysym.sym == SDLK_ESCAPE)
                 {
-                    gMouseDelta += vec2((float)mouseMotion.xrel, (float)mouseMotion.yrel);
+                    gIsRunning = false;
                 }
+            } break;
+
+            case SDL_KEYUP:
+            {
+                ProcessSDLKeyUpEvent(event.key);
             } break;
 
             case SDL_WINDOWEVENT:
@@ -424,14 +430,6 @@ INTERNAL void SDLProcessEventsRealtime()
             case SDL_QUIT:
             {
                 gIsRunning = false;
-            } break;
-
-            case SDL_KEYDOWN:
-            {
-                if (event.key.keysym.sym == SDLK_ESCAPE)
-                {
-                    gIsRunning = false;
-                }
             } break;
         }
     }
@@ -453,6 +451,8 @@ INTERNAL void ResetInputDeltas()
      * the delta on tick. This means after we read/check the input delta,
      * we should reset them back to their initial values. */
     gMouseDelta = vec2(0.f,0.f);
+
+    ResetKeyboardStates();
 }
 
 INTERNAL void BindConsoleCommandsAndVariables()
