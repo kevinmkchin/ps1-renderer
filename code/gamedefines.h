@@ -18,6 +18,7 @@ typedef uint_fast32_t u32f;
 typedef int_fast8_t   i8f;
 typedef int_fast16_t  i16f;
 typedef int_fast32_t  i32f;
+typedef i16           bool16;
 typedef i32           bool32;
 
 #define INDEX_NONE -1

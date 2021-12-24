@@ -445,7 +445,6 @@ void GameCamera::CameraUpdate()
 
     if(gGamepadStates[0].isConnected)
     {
-
         position += calculatedDirection * gGamepadStates[0].leftThumbStickDir.y * gDeltaTime;
         position += calculatedRight * gGamepadStates[0].leftThumbStickDir.x * gDeltaTime;
 
