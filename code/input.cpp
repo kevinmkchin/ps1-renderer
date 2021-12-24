@@ -74,7 +74,6 @@ INTERNAL void ProcessSDLControllerButtonDownEvent(SDL_ControllerButtonEvent game
     i32 joystickInstanceID = gamepadButtonEvent.which;
     i32 gamepadIndex = gGamepadStates.GamepadIndexFromInstanceID(joystickInstanceID);
     u8 buttonIndex = gamepadButtonEvent.button;
-    printf("button down gamepad index %d\n", gamepadIndex);
 
     switch(buttonIndex)
     {
@@ -145,60 +144,60 @@ INTERNAL void ProcessSDLControllerButtonUpEvent(SDL_ControllerButtonEvent gamepa
 
     switch(buttonIndex)
     {
-        case 1: { 
-            gGamepadStates[gamepadIndex].currentButtonState &= !GAMEPAD_A;
+        case 0: { 
+            gGamepadStates[gamepadIndex].currentButtonState ^= GAMEPAD_A;
             gGamepadStates[gamepadIndex].justReleasedButtonState |= GAMEPAD_A;
         } break;
-        case 2: { 
-            gGamepadStates[gamepadIndex].currentButtonState &= !GAMEPAD_B;
+        case 1: { 
+            gGamepadStates[gamepadIndex].currentButtonState ^= GAMEPAD_B;
             gGamepadStates[gamepadIndex].justReleasedButtonState |= GAMEPAD_B;
         } break;
-        case 3: { 
-            gGamepadStates[gamepadIndex].currentButtonState &= !GAMEPAD_X;
+        case 2: { 
+            gGamepadStates[gamepadIndex].currentButtonState ^= GAMEPAD_X;
             gGamepadStates[gamepadIndex].justReleasedButtonState |= GAMEPAD_X;
         } break;
-        case 4: { 
-            gGamepadStates[gamepadIndex].currentButtonState &= !GAMEPAD_Y;
+        case 3: { 
+            gGamepadStates[gamepadIndex].currentButtonState ^= GAMEPAD_Y;
             gGamepadStates[gamepadIndex].justReleasedButtonState |= GAMEPAD_Y;
         } break;
-        case 5: { 
-            gGamepadStates[gamepadIndex].currentButtonState &= !GAMEPAD_BACK;
+        case 4: { 
+            gGamepadStates[gamepadIndex].currentButtonState ^= GAMEPAD_BACK;
             gGamepadStates[gamepadIndex].justReleasedButtonState |= GAMEPAD_BACK;
         } break;
-        case 7: { 
-            gGamepadStates[gamepadIndex].currentButtonState &= !GAMEPAD_START;
+        case 6: { 
+            gGamepadStates[gamepadIndex].currentButtonState ^= GAMEPAD_START;
             gGamepadStates[gamepadIndex].justReleasedButtonState |= GAMEPAD_START;
         } break;
-        case 8: { 
-            gGamepadStates[gamepadIndex].currentButtonState &= !GAMEPAD_LTHUMB;
+        case 7: { 
+            gGamepadStates[gamepadIndex].currentButtonState ^= GAMEPAD_LTHUMB;
             gGamepadStates[gamepadIndex].justReleasedButtonState |= GAMEPAD_LTHUMB;
         } break;
-        case 9: { 
-            gGamepadStates[gamepadIndex].currentButtonState &= !GAMEPAD_RTHUMB;
+        case 8: { 
+            gGamepadStates[gamepadIndex].currentButtonState ^= GAMEPAD_RTHUMB;
             gGamepadStates[gamepadIndex].justReleasedButtonState |= GAMEPAD_RTHUMB;
         } break;
-        case 10: { 
-            gGamepadStates[gamepadIndex].currentButtonState &= !GAMEPAD_LB;
+        case 9: { 
+            gGamepadStates[gamepadIndex].currentButtonState ^= GAMEPAD_LB;
             gGamepadStates[gamepadIndex].justReleasedButtonState |= GAMEPAD_LB;
         } break;
-        case 11: { 
-            gGamepadStates[gamepadIndex].currentButtonState &= !GAMEPAD_RB;
+        case 10: { 
+            gGamepadStates[gamepadIndex].currentButtonState ^= GAMEPAD_RB;
             gGamepadStates[gamepadIndex].justReleasedButtonState |= GAMEPAD_RB;
         } break;
-        case 12: { 
-            gGamepadStates[gamepadIndex].currentButtonState &= !GAMEPAD_DPAD_UP;
+        case 11: { 
+            gGamepadStates[gamepadIndex].currentButtonState ^= GAMEPAD_DPAD_UP;
             gGamepadStates[gamepadIndex].justReleasedButtonState |= GAMEPAD_DPAD_UP;
         } break;
-        case 13: { 
-            gGamepadStates[gamepadIndex].currentButtonState &= !GAMEPAD_DPAD_DOWN;
+        case 12: { 
+            gGamepadStates[gamepadIndex].currentButtonState ^= GAMEPAD_DPAD_DOWN;
             gGamepadStates[gamepadIndex].justReleasedButtonState |= GAMEPAD_DPAD_DOWN;
         } break;
-        case 14: { 
-            gGamepadStates[gamepadIndex].currentButtonState &= !GAMEPAD_DPAD_LEFT;
+        case 13: { 
+            gGamepadStates[gamepadIndex].currentButtonState ^= GAMEPAD_DPAD_LEFT;
             gGamepadStates[gamepadIndex].justReleasedButtonState |= GAMEPAD_DPAD_LEFT;
         } break;
-        case 15: { 
-            gGamepadStates[gamepadIndex].currentButtonState &= !GAMEPAD_DPAD_RIGHT;
+        case 14: { 
+            gGamepadStates[gamepadIndex].currentButtonState ^= GAMEPAD_DPAD_RIGHT;
             gGamepadStates[gamepadIndex].justReleasedButtonState |= GAMEPAD_DPAD_RIGHT;
         } break;
     }

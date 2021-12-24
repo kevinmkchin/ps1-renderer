@@ -421,11 +421,12 @@ void GameCamera::CameraUpdate()
     {
         rotation.y /*yaw*/ -= ((float)gMouseDelta.x) * turnSpeed;
         rotation.z /*pitch*/ -= ((float)gMouseDelta.y) * turnSpeed;
-        if(gGamepadStates[0].isConnected)
-        {
-            rotation.y -= gGamepadStates[0].rightThumbStickDir.x * turnSpeed * gDeltaTime * 260.f;
-            rotation.z += gGamepadStates[0].rightThumbStickDir.y * turnSpeed * gDeltaTime * 260.f;
-        }
+    }
+
+    if(gGamepadStates[0].isConnected)
+    {
+        rotation.y -= gGamepadStates[0].rightThumbStickDir.x * turnSpeed * gDeltaTime * 1100.f;
+        rotation.z += gGamepadStates[0].rightThumbStickDir.y * turnSpeed * gDeltaTime * 1100.f;
     }
 
     if(rotation.z > 89.f)
@@ -445,8 +446,8 @@ void GameCamera::CameraUpdate()
 
     if(gGamepadStates[0].isConnected)
     {
-        position += calculatedDirection * gGamepadStates[0].leftThumbStickDir.y * gDeltaTime;
-        position += calculatedRight * gGamepadStates[0].leftThumbStickDir.x * gDeltaTime;
+        position += calculatedDirection * gGamepadStates[0].leftThumbStickDir.y * 5.f * gDeltaTime;
+        position += calculatedRight * gGamepadStates[0].leftThumbStickDir.x * 5.f * gDeltaTime;
 
         if (gGamepadStates[0].IsPressed(GAMEPAD_RB)) {
             position.y += moveSpeed * gDeltaTime;
