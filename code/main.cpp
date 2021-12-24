@@ -1,7 +1,6 @@
 /** PRIMEVIL
 
 TODO:
-    - Properly accumulate gamepad inputs in real time, reset them at end of tick. Use SDL PollEvents to update gamepad state.
     - Add comments to global variables so i know wtf they are
     - make input polling be separate from game ticks
     - Level Editor IMGUI to create new geometry
@@ -355,8 +354,7 @@ INTERNAL void SDLProcessEventsRealtime()
 
         switch(event.type)
         {
-            case SDL_MOUSEBUTTONUP:
-            {
+            case SDL_MOUSEBUTTONUP:{
                 SDL_MouseButtonEvent mouseUp = event.button;
                 if(mouseUp.button == SDL_BUTTON_RIGHT && mouseUp.state == SDL_RELEASED)
                 {
@@ -365,10 +363,9 @@ INTERNAL void SDLProcessEventsRealtime()
                     gameCamera.bMouseControl = false;
                     editorCamera.bMouseControl = false;
                 }
-            }
+            }break;
 
-            case SDL_MOUSEBUTTONDOWN:
-            {
+            case SDL_MOUSEBUTTONDOWN:{
                 SDL_MouseButtonEvent mouseDown = event.button;
                 if(mouseDown.button == SDL_BUTTON_RIGHT && mouseDown.state == SDL_PRESSED)
                 {
@@ -393,56 +390,57 @@ INTERNAL void SDLProcessEventsRealtime()
                         }
                     }
                 }
-            }
+            }break;
 
-            case SDL_MOUSEMOTION:
-            {
+            case SDL_MOUSEMOTION:{
                 ProcessSDLMouseMotionEvent(event.motion);
-            } break;
+            }break;
 
-            case SDL_KEYDOWN:
-            {
+            case SDL_KEYDOWN:{
                 ProcessSDLKeyDownEvent(event.key);
 
                 if (event.key.keysym.sym == SDLK_ESCAPE)
                 {
                     gIsRunning = false;
                 }
-            } break;
-
-            case SDL_KEYUP:
-            {
+            }break;
+            case SDL_KEYUP:{
                 ProcessSDLKeyUpEvent(event.key);
-            } break;
+            }break;
 
-            case SDL_WINDOWEVENT:
-            {
+
+            case SDL_CONTROLLERBUTTONDOWN:{
+                ProcessSDLControllerButtonDownEvent(event.cbutton);
+            }break;
+            case SDL_CONTROLLERBUTTONUP:{
+                ProcessSDLControllerButtonUpEvent(event.cbutton);
+            }break;
+            case SDL_CONTROLLERAXISMOTION:{
+                ProcessSDLControllerAxisEvent(event.caxis);
+            }break;
+            case SDL_CONTROLLERDEVICEADDED:{
+                SDLControllerConnected(event.cdevice.which);
+            }break;
+            case SDL_CONTROLLERDEVICEREMOVED:{
+                SDLControllerRemoved(event.cdevice.which);
+            }break;
+
+
+            case SDL_WINDOWEVENT:{
                 switch(event.window.event)
                 {
                     case SDL_WINDOWEVENT_RESIZED:
-                    case SDL_WINDOWEVENT_SIZE_CHANGED:
-                    {
+                    case SDL_WINDOWEVENT_SIZE_CHANGED:{
                         SDLWindowSizeChanged();
-                    } break;
+                    }break;
                 }
-            } break;
+            }break;
 
-            case SDL_QUIT:
-            {
+            case SDL_QUIT:{
                 gIsRunning = false;
-            } break;
+            }break;
         }
     }
-
-    if(gGamepadStates[0].isConnected && gGamepadStates[0].HasBeenPressed(GAMEPAD_START))
-    {
-        gIsRunning = false;
-    }
-}
-
-INTERNAL void SDLProcessEventsOnTick()
-{
-    SDLUpdateGamepads();
 }
 
 INTERNAL void ResetInputDeltas()
@@ -453,6 +451,7 @@ INTERNAL void ResetInputDeltas()
     gMouseDelta = vec2(0.f,0.f);
 
     ResetKeyboardStates();
+    ResetControllerStates();
 }
 
 INTERNAL void BindConsoleCommandsAndVariables()
@@ -542,8 +541,6 @@ int main(int argc, char* argv[])
 
         while(msSinceLastUpdate > msPerFrame)
         {
-            SDLProcessEventsOnTick();
-
             msSinceLastUpdate -= msPerFrame;
             gDeltaTime = msPerFrame / 1000.f;
 
