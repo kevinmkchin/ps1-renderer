@@ -130,7 +130,7 @@ void ByteBufferInit(ByteBuffer* buffer)
 
 ByteBuffer ByteBufferNew()
 {
-    ByteBuffer buffer = {0};
+    ByteBuffer buffer;
     ByteBufferInit(&buffer);
     return buffer;
 }
