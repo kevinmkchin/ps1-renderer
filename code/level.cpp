@@ -414,7 +414,7 @@ INTERNAL void EditorSwitchMap(const std::string& mapName)
     EditorLoad(mapName);
 }
 
-#if (defined _WIN64)
+#if (defined _WIN32)
     #include <shobjidl.h>
     #include <codecvt>
 #endif
@@ -431,7 +431,7 @@ INTERNAL void EditorUpdate()
         {
             if (ImGui::MenuItem("Open..", "Ctrl+O"))
             {
-#if (defined _WIN64)
+#if (defined _WIN32)
                 IFileOpenDialog *pFileOpen;
                 HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL,
                                       IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
@@ -466,7 +466,7 @@ INTERNAL void EditorUpdate()
             }
             if (ImGui::MenuItem("Save", "Ctrl+S"))
             {
-#if (defined _WIN64)
+#if (defined _WIN32)
                 IFileSaveDialog* pFileSave;
                 HRESULT hr = CoCreateInstance(CLSID_FileSaveDialog, NULL, CLSCTX_ALL,
                                               IID_IFileSaveDialog, reinterpret_cast<void**>(&pFileSave));

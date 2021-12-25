@@ -53,8 +53,9 @@ BUILD MODES:
 #include "imgui/imgui_impl_sdl.h"
 #include "imgui/imgui_impl_opengl3.h"
 
-#if (defined _WIN64)
+#if (defined _WIN32)
     #include <GL/glew.h>
+    #define __KEVIN_OPENGL_USING_GLEW__
 #elif (defined __APPLE__ || defined _APPLE)
     #define GL_SILENCE_DEPRECATION
     #include <OpenGL/gl3.h>
@@ -178,15 +179,17 @@ INTERNAL void SetWorkingDirectory()
 }
 #endif
 
-INTERNAL bool GLEWInitialize()
+INTERNAL bool OpenGLInitialize()
 {
-    // glewExperimental = GL_TRUE;
-    // if (glewInit() != GLEW_OK)
-    // {
-    //     printf("GLEW failed to initialize.\n");
-    //     return false;
-    // }
-    // printf("GLEW initialized.\n");
+#ifdef __KEVIN_OPENGL_USING_GLEW__
+    glewExperimental = GL_TRUE;
+    if (glewInit() != GLEW_OK)
+    {
+        printf("GLEW failed to initialize.\n");
+        return false;
+    }
+    printf("GLEW initialized.\n");
+#endif
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // alpha blending func: a * (rgb) + (1 - a) * (rgb) = final color output
     glBlendEquation(GL_FUNC_ADD);
@@ -541,7 +544,7 @@ int main(int argc, char* argv[])
 {
     SetWorkingDirectory();
 
-    if(!SDLInitialize() || !GLEWInitialize() || !CreateInternalFramebuffer())
+    if(!SDLInitialize() || !OpenGLInitialize() || !CreateInternalFramebuffer())
     {
         return -1;
     }
