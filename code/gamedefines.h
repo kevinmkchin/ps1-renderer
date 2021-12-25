@@ -25,7 +25,11 @@ typedef i32           bool32;
 
 /** HELPER FUNCTIONS **/
 #if SLOW_BUILD
+#if (defined _WIN64)
 #define ASSERT(predicate) if(!(predicate)) {*(int*)0 = 0;}
+#else
+#define ASSERT(predicate) if(!(predicate)) { __builtin_trap(); }
+#endif
 #else
 #define ASSERT(predicate)
 #endif
