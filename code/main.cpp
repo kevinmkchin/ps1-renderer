@@ -1,25 +1,34 @@
 /** PRIMEVIL
 
 TODO:
-    - Add comments to global variables so i know wtf they are
+
+Task for today:
+    - refine editor object/entities system.
+    - class system for editor objects/entities
+
+Backlog:
+    - Individualize faces
+        - Save texture data to disk with map
+        - Texture UV offset for box editor object 
     - Level Editor IMGUI to create new geometry
-    - Save texture data to disk with map
+    - Level editor gizmo to move and edit placed geometry
     - Load map to game
     - Have selected object in editor have flashing wireframe?
-    - Level Editor
-        - creates the Visible level geometry and Collidable level geometry
-        Types of static level objects in game:
-        - visible meshgroup object no collider              : cosmetic/decorative complex level geometry
-        - visible mesh object no collider                   : cosmetic/decorative simple level geometry
-        - visible meshgroup object with collider            : complex level geometry with collisions
-        - visible mesh object with collider                 : simple level geometry with collisions
-        - hidden mesh (or no mesh?) object with collider    : trigger volumes, level geometry bounds
-        Additionally, editor can specify other objects too e.g. power ups and their locations:
-        - We can drop an editor object (no mesh, just a billboard facing the gameCamera indicating what power up it is)
     - Text rendering with kc_truetypeassembler.h
     - Drop-down console port from XNGINE (tilde)
     - Animation
     - Audio
+
+
+    - Level Editor
+        - creates the Visible level geometry and Collidable level geometry
+        Types of static level objects in game:
+        - visible mesh object no collider                   : cosmetic/decorative simple level geometry
+        - visible mesh object with collider                 : simple level geometry with collisions
+        - hidden mesh (or no mesh?) object with collider    : trigger volumes, level geometry bounds
+        Additionally, editor can specify other objects too e.g. power ups and their locations:
+        - We can drop an editor object (no mesh, just a billboard facing the gameCamera indicating what power up it is)
+
 
 Rules:
      - unit vector (x: 1, y: 0, z: 0), aka positive X, is the "forward" direction for un-rotated objects
@@ -75,19 +84,27 @@ BUILD MODES:
 #include "core.h"
 #include "game.h"
 
+/** Internal resolution : resolution the game is running at
+    Back buffer resolution : resolution actually outputted to screen */
 GLOBAL_VAR u32 internalResolutionWidth = 320;
 GLOBAL_VAR u32 internalResolutionHeight = 240;
 GLOBAL_VAR i32 backbufferWidth = INDEX_NONE;
 GLOBAL_VAR i32 backbufferHeight = INDEX_NONE;
+/** FOV of the game camera */
 GLOBAL_VAR float FOV = 90.f;
+/** Flag to indicate whether to exit the game */
 GLOBAL_VAR bool gIsRunning = true;
+/** Delta time since last tick. Updated every tick.  */
 GLOBAL_VAR float gDeltaTime;
+/** Flag to indicate whether editor mode is active. Do not set directly. */
 GLOBAL_VAR bool editorModeActiveFlag;
 
+/** Console backend */
 GLOBAL_VAR noclip::console console;
 INTERNAL std::mutex __consoleCommandQueueMutex;
 INTERNAL std::string __consoleCommandQueue;
 
+/** Shaders */
 GLOBAL_VAR Shader sceneShader;
 GLOBAL_VAR Shader editorShader;
 INTERNAL Shader quadShader;
