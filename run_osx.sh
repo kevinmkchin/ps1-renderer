@@ -1,0 +1,1 @@
+./build/ps1.app/Contents/MacOS/ps1
