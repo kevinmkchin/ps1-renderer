@@ -5,8 +5,10 @@ struct Shader
     static void GLLoadShaderProgramFromFile(Shader& shader, const char* vertexPath, const char* geometryPath, const char* fragmentPath);
     static void GLCreateShaderProgram(Shader& shader, const char* vertexShaderStr, const char* fragmentShaderStr);
     static void GLCreateShaderProgram(Shader& shader, const char* vertexShaderStr, const char* geometryShaderStr, const char* fragmentShaderStr);
+#if GL_VERSION_4_3
     static void GLLoadComputeShaderProgramFromFile(Shader& shader, const char* computePath);
     static void GLCreateComputeShaderProgram(Shader& shader, const char* computeShaderStr);
+#endif
 
     void UseShader();
 
