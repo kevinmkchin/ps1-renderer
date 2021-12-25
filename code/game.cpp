@@ -12,9 +12,9 @@ INTERNAL SphereCollider colB;
 
 INTERNAL void GameInitOnStartUp()
 {
-    staticMapObjects.Allocate(MAX_EDITOR_OBJECT_COUNT);
-    staticMapColliders.Allocate(MAX_EDITOR_OBJECT_COUNT);
-    GameImportMap("peepee", staticMapObjects, staticMapColliders);
+    staticMapObjects.Allocate(MAX_EDITOR_ENTITIES_COUNT);
+    staticMapColliders.Allocate(MAX_EDITOR_ENTITIES_COUNT);
+    // TODO(Kevin): uncomment GameImportMap("peepee", staticMapObjects, staticMapColliders);
 
     gameCamera.CameraCalculatePerspectiveMatrix();
     gameCamera.position = {-3.048528f, 1.879444f, 2.618031f };
