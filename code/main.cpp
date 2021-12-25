@@ -2,10 +2,10 @@
 
 TODO:
     - Add comments to global variables so i know wtf they are
-    - make input polling be separate from game ticks
     - Level Editor IMGUI to create new geometry
     - Save texture data to disk with map
     - Load map to game
+    - Have selected object in editor have flashing wireframe?
     - Level Editor
         - creates the Visible level geometry and Collidable level geometry
         Types of static level objects in game:
