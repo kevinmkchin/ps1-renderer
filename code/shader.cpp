@@ -66,7 +66,7 @@ void Shader::GLCreateShaderProgram(Shader& shader, const char* vertexShaderStr, 
     Shader::cache_uniform_locations(shader);
 }
 
-
+#if GL_VERSION_4_3
 void Shader::GLCreateComputeShaderProgram(Shader& shader, const char* computeShaderStr)
 {
     shader.idShaderProgram = glCreateProgram();
@@ -87,6 +87,7 @@ void Shader::GLCreateComputeShaderProgram(Shader& shader, const char* computeSha
 
     Shader::cache_uniform_locations(shader);
 }
+#endif
 
 bool Shader::gl_check_error_and_validate(GLuint program_id)
 {
@@ -128,11 +129,13 @@ void Shader::GLLoadShaderProgramFromFile(Shader& shader, const char* vertexPath,
     GLCreateShaderProgram(shader, v.c_str(), g.c_str(), f.c_str());
 }
 
+#if GL_VERSION_4_3
 void Shader::GLLoadComputeShaderProgramFromFile(Shader& shader, const char* computePath)
 {
     std::string c = ReadFileString(computePath);
     GLCreateComputeShaderProgram(shader, c.c_str());
 }
+#endif
 
 void Shader::cache_uniform_locations(Shader &shader)
 {

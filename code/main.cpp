@@ -53,8 +53,14 @@ BUILD MODES:
 #include <unordered_map>
 #include <mutex>
 #include <thread>
+#include <vector>
 
-#include <GL/glew.h>
+#if (defined _WIN64)
+    #include <GL/glew.h>
+#elif (defined __APPLE__ || defined _APPLE)
+    #define GL_SILENCE_DEPRECATION
+    #include <OpenGL/gl3.h>
+#endif
 #include <SDL.h>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -150,15 +156,39 @@ INTERNAL bool SDLInitialize()
     return true;
 }
 
+#if (defined __APPLE__ || defined _APPLE)
+#include <unistd.h> // for chdir
+#include <libgen.h> // for dirname
+#include <mach-o/dyld.h> // for _NSGetExecutablePath
+#include <limits.h> // for PATH_MAX?
+INTERNAL void SetWorkingDirectory()
+{
+    char path[PATH_MAX];
+    uint32_t pathLen = sizeof(path);
+    int err = _NSGetExecutablePath(path, &pathLen);
+    assert(!err);
+
+    // Switch to the directory of the actual binary
+    chdir(dirname(path));
+    // and then go up three directories to get to the folder of the .app bundle
+    chdir("../Resources");
+}
+#else
+INTERNAL void SetWorkingDirectory()
+{
+
+}
+#endif
+
 INTERNAL bool GLEWInitialize()
 {
-    glewExperimental = GL_TRUE;
-    if (glewInit() != GLEW_OK)
-    {
-        printf("GLEW failed to initialize.\n");
-        return false;
-    }
-    printf("GLEW initialized.\n");
+    // glewExperimental = GL_TRUE;
+    // if (glewInit() != GLEW_OK)
+    // {
+    //     printf("GLEW failed to initialize.\n");
+    //     return false;
+    // }
+    // printf("GLEW initialized.\n");
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // alpha blending func: a * (rgb) + (1 - a) * (rgb) = final color output
     glBlendEquation(GL_FUNC_ADD);
@@ -400,6 +430,8 @@ INTERNAL void BindConsoleCommandsAndVariables()
 
 int main(int argc, char* argv[])
 {
+    SetWorkingDirectory();
+
     if(!SDLInitialize() || !GLEWInitialize() || !CreateInternalFramebuffer())
     {
         return -1;
