@@ -1,3 +1,4 @@
+#define START_IN_EDITOR_MODE_ACTIVE
 /** PRIMEVIL
 
 TODO:
@@ -7,6 +8,7 @@ Task for today:
     - class system for editor objects/entities
 
 Backlog:
+    - Should we reference count models and textures?
     - CHANGE MOUSE PICK TO USE PIXEL COLOR DATA (Get from OpenGL) - COLOR DATA = entity unique ID
     - Individualize faces
         - Save texture data to disk with map
@@ -578,8 +580,13 @@ int main(int argc, char* argv[])
 
     EditorInitOnStartUp();
     GameInitOnStartUp();
-    GameLoad();
+#ifndef START_IN_EDITOR_MODE_ACTIVE
     editorModeActiveFlag = false;
+    GameLoad();
+#else
+    editorModeActiveFlag = true;
+    EditorLoad("peepee");
+#endif
 
     float msPerFrame = 1000.f / (float)TARGET_FPS;
     float msLastTick = (float)SDL_GetTicks();
