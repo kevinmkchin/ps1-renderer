@@ -440,11 +440,11 @@ void GameObject::OnCollision(CollisionEventArgs collisionInfo)
     }
 }
 
-GAME_CLASS_CODE GameObject::GetEditObjectCode() const
+GAME_CLASS_CODE GameObject::GetGameClassCode() const
 {
     if(GetClass())
     {
-        return GetClass()->GetEditObjectCode();
+        return GetClass()->GetGameClassCode();
     }
     return CLASS_INVALID;
 }

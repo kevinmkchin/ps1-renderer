@@ -517,8 +517,8 @@ INTERNAL void EditorUpdate()
         ImGui::EndMenuBar();
     }
 
-    ImGui::Text(loadedMapPath.c_str());
-    ImGui::Text("Selected object: 0x%x", selectedEditObj);
+    ImGui::TextUnformatted(loadedMapPath.c_str());
+    ImGui::Text("Selected object: %p", selectedEditObj);
 
     if(selectedEditObj)
     {
@@ -534,7 +534,7 @@ INTERNAL void EditorUpdate()
         ImGui::Separator();
 
         /* Class specific IMGUI */
-        switch(selectedEditObj->GetEditObjectCode())
+        switch(selectedEditObj->GetGameClassCode())
         {
             case BRUSH_BLOCK:{
                 BlockBrush* box = (BlockBrush*) selectedEditObj->GetClass();
@@ -595,7 +595,7 @@ INTERNAL void EditorMousePick(float xNDC, float yNDC, float rayLength = 100.f)
     std::vector<MeshCollider> collidersToCheck;
     for(u32 i = 0; i < editorEntities.Count(); ++i)
     {
-        if(editorEntities[i].GetEditObjectCode() == BRUSH_BLOCK)
+        if(editorEntities[i].GetGameClassCode() == BRUSH_BLOCK)
         {
             MeshCollider col;
             col.owningGameObject = &editorEntities[i];
@@ -645,7 +645,7 @@ INTERNAL void EditorExportMap(const std::string& mapName)
     ByteBuffer exportBuffer = ByteBufferNew();
     for(u32 i = 0; i < editorEntities.Count(); ++i)
     {
-        u32 code = editorEntities[i].GetEditObjectCode()
+        u32 code = editorEntities[i].GetGameClassCode()
                 | (editorEntities[i].GetClass()->isVisible ? OBJECT_VISIBLE : CLASS_INVALID)
                 | (editorEntities[i].GetClass()->hasCollision ? OBJECT_COLLIDABLE : CLASS_INVALID);
         ByteBufferWrite(&exportBuffer, u32, code);
@@ -657,7 +657,7 @@ INTERNAL void EditorExportMap(const std::string& mapName)
         ByteBufferWriteBulk(&exportBuffer, &rot, 4*sizeof(float));
         ByteBufferWriteBulk(&exportBuffer, &sca, 3*sizeof(float));
 
-        switch (editorEntities[i].GetEditObjectCode())
+        switch (editorEntities[i].GetGameClassCode())
         {
             case BRUSH_BLOCK:{
                 auto* boxObj = (BlockBrush*) editorEntities[i].GetClass();
