@@ -522,32 +522,32 @@ INTERNAL void EditorUpdate()
 
     if(selectedEditObj)
     {
-        // vec3 selectedPos = selectedEditObj->GetPos();
-        // ImGui::DragFloat3("Pos", &selectedPos.x,0.01f);
-        // selectedEditObj->SetPos(selectedPos);
-        // vec3 selectedRot = QuatToEuler(selectedEditObj->GetOrientation()) * SML_RAD2DEG;
-        // ImGui::DragFloat3("Rot", &selectedRot.x,0.2f);
-        // selectedEditObj->SetOrientation(EulerToQuat(selectedRot * SML_DEG2RAD));
-        // vec3 selectedScale = selectedEditObj->GetScale();
-        // ImGui::DragFloat3("Scale", &selectedScale.x, 0.01f);
-        // selectedEditObj->SetScale(selectedScale);
-        // ImGui::Separator();
+        vec3 selectedPos = selectedEditObj->GetPos();
+        ImGui::DragFloat3("Pos", &selectedPos.x,0.01f);
+        selectedEditObj->SetPos(selectedPos);
+        vec3 selectedRot = QuatToEuler(selectedEditObj->GetOrientation()) * SML_RAD2DEG;
+        ImGui::DragFloat3("Rot", &selectedRot.x,0.2f);
+        selectedEditObj->SetOrientation(EulerToQuat(selectedRot * SML_DEG2RAD));
+        vec3 selectedScale = selectedEditObj->GetScale();
+        ImGui::DragFloat3("Scale", &selectedScale.x, 0.01f);
+        selectedEditObj->SetScale(selectedScale);
+        ImGui::Separator();
 
-        // /* Class specific IMGUI */
-        // switch(selectedEditObj->GetEditObjectCode())
-        // {
-        //     case BRUSH_BLOCK:{
-        //         BlockBrush* box = (BlockBrush*) selectedEditObj->GetClass();
-        //         ImGui::Checkbox("Visible", &box->isVisible);
-        //         ImGui::Checkbox("Collidable", &box->hasCollision);
-        //         ImGui::DragFloat3("Dimensions", &box->dimensions.x, 0.01f);
-        //         ImGui::DragFloat3("Origin offset", &box->originAsOffsetFromMinCorner.x, 0.01f);
-        //         ImGui::DragFloat2("Texture scale", &box->textureScale.x, 0.01f);
-        //         ImGui::Checkbox("Tile texture", &box->textureTileFlag);
-        //         ImGui::Checkbox("Texture orientation", &box->textureOrientationFlag);
-        //     }break;
-        //     default:{}break;
-        // }
+        /* Class specific IMGUI */
+        switch(selectedEditObj->GetEditObjectCode())
+        {
+            case BRUSH_BLOCK:{
+                BlockBrush* box = (BlockBrush*) selectedEditObj->GetClass();
+                ImGui::Checkbox("Visible", &box->isVisible);
+                ImGui::Checkbox("Collidable", &box->hasCollision);
+                ImGui::DragFloat3("Dimensions", &box->dimensions.x, 0.01f);
+                ImGui::DragFloat3("Origin offset", &box->originAsOffsetFromMinCorner.x, 0.01f);
+                ImGui::DragFloat2("Texture scale", &box->textureScale.x, 0.01f);
+                ImGui::Checkbox("Tile texture", &box->textureTileFlag);
+                ImGui::Checkbox("Texture orientation", &box->textureOrientationFlag);
+            }break;
+            default:{}break;
+        }
     }
 
     ImGui::End();
@@ -590,48 +590,48 @@ INTERNAL void EditorMousePick(float xNDC, float yNDC, float rayLength = 100.f)
 
 // TODO(Kevin): REWRITE TO USE PIXEL COLOR DATA
 
-    // // iterate editor/game objects to see which object was clicked on.
-    // std::vector<Collider*> collided;
-    // std::vector<MeshCollider> collidersToCheck;
-    // for(u32 i = 0; i < editorEntities.Count(); ++i)
-    // {
-    //     if(editorEntities[i].GetEditObjectCode() == BRUSH_BLOCK)
-    //     {
-    //         MeshCollider col;
-    //         col.owningGameObject = &editorEntities[i];
-    //         BlockBrush* bb = (BlockBrush*)editorEntities[i].GetClass();
-    //         col.verticesModelSpace = bb->GetColliders();
-    //         collidersToCheck.push_back(col);
-    //     }
-    // }
+    // iterate editor/game objects to see which object was clicked on.
+    std::vector<Collider*> collided;
+    std::vector<MeshCollider> collidersToCheck;
+    for(u32 i = 0; i < editorEntities.Count(); ++i)
+    {
+        if(editorEntities[i].GetEditObjectCode() == BRUSH_BLOCK)
+        {
+            MeshCollider col;
+            col.owningGameObject = &editorEntities[i];
+            BlockBrush* bb = (BlockBrush*)editorEntities[i].GetClass();
+            col.verticesModelSpace = bb->GetColliders();
+            collidersToCheck.push_back(col);
+        }
+    }
 
-    // for(auto& col : collidersToCheck)
-    // {
-    //     if(GJK(&col, &lc).hasCollision)
-    //     {
-    //         collided.push_back(&col);
-    //     }
-    // }
+    for(auto& col : collidersToCheck)
+    {
+        if(GJK(&col, &lc).hasCollision)
+        {
+            collided.push_back(&col);
+        }
+    }
 
-    // EditorEntity* first = nullptr;
-    // float minDistanceSoFar = FLT_MAX;
-    // for(auto c : collided)
-    // {
-    //     if(c->owningGameObject)
-    //     {
-    //         float distance = Magnitude(editorCamera.position - c->owningGameObject->GetPos());
-    //         if(distance < minDistanceSoFar)
-    //         {
-    //             first = (EditorEntity*)c->owningGameObject;
-    //             minDistanceSoFar = distance;
-    //         }
-    //     }
-    // }
+    GameObject* first = nullptr;
+    float minDistanceSoFar = FLT_MAX;
+    for(auto c : collided)
+    {
+        if(c->owningGameObject)
+        {
+            float distance = Magnitude(editorCamera.position - c->owningGameObject->GetPos());
+            if(distance < minDistanceSoFar)
+            {
+                first = c->owningGameObject;
+                minDistanceSoFar = distance;
+            }
+        }
+    }
 
-    // if(first)
-    // {
-    //     selectedEditObj = first;
-    // }
+    if(first)
+    {
+        selectedEditObj = first;
+    }
 }
 
 INTERNAL void EditorExportMap(const std::string& mapName)
