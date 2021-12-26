@@ -87,7 +87,7 @@ struct GameObject final
 
     virtual void OnCollision(CollisionEventArgs collisionInfo);
 
-    GAME_CLASS_CODE GetEditObjectCode() const;
+    GAME_CLASS_CODE GetGameClassCode() const;
 
     GameClass* GetClass() const;
 
@@ -168,6 +168,8 @@ struct GameClass
         gameClassCode = CLASS_INVALID;
     }
 
+    virtual ~GameClass() = default;
+
     /** Update logic. */
     virtual void Update()
     {
@@ -187,7 +189,7 @@ struct GameClass
     /** What to render in Editor mode. Must implement. */
     virtual void EditorModeRender(const Shader& shader) = 0;
 
-    GAME_CLASS_CODE GetEditObjectCode() const { return gameClassCode; }
+    GAME_CLASS_CODE GetGameClassCode() const { return gameClassCode; }
 
     GameObject* GetTiedEntity() const { return tiedEntity; }
     void SetTiedEntity(GameObject* parentEntity)
