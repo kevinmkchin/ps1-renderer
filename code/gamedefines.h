@@ -119,6 +119,15 @@ template<typename T> struct PreAllocArray
         throw std::out_of_range("PreAllocArray: Cannot PushBack. Array is full.");
     }
 
+    T& PushBackDefault()
+    {
+        if(count < capacity)
+        {
+            return *(data + count++);
+        }
+        throw std::out_of_range("PreAllocArray: Cannot PushBackDefault. Array is full.");
+    }
+
     T PopBack()
     {
         return *(data + count--);

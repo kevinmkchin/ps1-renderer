@@ -1,161 +1,51 @@
 /** Level geometry and Editor code */
 
-enum EDIT_OBJ_CODE : u32
-{
-    EDIT_INVALID = 0x0000,
-
-    EDIT_VISIBLE = 0x0001,
-    EDIT_COLLIDABLE = 0x0002,
-
-    EDIT_BLOCK = 0x0020,
-    EDIT_PROPSTATIC = 0x0040,
-    EDIT_PROPDYNAMIC = 0x0080
-};
-
-// - planes and one-sided surfaces.
-// - sphere with arbitrary radius
-// - curves?
-// - pyramids
-
-/** 
-    Editor geometry is called brushes - contain data about how to reconstruct that geometry and mesh in game
-    
-    Brushes can be attached to entities
-
-    Entities are generic objects in scene without specific geometry
-    Entities can have classes attached
-    Classes:
-        - Static Prop  : - visible meshgroup object no collider : cosmetic/decorative complex level geometry
-                       : - visible meshgroup object with collider : complex level geometry with collisions
-        - Dynamic Prop : - visible meshgroup object no collider or with collider but non static
-
-
-        - Various game specific classes 
-
-        These classes have logic components attached to them to respond to collision or execute logic every frame
-     */
-
-
-struct GameClass;
-struct EditorEntity : GameObject
-{
-    void Initialize()
-    {
-
-    }
-
-    void Render(const Shader& shader) override;
-
-    EDIT_OBJ_CODE GetEditObjectCode() const;
-    bool GetIsVisible() const;
-    bool GetHasCollision() const;
-
-    void Update() override {}
-    void OnCollision(CollisionEventArgs collisionInfo) override {}
-
-    GameClass* GetClass() const { return tiedClass; }
-    void SetClass(GameClass* childClass);
-
-private:    
-    GameClass* tiedClass;
-};
-
-struct GameClass
-{
-    /** Rendering if this class should render anything. */
-    virtual void Render(const Shader& shader) = 0;
-
-    virtual bool GetIsVisible(){ return false; }
-    virtual bool GetHasCollision(){ return false; }
-
-    EDIT_OBJ_CODE GetEditObjectCode() const { return editObjCode; }
-
-    EditorEntity* GetTiedEntity() const { return tiedEntity; }
-    void SetTiedEntity(EditorEntity* parentEntity)
-    {
-        // TODO(Kevin): Eventually allow tied entities and tied classes to be switched
-        tiedEntity = parentEntity;
-        if(tiedEntity->GetClass() != this)
-        {
-            tiedEntity->SetClass(this);
-        }
-    }
-
-protected:
-    EDIT_OBJ_CODE editObjCode = EDIT_INVALID;
-private:
-    EditorEntity* tiedEntity = nullptr;
-};
-
-void EditorEntity::Render(const Shader& shader)
-{
-    if(tiedClass)
-    {
-        tiedClass->Render(shader);
-    }
-}
-
-EDIT_OBJ_CODE EditorEntity::GetEditObjectCode() const 
-{ 
-    if(tiedClass)
-    {
-        return tiedClass->GetEditObjectCode(); 
-    }
-    return EDIT_INVALID;
-}
-
-bool EditorEntity::GetIsVisible() const
-{
-    if(tiedClass)
-    {
-        return tiedClass->GetIsVisible(); 
-    }
-    return false;
-}
-
-bool EditorEntity::GetHasCollision() const
-{
-    if(tiedClass)
-    {
-        return tiedClass->GetHasCollision(); 
-    }
-    return false;
-}
-
-void EditorEntity::SetClass(GameClass* childClass) 
-{
-    tiedClass = childClass;
-    if(tiedClass->GetTiedEntity() != this)
-    {
-        tiedClass->SetTiedEntity(this);
-    }
-}
-
 struct PropStatic : GameClass
 {
     PropStatic()
+        : model(nullptr) 
     {
-        editObjCode = EDIT_PROPSTATIC;
+        gameClassCode = CLASS_PROPSTATIC;
     }
 
-    bool GetHasCollision() override
+    void Render(const Shader& shader) override
     {
-        return hasCollision;
+        MeshGroup* modelToRender = GetModel();
+        if(modelToRender)
+        {
+            shader.GLBindMatrix4fv("modelMatrix", 1, GetTiedEntity()->GetModelMatrix().ptr());
+            modelToRender->render();
+        }
     }
 
-    bool hasCollision = false;
-};
-
-struct PropDynamic : GameClass
-{
-    PropDynamic()
+    void EditorModeRender(const Shader& shader) override
     {
-        editObjCode = EDIT_PROPDYNAMIC;
+        Render(shader);
     }
+
+    MeshGroup* GetModel() const
+    {
+        return model;
+    }
+
+    void SetModel(MeshGroup* newModelPtr)
+    {
+        model = newModelPtr;
+    }
+
+private:
+    MeshGroup* model;
 };
 
 struct EditorBrush : GameClass
 {
+// PRIMITIVES
+// - Blocks
+// - Cylinder
+// - Sphere
+// - Planes and one-sided surfaces.
+// - Pyramids/spikes
+
     /** Every brush type only needs to implement these methods. */
     virtual std::pair<std::vector<float>, std::vector<u32>> GetBufferObjects() = 0;
     virtual std::vector<vec3> GetColliders() = 0;
@@ -170,22 +60,24 @@ struct EditorBrush : GameClass
         MeshDelete(mesh);
     }
 
-    /** How to render EditorBrushes */
     void Render(const Shader& shader) override
     {
-        auto bo = GetBufferObjects();
-        // model matrix is wrong - pos scale rot prob not being set properly
-        mesh.RebindBufferObjects(bo.first.data(), bo.second.data(), (u32)bo.first.size(), (u32)bo.second.size());
         shader.GLBindMatrix4fv("modelMatrix", 1, GetTiedEntity()->GetModelMatrix().ptr());
-        shader.GLBind1i("isColliderOnly", 0);
+        mesh.RenderMesh();
+    }
 
+    void EditorModeRender(const Shader& shader) override
+    {
+        auto bo = GetBufferObjects();
+        mesh.RebindBufferObjects(bo.first.data(), bo.second.data(), (u32)bo.first.size(), (u32)bo.second.size());
+        shader.GLBind1i("isColliderOnly", 0);
         if(!isVisible)
         {
             shader.GLBind1i("isColliderOnly", 1);
             hasCollision ? shader.GLBind3f("modelColor", _RGB(0.f, 255.f, 0.f)) : shader.GLBind3f("modelColor", _RGB(255.f, 255.f, 255.f));
             glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
         }
-        mesh.RenderMesh();
+        Render(shader);
         if(!isVisible)
         {
             shader.GLBind3f("modelColor", _RGB(0.f, 0.f, 0.f));
@@ -193,34 +85,27 @@ struct EditorBrush : GameClass
         }
     }
 
-    bool GetIsVisible() override
-    {
-        return isVisible;
-    }
-
-    bool GetHasCollision() override
-    {
-        return hasCollision;
-    }
-
     Texture texture; // TODO(Kevin): use texture
-    bool isVisible = true;
-    bool hasCollision = true;
 protected:
     Mesh mesh;
 };
 
 struct BlockBrush : EditorBrush
 {
-    vec3 dimensions; // width, height, length
-    vec3 originAsOffsetFromMinCorner = vec3(0.f, 0.f, 0.f);
-    vec2 textureScale = vec2(1.f, 1.f); // i.e. how many world units is one UV unit
-    bool textureTileFlag = true;
-    bool textureOrientationFlag = true;
+    vec3 dimensions;                    // width, height, length
+    vec3 originAsOffsetFromMinCorner;
+    vec2 textureScale;                  // i.e. how many world units is one UV unit
+    bool textureTileFlag;
+    bool textureOrientationFlag;
 
     BlockBrush()
+        : dimensions(vec3())
+        , originAsOffsetFromMinCorner(vec3())
+        , textureScale(vec2(1.f, 1.f))
+        , textureTileFlag(true)
+        , textureOrientationFlag(true)
     {
-        editObjCode = EDIT_BLOCK;
+        gameClassCode = BRUSH_BLOCK;
     }
 
     std::pair<std::vector<float>, std::vector<u32>> GetBufferObjects() override
@@ -478,11 +363,11 @@ struct BlockBrush : EditorBrush
 
 #define MAX_EDITOR_ENTITIES_COUNT 4096
 #define MAX_EDITOR_BRUSH_COUNT 1024
-INTERNAL PreAllocArray<EditorEntity> editorEntities;
+INTERNAL PreAllocArray<GameObject> editorEntities;
 
 INTERNAL std::string loadedMapPath = "no map loaded...";
 INTERNAL GameCamera editorCamera;
-INTERNAL EditorEntity* selectedEditObj = nullptr;
+INTERNAL GameObject* selectedEditObj = nullptr;
 INTERNAL Texture textureA;
 
 INTERNAL void EditorInitOnStartUp()
@@ -637,32 +522,32 @@ INTERNAL void EditorUpdate()
 
     if(selectedEditObj)
     {
-        vec3 selectedPos = selectedEditObj->GetPos();
-        ImGui::DragFloat3("Pos", &selectedPos.x,0.01f);
-        selectedEditObj->SetPos(selectedPos);
-        vec3 selectedRot = QuatToEuler(selectedEditObj->GetOrientation()) * SML_RAD2DEG;
-        ImGui::DragFloat3("Rot", &selectedRot.x,0.2f);
-        selectedEditObj->SetOrientation(EulerToQuat(selectedRot * SML_DEG2RAD));
-        vec3 selectedScale = selectedEditObj->GetScale();
-        ImGui::DragFloat3("Scale", &selectedScale.x, 0.01f);
-        selectedEditObj->SetScale(selectedScale);
-        ImGui::Separator();
+        // vec3 selectedPos = selectedEditObj->GetPos();
+        // ImGui::DragFloat3("Pos", &selectedPos.x,0.01f);
+        // selectedEditObj->SetPos(selectedPos);
+        // vec3 selectedRot = QuatToEuler(selectedEditObj->GetOrientation()) * SML_RAD2DEG;
+        // ImGui::DragFloat3("Rot", &selectedRot.x,0.2f);
+        // selectedEditObj->SetOrientation(EulerToQuat(selectedRot * SML_DEG2RAD));
+        // vec3 selectedScale = selectedEditObj->GetScale();
+        // ImGui::DragFloat3("Scale", &selectedScale.x, 0.01f);
+        // selectedEditObj->SetScale(selectedScale);
+        // ImGui::Separator();
 
-        /* Class specific IMGUI */
-        switch(selectedEditObj->GetEditObjectCode())
-        {
-            case EDIT_BLOCK:{
-                BlockBrush* box = (BlockBrush*) selectedEditObj->GetClass();
-                ImGui::Checkbox("Visible", &box->isVisible);
-                ImGui::Checkbox("Collidable", &box->hasCollision);
-                ImGui::DragFloat3("Dimensions", &box->dimensions.x, 0.01f);
-                ImGui::DragFloat3("Origin offset", &box->originAsOffsetFromMinCorner.x, 0.01f);
-                ImGui::DragFloat2("Texture scale", &box->textureScale.x, 0.01f);
-                ImGui::Checkbox("Tile texture", &box->textureTileFlag);
-                ImGui::Checkbox("Texture orientation", &box->textureOrientationFlag);
-            }break;
-            default:{}break;
-        }
+        // /* Class specific IMGUI */
+        // switch(selectedEditObj->GetEditObjectCode())
+        // {
+        //     case BRUSH_BLOCK:{
+        //         BlockBrush* box = (BlockBrush*) selectedEditObj->GetClass();
+        //         ImGui::Checkbox("Visible", &box->isVisible);
+        //         ImGui::Checkbox("Collidable", &box->hasCollision);
+        //         ImGui::DragFloat3("Dimensions", &box->dimensions.x, 0.01f);
+        //         ImGui::DragFloat3("Origin offset", &box->originAsOffsetFromMinCorner.x, 0.01f);
+        //         ImGui::DragFloat2("Texture scale", &box->textureScale.x, 0.01f);
+        //         ImGui::Checkbox("Tile texture", &box->textureTileFlag);
+        //         ImGui::Checkbox("Texture orientation", &box->textureOrientationFlag);
+        //     }break;
+        //     default:{}break;
+        // }
     }
 
     ImGui::End();
@@ -681,10 +566,10 @@ INTERNAL void EditorRender()
     editorShader.GLBindMatrix4fv("projMatrix", 1, editorCamera.perspectiveMatrix.ptr());
     editorShader.GLBind3f("modelColor", _RGB(0.f, 0.f, 0.f));
 
-    textureA.UseTexture();
+    textureA.UseTexture(); // TODO(Kevin): remove
     for(u32 i = 0; i < editorEntities.Count(); ++i)
     {
-        editorEntities[i].Render(editorShader);
+        editorEntities[i].GetClass()->EditorModeRender(editorShader);
     }
 
     glUseProgram(0);
@@ -705,48 +590,48 @@ INTERNAL void EditorMousePick(float xNDC, float yNDC, float rayLength = 100.f)
 
 // TODO(Kevin): REWRITE TO USE PIXEL COLOR DATA
 
-    // iterate editor/game objects to see which object was clicked on.
-    std::vector<Collider*> collided;
-    std::vector<MeshCollider> collidersToCheck;
-    for(u32 i = 0; i < editorEntities.Count(); ++i)
-    {
-        if(editorEntities[i].GetEditObjectCode() == EDIT_BLOCK)
-        {
-            MeshCollider col;
-            col.owningGameObject = &editorEntities[i];
-            BlockBrush* bb = (BlockBrush*)editorEntities[i].GetClass();
-            col.verticesModelSpace = bb->GetColliders();
-            collidersToCheck.push_back(col);
-        }
-    }
+    // // iterate editor/game objects to see which object was clicked on.
+    // std::vector<Collider*> collided;
+    // std::vector<MeshCollider> collidersToCheck;
+    // for(u32 i = 0; i < editorEntities.Count(); ++i)
+    // {
+    //     if(editorEntities[i].GetEditObjectCode() == BRUSH_BLOCK)
+    //     {
+    //         MeshCollider col;
+    //         col.owningGameObject = &editorEntities[i];
+    //         BlockBrush* bb = (BlockBrush*)editorEntities[i].GetClass();
+    //         col.verticesModelSpace = bb->GetColliders();
+    //         collidersToCheck.push_back(col);
+    //     }
+    // }
 
-    for(auto& col : collidersToCheck)
-    {
-        if(GJK(&col, &lc).hasCollision)
-        {
-            collided.push_back(&col);
-        }
-    }
+    // for(auto& col : collidersToCheck)
+    // {
+    //     if(GJK(&col, &lc).hasCollision)
+    //     {
+    //         collided.push_back(&col);
+    //     }
+    // }
 
-    EditorEntity* first = nullptr;
-    float minDistanceSoFar = FLT_MAX;
-    for(auto c : collided)
-    {
-        if(c->owningGameObject)
-        {
-            float distance = Magnitude(editorCamera.position - c->owningGameObject->GetPos());
-            if(distance < minDistanceSoFar)
-            {
-                first = (EditorEntity*)c->owningGameObject;
-                minDistanceSoFar = distance;
-            }
-        }
-    }
+    // EditorEntity* first = nullptr;
+    // float minDistanceSoFar = FLT_MAX;
+    // for(auto c : collided)
+    // {
+    //     if(c->owningGameObject)
+    //     {
+    //         float distance = Magnitude(editorCamera.position - c->owningGameObject->GetPos());
+    //         if(distance < minDistanceSoFar)
+    //         {
+    //             first = (EditorEntity*)c->owningGameObject;
+    //             minDistanceSoFar = distance;
+    //         }
+    //     }
+    // }
 
-    if(first)
-    {
-        selectedEditObj = first;
-    }
+    // if(first)
+    // {
+    //     selectedEditObj = first;
+    // }
 }
 
 INTERNAL void EditorExportMap(const std::string& mapName)
@@ -761,8 +646,8 @@ INTERNAL void EditorExportMap(const std::string& mapName)
     for(u32 i = 0; i < editorEntities.Count(); ++i)
     {
         u32 code = editorEntities[i].GetEditObjectCode()
-                | (editorEntities[i].GetIsVisible() ? EDIT_VISIBLE : EDIT_INVALID)
-                | (editorEntities[i].GetHasCollision() ? EDIT_COLLIDABLE : EDIT_INVALID);
+                | (editorEntities[i].GetClass()->isVisible ? OBJECT_VISIBLE : CLASS_INVALID)
+                | (editorEntities[i].GetClass()->hasCollision ? OBJECT_COLLIDABLE : CLASS_INVALID);
         ByteBufferWrite(&exportBuffer, u32, code);
 
         vec3 pos = editorEntities[i].GetPos();
@@ -774,7 +659,7 @@ INTERNAL void EditorExportMap(const std::string& mapName)
 
         switch (editorEntities[i].GetEditObjectCode())
         {
-            case EDIT_BLOCK:{
+            case BRUSH_BLOCK:{
                 auto* boxObj = (BlockBrush*) editorEntities[i].GetClass();
                 vec3 dimensions = boxObj->dimensions;
                 vec3 origin = boxObj->originAsOffsetFromMinCorner;
@@ -796,15 +681,13 @@ INTERNAL void EditorExportMap(const std::string& mapName)
     ByteBufferFree(&exportBuffer);
 }
 
-INTERNAL void EditorReadBoxFromByteBuffer(ByteBuffer* importBuffer, u32 editObjCode, BlockBrush* box)
+INTERNAL void EditorReadBoxFromByteBuffer(ByteBuffer* importBuffer, BlockBrush* box)
 {
     ByteBufferReadBulk(importBuffer, &box->dimensions, 3*sizeof(float));
     ByteBufferReadBulk(importBuffer, &box->originAsOffsetFromMinCorner, 3*sizeof(float));
     ByteBufferReadBulk(importBuffer, &box->textureScale, 2*sizeof(float));
     ByteBufferRead(importBuffer, bool, &box->textureTileFlag);
     ByteBufferRead(importBuffer, bool, &box->textureOrientationFlag);
-    box->isVisible = editObjCode & EDIT_VISIBLE;
-    box->hasCollision = editObjCode & EDIT_COLLIDABLE;
 }
 
 INTERNAL void EditorImportMap(const std::string& mapName)
@@ -821,29 +704,31 @@ INTERNAL void EditorImportMap(const std::string& mapName)
     loadedMapPath = mapPath;
     while(importBuffer.position < importBuffer.size)
     {
-        u32 code = EDIT_INVALID;
+        u32 code = CLASS_INVALID;
         ByteBufferRead(&importBuffer, u32, &code);
+
+        GameObject* newEntity = &editorEntities.PushBackDefault();
+        vec3 pos;
+        quat rot;
+        vec3 sca;
+        ByteBufferReadBulk(&importBuffer, &pos, 3*sizeof(float));
+        ByteBufferReadBulk(&importBuffer, &rot, 4*sizeof(float));
+        ByteBufferReadBulk(&importBuffer, &sca, 3*sizeof(float));
+        newEntity->SetPos(pos);
+        newEntity->SetOrientation(rot);
+        newEntity->SetScale(sca);
 
         switch (code & 0xFFFFFFFFC)
         {
-            case EDIT_BLOCK: {
-                EditorEntity* newEntity = &editorEntities.PushBack(EditorEntity());
+            case BRUSH_BLOCK: {
                 BlockBrush* box = new BlockBrush();
                 newEntity->SetClass(box);
-                vec3 pos;
-                quat rot;
-                vec3 sca;
-                ByteBufferReadBulk(&importBuffer, &pos, 3*sizeof(float));
-                ByteBufferReadBulk(&importBuffer, &rot, 4*sizeof(float));
-                ByteBufferReadBulk(&importBuffer, &sca, 3*sizeof(float));
-                newEntity->SetPos(pos);
-                newEntity->SetOrientation(rot);
-                newEntity->SetScale(sca);
-                EditorReadBoxFromByteBuffer(&importBuffer, code, box);
+                box->isVisible = code & OBJECT_VISIBLE;
+                box->hasCollision = code & OBJECT_COLLIDABLE;
+                EditorReadBoxFromByteBuffer(&importBuffer, box);
             }break;
-            default: {
-                continue;
-            }
+
+            default: { continue; }
         }
 
         if(editorEntities.Count() >= editorEntities.Capacity())
@@ -856,26 +741,28 @@ INTERNAL void EditorImportMap(const std::string& mapName)
 }
 
 INTERNAL void GameImportMap(const std::string& mapName,
-                            PreAllocArray<DefaultGameObject>& staticMapObjects,
+                            PreAllocArray<GameObject>& staticMapObjects,
                             PreAllocArray<MeshCollider>& staticMapColliders)
 {
-    // TODO(Kevin): uncomment
     // if(editorModeActiveFlag)
     // {
     //     printf("WARNING: Attempting to load map when game is not active...\n");
     //     return;
     // }
 
+    // /** If not a brush, then make GameObject with that class
+    //     If brush, then make GameObject with brush's child class */
+
     // ByteBuffer importBuffer;
     // ByteBufferReadFromFile(&importBuffer,  (GAME_MAPS_DIRECTORY + mapName).c_str());
     // while(importBuffer.position < importBuffer.size)
     // {
-    //     u32 code = EDIT_INVALID;
+    //     u32 code = CLASS_INVALID;
     //     ByteBufferRead(&importBuffer, u32, &code);
 
     //     switch (code & 0xFFFFFFFFC)
     //     {
-    //         case EDIT_BLOCK: {
+    //         case BRUSH_BLOCK: {
     //             BlockBrush box;
 
     //             EditorReadBoxFromByteBuffer(&importBuffer, code, &box);

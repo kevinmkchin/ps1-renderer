@@ -415,6 +415,59 @@ INTERNAL void MeshGroupDelete(MeshGroup* const modelToDelete)
 
 
 
+
+void GameObject::Update()
+{
+    if(tiedClass)
+    {
+        tiedClass->Update();
+    }
+}
+
+void GameObject::Render(const Shader& shader)
+{
+    if(tiedClass)
+    {
+        tiedClass->Render(shader);
+    }
+}
+
+void GameObject::OnCollision(CollisionEventArgs collisionInfo)
+{
+    if(tiedClass)
+    {
+        tiedClass->OnCollision(collisionInfo);
+    }
+}
+
+GAME_CLASS_CODE GameObject::GetEditObjectCode() const
+{
+    if(GetClass())
+    {
+        return GetClass()->GetEditObjectCode();
+    }
+    return CLASS_INVALID;
+}
+
+GameClass* GameObject::GetClass() const
+{ 
+    return tiedClass;
+}
+
+void GameObject::SetClass(GameClass* childClass) 
+{
+    tiedClass = childClass;
+    if(tiedClass->GetTiedEntity() != this)
+    {
+        tiedClass->SetTiedEntity(this);
+    }
+}
+
+
+
+
+
+
 void GameCamera::CameraUpdate()
 {
     if(bMouseControl)

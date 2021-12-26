@@ -57,7 +57,21 @@ struct CollisionEventArgs
     GameObject* other;
 };
 
-struct GameObject
+// TODO(Kevin): instead of using bits, just use integer number
+enum GAME_CLASS_CODE : u32
+{
+    CLASS_INVALID = 0x0000,
+
+    OBJECT_VISIBLE = 0x0001,
+    OBJECT_COLLIDABLE = 0x0002,
+
+    BRUSH_BLOCK = 0x0020,
+    CLASS_PROPSTATIC = 0x0040,
+    CLASS_PROPDYNAMIC = 0x0080
+};
+
+struct GameClass;
+struct GameObject final
 {
     GameObject()
         : position({0.f, 0.f, 0.f })
@@ -65,22 +79,20 @@ struct GameObject
         , scale({ 1.f, 1.f, 1.f })
         , modelMatrix(mat4())
         , isModelMatrixOutdated(false)
-        , model(nullptr)
     {}
 
-    virtual void Update() = 0;
+    virtual void Update();
 
-    virtual void Render(const Shader& shader)
-    {
-        MeshGroup* modelToRender = GetModel();
-        if(modelToRender)
-        {
-            shader.GLBindMatrix4fv("modelMatrix", 1, GetModelMatrix().ptr());
-            modelToRender->render();
-        }
-    }
+    virtual void Render(const Shader& shader);
 
-    virtual void OnCollision(CollisionEventArgs collisionInfo) = 0;
+    virtual void OnCollision(CollisionEventArgs collisionInfo);
+
+    GAME_CLASS_CODE GetEditObjectCode() const;
+
+    GameClass* GetClass() const;
+
+    void SetClass(GameClass* childClass);
+
 
     const mat4& GetModelMatrix()
     {
@@ -95,7 +107,6 @@ struct GameObject
 
         return modelMatrix;
     }
-
     vec3 GetPos() const
     {
         return position;
@@ -110,7 +121,6 @@ struct GameObject
         position += moveAmount;
         isModelMatrixOutdated = true;
     }
-
     quat GetOrientation() const
     {
         return orientation;
@@ -129,7 +139,6 @@ struct GameObject
     {
         SetOrientation(rotationAsQuat * GetOrientation());
     }
-
     vec3 GetScale() const
     {
         return scale;
@@ -140,35 +149,64 @@ struct GameObject
         isModelMatrixOutdated = true;
     }
 
-    MeshGroup* GetModel() const
-    {
-        return model;
-    }
-    void SetModel(MeshGroup* newModelPtr)
-    {
-        model = newModelPtr;
-    }
-
 protected:
     vec3 position; // World space
     quat orientation;
     vec3 scale;
 
 private:
+    GameClass* tiedClass;
     mat4 modelMatrix;
     bool32 isModelMatrixOutdated;
-    MeshGroup* model;
+};
 
-    // POINTER to a collider which is described in MODEL SPACE
-    // In order to do collision checks, we first move the collider by modelMatrix
-    // Colliders are SHARED between objects e.g. cars in a racing game may all have same collider
-    // Colliders have a hierarchy from BROAD to NEAR phase
-    //   SPHERE A          SPHERE B
-    //     |-- A1            |-- B1
-    //     |-- A2            |-- B2
-    //                       |-- B3
-    //                       |-- B4
-    // For a PlayStation 1 style game, a single Sphere for BROAD phase and child polygons for NEAR phase may be enough
+struct GameClass
+{
+    GameClass()
+    {
+        /** Must specify correct gameClassCode in derived classes. */
+        gameClassCode = CLASS_INVALID;
+    }
+
+    /** Update logic. */
+    virtual void Update()
+    {
+        // do nothing by default
+    }
+    /** Rendering if this class should render anything. */
+    virtual void Render(const Shader& shader)
+    {
+        // do nothing by default
+    }
+    /** Response to collision */
+    virtual void OnCollision(CollisionEventArgs collisionInfo)
+    {
+        // do nothing by default
+    }
+
+    /** What to render in Editor mode. Must implement. */
+    virtual void EditorModeRender(const Shader& shader) = 0;
+
+    GAME_CLASS_CODE GetEditObjectCode() const { return gameClassCode; }
+
+    GameObject* GetTiedEntity() const { return tiedEntity; }
+    void SetTiedEntity(GameObject* parentEntity)
+    {
+        // TODO(Kevin): Eventually allow tied entities and tied classes to be switched
+        tiedEntity = parentEntity;
+        if(tiedEntity->GetClass() != this)
+        {
+            tiedEntity->SetClass(this);
+        }
+    }
+
+public:
+    bool isVisible = false;
+    bool hasCollision = false;
+protected:
+    GAME_CLASS_CODE gameClassCode;
+private:
+    GameObject* tiedEntity = nullptr;
 };
 
 struct GameCamera
@@ -194,6 +232,17 @@ struct GameCamera
 
 
 
+
+// POINTER to a collider which is described in MODEL SPACE
+// In order to do collision checks, we first move the collider by modelMatrix
+// Colliders are SHARED between objects e.g. cars in a racing game may all have same collider
+// Colliders have a hierarchy from BROAD to NEAR phase
+//   SPHERE A          SPHERE B
+//     |-- A1            |-- B1
+//     |-- A2            |-- B2
+//                       |-- B3
+//                       |-- B4
+// For a PlayStation 1 style game, a single Sphere for BROAD phase and child polygons for NEAR phase may be enough
 enum ColliderTypes
 {
     INVALID_TYPE,
