@@ -7,6 +7,7 @@ Task for today:
     - class system for editor objects/entities
 
 Backlog:
+    - CHANGE MOUSE PICK TO USE PIXEL COLOR DATA (Get from OpenGL) - COLOR DATA = entity unique ID
     - Individualize faces
         - Save texture data to disk with map
         - Texture UV offset for box editor object 

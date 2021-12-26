@@ -7,10 +7,9 @@ enum EDIT_OBJ_CODE : u32
     EDIT_VISIBLE = 0x0001,
     EDIT_COLLIDABLE = 0x0002,
 
-    EDIT_MESHGROUP = 0x0010,
     EDIT_BLOCK = 0x0020,
-    EDIT_PLANE = 0x0040,
-    EDIT_PYRAMID = 0x0080
+    EDIT_PROPSTATIC = 0x0040,
+    EDIT_PROPDYNAMIC = 0x0080
 };
 
 // - planes and one-sided surfaces.
@@ -134,6 +133,11 @@ void EditorEntity::SetClass(GameClass* childClass)
 
 struct PropStatic : GameClass
 {
+    PropStatic()
+    {
+        editObjCode = EDIT_PROPSTATIC;
+    }
+
     bool GetHasCollision() override
     {
         return hasCollision;
@@ -144,7 +148,10 @@ struct PropStatic : GameClass
 
 struct PropDynamic : GameClass
 {
-
+    PropDynamic()
+    {
+        editObjCode = EDIT_PROPDYNAMIC;
+    }
 };
 
 struct EditorBrush : GameClass
@@ -471,9 +478,6 @@ struct BlockBrush : EditorBrush
 
 #define MAX_EDITOR_ENTITIES_COUNT 4096
 #define MAX_EDITOR_BRUSH_COUNT 1024
-//INTERNAL PreAllocArray<EditorBrush*> classEditorBrushObjects;
-//INTERNAL PreAllocArray<PropStatic> classPropStaticObjects;
-//INTERNAL PreAllocArray<PropDynamic> classPropDynamicObjects;
 INTERNAL PreAllocArray<EditorEntity> editorEntities;
 
 INTERNAL std::string loadedMapPath = "no map loaded...";
@@ -484,7 +488,6 @@ INTERNAL Texture textureA;
 INTERNAL void EditorInitOnStartUp()
 {
     editorEntities.Allocate(MAX_EDITOR_ENTITIES_COUNT);
-    //classEditorBrushObjects.Allocate(MAX_EDITOR_BRUSH_COUNT);
 
     editorCamera.CameraCalculatePerspectiveMatrix();
     editorCamera.position = {-3.048528f, 1.879444f, 2.618031f };
@@ -520,8 +523,6 @@ INTERNAL void EditorUnload()
     }
     // Reset editor object arrays
     editorEntities.Clear();
-
-    //classEditorBrushObjects.Clear();
 
     loadedMapPath = "no map loaded...";
 
@@ -636,31 +637,32 @@ INTERNAL void EditorUpdate()
 
     if(selectedEditObj)
     {
-        // TODO(Kevin): uncomment
-        // vec3 selectedPos = selectedEditObj->GetPos();
-        // ImGui::DragFloat3("Pos", &selectedPos.x,0.01f);
-        // selectedEditObj->SetPos(selectedPos);
-        // vec3 selectedRot = QuatToEuler(selectedEditObj->GetOrientation()) * SML_RAD2DEG;
-        // ImGui::DragFloat3("Rot", &selectedRot.x,0.2f);
-        // selectedEditObj->SetOrientation(EulerToQuat(selectedRot * SML_DEG2RAD));
-        // vec3 selectedScale = selectedEditObj->GetScale();
-        // ImGui::DragFloat3("Scale", &selectedScale.x, 0.01f);
-        // selectedEditObj->SetScale(selectedScale);
-        // ImGui::Checkbox("Visible", &selectedEditObj->isVisible);
-        // ImGui::Checkbox("Collidable", &selectedEditObj->hasCollision);
-        // ImGui::Separator();
-        // switch(selectedEditObj->GetEditObjectCode())
-        // {
-        //     case EDIT_BLOCK:{
-        //         BlockBrush* box = (BlockBrush*) selectedEditObj;
-        //         ImGui::DragFloat3("Dimensions", &box->dimensions.x,0.01f);
-        //         ImGui::DragFloat3("Origin offset", &box->originAsOffsetFromMinCorner.x,0.01f);
-        //         ImGui::DragFloat2("Texture scale", &box->textureScale.x,0.01f);
-        //         ImGui::Checkbox("Tile texture", &box->textureTileFlag);
-        //         ImGui::Checkbox("Texture orientation", &box->textureOrientationFlag);
-        //     }break;
-        //     default:{}break;
-        // }
+        vec3 selectedPos = selectedEditObj->GetPos();
+        ImGui::DragFloat3("Pos", &selectedPos.x,0.01f);
+        selectedEditObj->SetPos(selectedPos);
+        vec3 selectedRot = QuatToEuler(selectedEditObj->GetOrientation()) * SML_RAD2DEG;
+        ImGui::DragFloat3("Rot", &selectedRot.x,0.2f);
+        selectedEditObj->SetOrientation(EulerToQuat(selectedRot * SML_DEG2RAD));
+        vec3 selectedScale = selectedEditObj->GetScale();
+        ImGui::DragFloat3("Scale", &selectedScale.x, 0.01f);
+        selectedEditObj->SetScale(selectedScale);
+        ImGui::Separator();
+
+        /* Class specific IMGUI */
+        switch(selectedEditObj->GetEditObjectCode())
+        {
+            case EDIT_BLOCK:{
+                BlockBrush* box = (BlockBrush*) selectedEditObj->GetClass();
+                ImGui::Checkbox("Visible", &box->isVisible);
+                ImGui::Checkbox("Collidable", &box->hasCollision);
+                ImGui::DragFloat3("Dimensions", &box->dimensions.x, 0.01f);
+                ImGui::DragFloat3("Origin offset", &box->originAsOffsetFromMinCorner.x, 0.01f);
+                ImGui::DragFloat2("Texture scale", &box->textureScale.x, 0.01f);
+                ImGui::Checkbox("Tile texture", &box->textureTileFlag);
+                ImGui::Checkbox("Texture orientation", &box->textureOrientationFlag);
+            }break;
+            default:{}break;
+        }
     }
 
     ImGui::End();
@@ -690,55 +692,61 @@ INTERNAL void EditorRender()
 
 INTERNAL void EditorMousePick(float xNDC, float yNDC, float rayLength = 100.f)
 {
-    // TODO(Kevin): uncomment
-    // mat4 inverseViewMatrix = editorCamera.viewMatrix.GetInverse();
-    // mat4 inverseProjMatrix = editorCamera.perspectiveMatrix.GetInverse();
-    // vec4 rayCCS = vec4(xNDC, yNDC, -1.f, 1.f);
-    // vec4 rayVCS = vec4((inverseProjMatrix * rayCCS).xyz, 0.f);
-    // vec3 rayWCS = Normalize((inverseViewMatrix * rayVCS).xyz);
+    mat4 inverseViewMatrix = editorCamera.viewMatrix.GetInverse();
+    mat4 inverseProjMatrix = editorCamera.perspectiveMatrix.GetInverse();
+    vec4 rayCCS = vec4(xNDC, yNDC, -1.f, 1.f);
+    vec4 rayVCS = vec4((inverseProjMatrix * rayCCS).xyz, 0.f);
+    vec3 rayWCS = Normalize((inverseViewMatrix * rayVCS).xyz);
 
-    // LineCollider lc;
-    // lc.a = editorCamera.position;
-    // lc.b = editorCamera.position + rayWCS * rayLength;
+    LineCollider lc;
+    lc.a = editorCamera.position;
+    lc.b = editorCamera.position + rayWCS * rayLength;
 
-    // // iterate editor/game objects to see which object was clicked on.
-    // std::vector<Collider*> collided;
-    // std::vector<MeshCollider> collidersToCheck;
-    // for(u32 i = 0; i < editorEntities.Count(); ++i)
-    // {
-    //     MeshCollider col;
-    //     col.owningGameObject = editorEntities[i];
-    //     col.verticesModelSpace = editorEntities[i]->GetColliders();
-    //     collidersToCheck.push_back(col);
-    // }
 
-    // for(auto& col : collidersToCheck)
-    // {
-    //     if(GJK(&col, &lc).hasCollision)
-    //     {
-    //         collided.push_back(&col);
-    //     }
-    // }
+// TODO(Kevin): REWRITE TO USE PIXEL COLOR DATA
 
-    // EditorBrush* first = nullptr;
-    // float minDistanceSoFar = FLT_MAX;
-    // for(auto c : collided)
-    // {
-    //     if(c->owningGameObject)
-    //     {
-    //         float distance = Magnitude(editorCamera.position - c->owningGameObject->GetPos());
-    //         if(distance < minDistanceSoFar)
-    //         {
-    //             first = (EditorBrush*) c->owningGameObject;
-    //             minDistanceSoFar = distance;
-    //         }
-    //     }
-    // }
+    // iterate editor/game objects to see which object was clicked on.
+    std::vector<Collider*> collided;
+    std::vector<MeshCollider> collidersToCheck;
+    for(u32 i = 0; i < editorEntities.Count(); ++i)
+    {
+        if(editorEntities[i].GetEditObjectCode() == EDIT_BLOCK)
+        {
+            MeshCollider col;
+            col.owningGameObject = &editorEntities[i];
+            BlockBrush* bb = (BlockBrush*)editorEntities[i].GetClass();
+            col.verticesModelSpace = bb->GetColliders();
+            collidersToCheck.push_back(col);
+        }
+    }
 
-    // if(first)
-    // {
-    //     selectedEditObj = first;
-    // }
+    for(auto& col : collidersToCheck)
+    {
+        if(GJK(&col, &lc).hasCollision)
+        {
+            collided.push_back(&col);
+        }
+    }
+
+    EditorEntity* first = nullptr;
+    float minDistanceSoFar = FLT_MAX;
+    for(auto c : collided)
+    {
+        if(c->owningGameObject)
+        {
+            float distance = Magnitude(editorCamera.position - c->owningGameObject->GetPos());
+            if(distance < minDistanceSoFar)
+            {
+                first = (EditorEntity*)c->owningGameObject;
+                minDistanceSoFar = distance;
+            }
+        }
+    }
+
+    if(first)
+    {
+        selectedEditObj = first;
+    }
 }
 
 INTERNAL void EditorExportMap(const std::string& mapName)
@@ -776,10 +784,6 @@ INTERNAL void EditorExportMap(const std::string& mapName)
                 ByteBufferWriteBulk(&exportBuffer, &textureScale, 2*sizeof(float));
                 ByteBufferWrite(&exportBuffer, bool, boxObj->textureTileFlag);
                 ByteBufferWrite(&exportBuffer, bool, boxObj->textureOrientationFlag);
-            }break;
-
-            case EDIT_PLANE:{
-                printf("unimplemented\n");
             }break;
 
             default:{
@@ -825,7 +829,6 @@ INTERNAL void EditorImportMap(const std::string& mapName)
             case EDIT_BLOCK: {
                 EditorEntity* newEntity = &editorEntities.PushBack(EditorEntity());
                 BlockBrush* box = new BlockBrush();
-                //classEditorBrushObjects.PushBack(box);
                 newEntity->SetClass(box);
                 vec3 pos;
                 quat rot;
