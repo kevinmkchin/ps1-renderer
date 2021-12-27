@@ -55,7 +55,7 @@ struct EditorBrush : GameClass
         MeshCreate(mesh, nullptr, nullptr, 0, 0);
     }
 
-    ~EditorBrush()
+    virtual ~EditorBrush()
     {
         MeshDelete(mesh);
     }
