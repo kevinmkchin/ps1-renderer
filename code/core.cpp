@@ -345,6 +345,7 @@ INTERNAL MeshGroup* MeshGroupAssimpLoad(const char* fileName)
     const aiScene* scene = importer.ReadFile(fileName,
                                              aiProcess_Triangulate
                                              |aiProcess_GenNormals
+                                             |aiProcess_FlipUVs // textures were fucked cuz this line was missing
                                              |aiProcess_JoinIdenticalVertices
     );
     if(!scene)
