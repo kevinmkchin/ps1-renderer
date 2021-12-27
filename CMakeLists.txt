@@ -42,6 +42,10 @@ if(WIN32)
             assimp-vc142-mt.lib
             )
 elseif(APPLE)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+      MACOSX_BUNDLE TRUE
+      MACOSX_FRAMEWORK_IDENTIFIER org.cmake.${PROJECT_NAME})
+
     find_package(SDL2 REQUIRED)
     if(SDL2_FOUND)
         message(STATUS "SDL2 found.")
@@ -63,10 +67,6 @@ elseif(APPLE)
         include_directories(${ASSIMP_INCLUDE_DIRS})
         target_link_libraries(${PROJECT_NAME} ${ASSIMP_LIBRARIES})
     endif()
-
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-      MACOSX_BUNDLE TRUE
-      MACOSX_FRAMEWORK_IDENTIFIER org.cmake.${PROJECT_NAME})
 endif()
 
 
