@@ -57,7 +57,6 @@ struct CollisionEventArgs
     GameObject* other;
 };
 
-// TODO(Kevin): instead of using bits, just use integer number
 enum GAME_CLASS_CODE : u32
 {
     CLASS_INVALID = 0x0000,
