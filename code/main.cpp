@@ -7,6 +7,7 @@ Task for today:
     - Level editor gizmo to move and edit placed geometry
 
 Backlog:
+    - Create mode, show preview of brush that can be moved around and shit
     - Individualize brush faces
         - SELECT TEXTURES for brush faces
         - Save texture data to disk with map
@@ -17,7 +18,10 @@ Backlog:
     - GAME_CLASS_CODE: instead of using bits, just use integer number
     - Should we reference count models and textures?
     - Load map to game
-    - Have selected object in editor have flashing wireframe?
+    - shaded toggleable - brush can be shaded or not shaded
+    - decals
+    - fog
+    - make gjk col MTV be relative to object we broadcasting to?
     - Text rendering with kc_truetypeassembler.h
     - Drop-down console port from XNGINE (tilde)
     - Animation
