@@ -336,7 +336,20 @@ i32 Shader::GetCachedUniformLocation(const char* uniformName) const
     return -1;
 }
 
+void Shader::SuppressWarningsPush()
+{
+    bPrintWarnings = false;
+}
+
+void Shader::SuppressWarningsPop()
+{
+    bPrintWarnings = true;
+}
+
 void Shader::warning_uniform_not_found(const char* uniformName) const
 {
-    printf("Warning: Uniform '%s' doesn't exist or isn't active on shader %d.\n", uniformName, idShaderProgram);
+    if(bPrintWarnings)
+    {
+        printf("Warning: Uniform '%s' doesn't exist or isn't active on shader %d.\n", uniformName, idShaderProgram);
+    }
 }
