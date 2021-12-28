@@ -2,36 +2,27 @@
 /** PRIMEVIL
 
 TODO:
-
 Task for today:
-    - refine editor object/entities system.
-    - class system for editor objects/entities
+    - HIGHLIGHT SELECTION IN EDITOR VIEW with wireframe or something...
+    - CHANGE MOUSE PICK TO USE PIXEL COLOR DATA (Get from OpenGL) - COLOR DATA = entity unique ID
+    - Level editor gizmo to move and edit placed geometry
 
 Backlog:
-    - Should we reference count models and textures?
-    - CHANGE MOUSE PICK TO USE PIXEL COLOR DATA (Get from OpenGL) - COLOR DATA = entity unique ID
-    - Individualize faces
+    - Individualize brush faces
+        - SELECT TEXTURES for brush faces
         - Save texture data to disk with map
         - Texture UV offset for box editor object 
-    - Level Editor IMGUI to create new geometry
-    - Level editor gizmo to move and edit placed geometry
+    - Update EditorExportMap and EditorImportMap to export and import PropStatic
+    - Dropdown to select brush type
+    - DOUBLE CLICK to place an entity
+    - GAME_CLASS_CODE: instead of using bits, just use integer number
+    - Should we reference count models and textures?
     - Load map to game
     - Have selected object in editor have flashing wireframe?
     - Text rendering with kc_truetypeassembler.h
     - Drop-down console port from XNGINE (tilde)
     - Animation
     - Audio
-
-
-    - Level Editor
-        - creates the Visible level geometry and Collidable level geometry
-        Types of static level objects in game:
-        - visible mesh object no collider                   : cosmetic/decorative simple level geometry
-        - visible mesh object with collider                 : simple level geometry with collisions
-        - hidden mesh (or no mesh?) object with collider    : trigger volumes, level geometry bounds
-        Additionally, editor can specify other objects too e.g. power ups and their locations:
-        - We can drop an editor object (no mesh, just a billboard facing the gameCamera indicating what power up it is)
-
 
 Rules:
      - unit vector (x: 1, y: 0, z: 0), aka positive X, is the "forward" direction for un-rotated objects

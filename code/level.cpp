@@ -365,8 +365,17 @@ struct BlockBrush : EditorBrush
 #define MAX_EDITOR_BRUSH_COUNT 1024
 INTERNAL PreAllocArray<GameObject> editorEntities;
 
+enum EditorMode {
+    EDITOR_MODE_SELECT,
+    EDITOR_MODE_CREATE,
+    EDITOR_MODE_EDIT
+};
+
+INTERNAL EditorMode editorMode = EDITOR_MODE_SELECT;
+
 INTERNAL std::string loadedMapPath = "no map loaded...";
 INTERNAL GameCamera editorCamera;
+INTERNAL MeshGroup* defaultEntityModel = nullptr;
 INTERNAL GameObject* selectedEditObj = nullptr;
 INTERNAL Texture textureA;
 
@@ -377,6 +386,8 @@ INTERNAL void EditorInitOnStartUp()
     editorCamera.CameraCalculatePerspectiveMatrix();
     editorCamera.position = {-3.048528f, 1.879444f, 2.618031f };
     editorCamera.rotation = {0.0f, 31.56f, -21.f };
+
+    defaultEntityModel = MeshGroupAssimpLoad("data/primitives/sphere.obj");
 }
 
 INTERNAL void EditorExportMap(const std::string& mapName);
@@ -431,10 +442,8 @@ INTERNAL void EditorSwitchMap(const std::string& mapName)
     #include <codecvt>
 #endif
 
-INTERNAL void EditorUpdate()
+INTERNAL void UpdateEditorImGui()
 {
-    editorCamera.CameraUpdate();
-
     // Create a window called "My First Tool", with a menu bar.
     ImGui::Begin("Editor", nullptr, ImGuiWindowFlags_MenuBar);
     if (ImGui::BeginMenuBar())
@@ -518,39 +527,164 @@ INTERNAL void EditorUpdate()
     }
 
     ImGui::TextUnformatted(loadedMapPath.c_str());
-    ImGui::Text("Selected object: %p", selectedEditObj);
 
-    if(selectedEditObj)
+    ImGui::Separator();
+    ImGui::BeginGroup();
+    if(ImGui::Button("Select"))
     {
-        vec3 selectedPos = selectedEditObj->GetPos();
-        ImGui::DragFloat3("Pos", &selectedPos.x,0.01f);
-        selectedEditObj->SetPos(selectedPos);
-        vec3 selectedRot = QuatToEuler(selectedEditObj->GetOrientation()) * SML_RAD2DEG;
-        ImGui::DragFloat3("Rot", &selectedRot.x,0.2f);
-        selectedEditObj->SetOrientation(EulerToQuat(selectedRot * SML_DEG2RAD));
-        vec3 selectedScale = selectedEditObj->GetScale();
-        ImGui::DragFloat3("Scale", &selectedScale.x, 0.01f);
-        selectedEditObj->SetScale(selectedScale);
-        ImGui::Separator();
+        editorMode = EDITOR_MODE_SELECT;
+    }
+    ImGui::SameLine();
+    if(ImGui::Button("Create"))
+    {
+        editorMode = EDITOR_MODE_CREATE;
+    }
+    ImGui::SameLine();
+    if(ImGui::Button("Edit"))
+    {
+        editorMode = EDITOR_MODE_EDIT;
+    }
+    ImGui::EndGroup();
+    ImGui::Separator();
 
-        /* Class specific IMGUI */
-        switch(selectedEditObj->GetGameClassCode())
-        {
-            case BRUSH_BLOCK:{
-                BlockBrush* box = (BlockBrush*) selectedEditObj->GetClass();
-                ImGui::Checkbox("Visible", &box->isVisible);
-                ImGui::Checkbox("Collidable", &box->hasCollision);
-                ImGui::DragFloat3("Dimensions", &box->dimensions.x, 0.01f);
-                ImGui::DragFloat3("Origin offset", &box->originAsOffsetFromMinCorner.x, 0.01f);
-                ImGui::DragFloat2("Texture scale", &box->textureScale.x, 0.01f);
-                ImGui::Checkbox("Tile texture", &box->textureTileFlag);
-                ImGui::Checkbox("Texture orientation", &box->textureOrientationFlag);
-            }break;
-            default:{}break;
-        }
+    switch(editorMode)
+    {
+        case EDITOR_MODE_SELECT:{
+            ImGui::Text("Selected object: %p", selectedEditObj);
+            if(selectedEditObj)
+            {
+                vec3 selectedPos = selectedEditObj->GetPos();
+                ImGui::DragFloat3("Pos", &selectedPos.x,0.01f);
+                selectedEditObj->SetPos(selectedPos);
+                vec3 selectedRot = QuatToEuler(selectedEditObj->GetOrientation()) * SML_RAD2DEG;
+                ImGui::DragFloat3("Rot", &selectedRot.x,0.2f);
+                selectedEditObj->SetOrientation(EulerToQuat(selectedRot * SML_DEG2RAD));
+                vec3 selectedScale = selectedEditObj->GetScale();
+                ImGui::DragFloat3("Scale", &selectedScale.x, 0.01f);
+                selectedEditObj->SetScale(selectedScale);
+                ImGui::Separator();
+
+                /* Class specific IMGUI */
+                switch(selectedEditObj->GetGameClassCode())
+                {
+                    case BRUSH_BLOCK:{
+                        BlockBrush* box = (BlockBrush*) selectedEditObj->GetClass();
+                        ImGui::Checkbox("Visible", &box->isVisible);
+                        ImGui::Checkbox("Collidable", &box->hasCollision);
+                        ImGui::DragFloat3("Dimensions", &box->dimensions.x, 0.01f);
+                        ImGui::DragFloat3("Origin offset", &box->originAsOffsetFromMinCorner.x, 0.01f);
+                        ImGui::DragFloat2("Texture scale", &box->textureScale.x, 0.01f);
+                        ImGui::Checkbox("Tile texture", &box->textureTileFlag);
+                        ImGui::Checkbox("Texture orientation", &box->textureOrientationFlag);
+                    }break;
+                    default:{}break;
+                }
+            }
+        }break;
+        case EDITOR_MODE_CREATE:{
+            enum EditorObjectCreateType {
+                EDITOR_CREATE_TYPE_BRUSH,
+                EDITOR_CREATE_TYPE_ENTITY
+            };
+            LOCAL_PERSIST EditorObjectCreateType editorObjectCreateType = EDITOR_CREATE_TYPE_BRUSH;
+            ImGui::Text("Select editor object type");
+            if(ImGui::Button("Brush"))
+            {
+                editorObjectCreateType = EDITOR_CREATE_TYPE_BRUSH;
+            }
+            ImGui::SameLine();
+            if(ImGui::Button("Entity"))
+            {
+                editorObjectCreateType = EDITOR_CREATE_TYPE_ENTITY;
+            }
+            switch(editorObjectCreateType)
+            {
+                case EDITOR_CREATE_TYPE_BRUSH:{
+                    ImGui::Text("Brush creation mode");
+
+                    LOCAL_PERSIST vec3 createPosition;
+                    LOCAL_PERSIST quat createOrientation;
+                    LOCAL_PERSIST vec3 createScale = vec3(1.f, 1.f, 1.f);
+                    LOCAL_PERSIST bool createIsVisible = true;
+                    LOCAL_PERSIST bool createHasCollision = true;
+
+                    // TODO(Kevin): Add dropdown to choose brush type
+
+                    ImGui::DragFloat3("Pos", &createPosition.x, 0.01f);
+                    vec3 selectedRot = QuatToEuler(createOrientation) * SML_RAD2DEG;
+                    ImGui::DragFloat3("Rot", &selectedRot.x, 0.2f);
+                    createOrientation = EulerToQuat(selectedRot * SML_DEG2RAD);
+                    ImGui::DragFloat3("Scale", &createScale.x, 0.01f);
+                    ImGui::Checkbox("Visible", &createIsVisible);
+                    ImGui::Checkbox("Collidable", &createHasCollision);
+
+                    LOCAL_PERSIST vec3 createDimensions;
+                    ImGui::DragFloat3("Dimensions", &createDimensions.x, 0.01f);
+
+                    if(ImGui::Button("Create Brush"))
+                    {
+                        GameObject* newEntity = &editorEntities.PushBackDefault();
+                        newEntity->SetPos(createPosition);
+                        newEntity->SetOrientation(createOrientation);
+                        newEntity->SetScale(createScale);
+
+                        BlockBrush* box = new BlockBrush();
+                        newEntity->SetClass(box);
+                        box->isVisible = createIsVisible;
+                        box->hasCollision = createHasCollision;
+                        box->dimensions = createDimensions;
+
+                        selectedEditObj = newEntity;
+                    }
+                }break;
+                case EDITOR_CREATE_TYPE_ENTITY:{
+                    ImGui::Text("Entity creation mode");
+
+                    LOCAL_PERSIST vec3 createPosition;
+                    LOCAL_PERSIST quat createOrientation;
+                    LOCAL_PERSIST vec3 createScale = vec3(1.f, 1.f, 1.f);
+                    LOCAL_PERSIST bool createIsVisible = true;
+                    LOCAL_PERSIST bool createHasCollision = true;
+
+                    ImGui::DragFloat3("Pos", &createPosition.x, 0.01f);
+                    vec3 selectedRot = QuatToEuler(createOrientation) * SML_RAD2DEG;
+                    ImGui::DragFloat3("Rot", &selectedRot.x, 0.2f);
+                    createOrientation = EulerToQuat(selectedRot * SML_DEG2RAD);
+                    ImGui::DragFloat3("Scale", &createScale.x, 0.01f);
+                    ImGui::Checkbox("Visible", &createIsVisible);
+                    ImGui::Checkbox("Collidable", &createHasCollision);
+
+                    if(ImGui::Button("Create Entity"))
+                    {
+                        GameObject* newEntity = &editorEntities.PushBackDefault();
+                        newEntity->SetPos(createPosition);
+                        newEntity->SetOrientation(createOrientation);
+                        newEntity->SetScale(createScale);
+
+                        PropStatic* propStatic = new PropStatic();
+                        newEntity->SetClass(propStatic);
+                        propStatic->isVisible = createIsVisible;
+                        propStatic->hasCollision = createHasCollision;
+                        propStatic->SetModel(defaultEntityModel);
+
+                        selectedEditObj = newEntity;
+                    }
+                }break;
+            }
+        }break;
+        case EDITOR_MODE_EDIT:{
+
+        }break;
     }
 
     ImGui::End();
+}
+
+INTERNAL void EditorUpdate()
+{
+    editorCamera.CameraUpdate();
+
+    UpdateEditorImGui();
 }
 
 INTERNAL void EditorRender()
@@ -590,47 +724,50 @@ INTERNAL void EditorMousePick(float xNDC, float yNDC, float rayLength = 100.f)
 
 // TODO(Kevin): REWRITE TO USE PIXEL COLOR DATA
 
-    // iterate editor/game objects to see which object was clicked on.
-    std::vector<Collider*> collided;
-    std::vector<MeshCollider> collidersToCheck;
-    for(u32 i = 0; i < editorEntities.Count(); ++i)
+    if(editorMode == EDITOR_MODE_SELECT)
     {
-        if(editorEntities[i].GetGameClassCode() == BRUSH_BLOCK)
+        // iterate editor/game objects to see which object was clicked on.
+        std::vector<Collider*> collided;
+        std::vector<MeshCollider> collidersToCheck;
+        for(u32 i = 0; i < editorEntities.Count(); ++i)
         {
-            MeshCollider col;
-            col.owningGameObject = &editorEntities[i];
-            BlockBrush* bb = (BlockBrush*)editorEntities[i].GetClass();
-            col.verticesModelSpace = bb->GetColliders();
-            collidersToCheck.push_back(col);
-        }
-    }
-
-    for(auto& col : collidersToCheck)
-    {
-        if(GJK(&col, &lc).hasCollision)
-        {
-            collided.push_back(&col);
-        }
-    }
-
-    GameObject* first = nullptr;
-    float minDistanceSoFar = FLT_MAX;
-    for(auto c : collided)
-    {
-        if(c->owningGameObject)
-        {
-            float distance = Magnitude(editorCamera.position - c->owningGameObject->GetPos());
-            if(distance < minDistanceSoFar)
+            if(editorEntities[i].GetGameClassCode() == BRUSH_BLOCK)
             {
-                first = c->owningGameObject;
-                minDistanceSoFar = distance;
+                MeshCollider col;
+                col.owningGameObject = &editorEntities[i];
+                BlockBrush* bb = (BlockBrush*)editorEntities[i].GetClass();
+                col.verticesModelSpace = bb->GetColliders();
+                collidersToCheck.push_back(col);
             }
         }
-    }
 
-    if(first)
-    {
-        selectedEditObj = first;
+        for(auto& col : collidersToCheck)
+        {
+            if(GJK(&col, &lc).hasCollision)
+            {
+                collided.push_back(&col);
+            }
+        }
+
+        GameObject* first = nullptr;
+        float minDistanceSoFar = FLT_MAX;
+        for(auto c : collided)
+        {
+            if(c->owningGameObject)
+            {
+                float distance = Magnitude(editorCamera.position - c->owningGameObject->GetPos());
+                if(distance < minDistanceSoFar)
+                {
+                    first = c->owningGameObject;
+                    minDistanceSoFar = distance;
+                }
+            }
+        }
+
+        if(first)
+        {
+            selectedEditObj = first;
+        }
     }
 }
 
