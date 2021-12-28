@@ -709,6 +709,7 @@ INTERNAL void EditorRender()
     editorShader.GLBindMatrix4fv("projMatrix", 1, editorCamera.perspectiveMatrix.ptr());
     editorShader.GLBind3f("modelColor", _RGB(0.f, 0.f, 0.f));
 
+    devUnitTexture.UseTexture();
     for(u32 i = 0; i < editorEntities.Count(); ++i)
     {
         if(selectedEditObj == &editorEntities[i])
