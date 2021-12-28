@@ -714,8 +714,14 @@ INTERNAL void EditorRender()
         if(selectedEditObj == &editorEntities[i])
         {
             wireframeShader.UseShader();
-            LOCAL_PERSIST vec4 selectColor = vec4();
-            wireframeShader.GLBind4f("wireframeColor", _RGB(255.f, 255.f, 0.f), 1.f);
+            LOCAL_PERSIST float _breathef = 0.f;
+            LOCAL_PERSIST vec4 selectColor;
+            _breathef += gDeltaTime;
+            selectColor.x = SML_abs(sinf(_breathef))*0.7f + 0.3f;
+            selectColor.y = SML_abs(sinf(_breathef))*0.7f + 0.3f;
+            selectColor.z = SML_abs(sinf(_breathef))*0.7f + 0.3f;
+            selectColor.w = SML_abs(sinf(_breathef))*0.7f + 0.3f;
+            wireframeShader.GLBind4f("wireframeColor", selectColor.x, selectColor.y, selectColor.z, selectColor.w);
             glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
             wireframeShader.SuppressWarningsPush();
             editorEntities[i].GetClass()->EditorModeRender(wireframeShader);
