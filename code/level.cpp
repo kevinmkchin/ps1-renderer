@@ -383,7 +383,7 @@ INTERNAL std::string loadedMapPath = "no map loaded...";
 INTERNAL GameCamera editorCamera;
 INTERNAL MeshGroup* defaultEntityModel = nullptr;
 INTERNAL GameObject* selectedEditObj = nullptr;
-INTERNAL Texture textureA;
+INTERNAL Texture devUnitTexture;
 
 INTERNAL void EditorInitOnStartUp()
 {
@@ -409,7 +409,7 @@ INTERNAL void EditorLoad(const std::string& mapName)
     }
 
     // Load textures
-    TextureCreateFromFile(textureA, "data/primitives/TilesPlain0304.png");
+    TextureCreateFromFile(devUnitTexture, "data/primitives/dev_unitwall11.png", GL_LINEAR_MIPMAP_LINEAR);
 }
 
 INTERNAL void EditorUnload()
@@ -429,7 +429,7 @@ INTERNAL void EditorUnload()
     loadedMapPath = "no map loaded...";
 
     // Unload all textures
-    TextureDelete(textureA);
+    TextureDelete(devUnitTexture);
 }
 
 INTERNAL void EditorSwitchMap(const std::string& mapName)

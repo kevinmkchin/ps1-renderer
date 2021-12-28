@@ -29,13 +29,18 @@ INTERNAL void TextureDelete(Texture& texture)
 
 /** Loads texture from bitmap; generates a new texture object in GPU mem; store the id
     of the new texture object into texture.texture_id; sets texture parameters; copies texture data
-    into the texture object in GPU mem; and generates mip maps automatically. */
+    into the texture object in GPU mem; and generates mip maps automatically. 
+    filteringMode
+    GL_NEAREST : nearest neighbor
+    GL_LINEAR : bilinear filtering
+    GL_LINEAR_MIPMAP_LINEAR : trilinear filtering */
 INTERNAL void TextureCreateFromBitmap(Texture&        texture,
                                       unsigned char*  bitmap,
                                       u32             bitmapWidth,
                                       u32             bitmapHeight,
                                       GLenum          targetFormat,
-                                      GLenum          sourceFormat)
+                                      GLenum          sourceFormat,
+                                      GLenum          filteringMode = GL_NEAREST) 
 {
     if(texture.textureId != 0)
     {
@@ -51,8 +56,8 @@ INTERNAL void TextureCreateFromBitmap(Texture&        texture,
     glBindTexture(GL_TEXTURE_2D, texture.textureId);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filteringMode);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filteringMode);
     glTexImage2D(
             GL_TEXTURE_2D,              // texture target type
             0,                          // level-of-detail number n = n-th mipmap reduction image
@@ -70,7 +75,7 @@ INTERNAL void TextureCreateFromBitmap(Texture&        texture,
 /** Loads texture at file_path; generates a new texture object in GPU mem; stores the id
     of the new texture object into texture.texture_id; sets texture parameters; copies
     texture data into the texture object in GPU mem; and generates mip maps automatically. */
-INTERNAL void TextureCreateFromFile(Texture& texture, const char* textureFilePath)
+INTERNAL void TextureCreateFromFile(Texture& texture, const char* textureFilePath, GLenum filteringMode = GL_NEAREST)
 {
     if(texture.textureId != 0)
     {
@@ -88,7 +93,7 @@ INTERNAL void TextureCreateFromFile(Texture& texture, const char* textureFilePat
     BitmapHandle textureHandle;
     ReadImage(textureHandle, textureFilePath);
     TextureCreateFromBitmap(texture, (unsigned char *) textureHandle.memory, textureHandle.width,
-                            textureHandle.height, GL_RGBA, (textureHandle.bitDepth == 3 ? GL_RGB : GL_RGBA));
+                            textureHandle.height, GL_RGBA, (textureHandle.bitDepth == 3 ? GL_RGB : GL_RGBA), filteringMode);
     FreeImage(textureHandle); // texture data has been copied to GPU memory, so we can free image from memory
 
     texture.filePath = textureFilePath;
