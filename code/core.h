@@ -202,6 +202,7 @@ struct GameClass
     }
 
 public:
+    // TODO(Kevin): REPLACE WITH PURE VIRTUAL GETTERS AND SETTERS SO THAT SUBCLASS CAN CHOOSE WHETHER CLASS CAN COLLIDE OR BE VISIBLE OR NOT
     bool isVisible = false;
     bool hasCollision = false;
 protected:

@@ -25,7 +25,12 @@ struct Shader
 
     i32 GetCachedUniformLocation(const char* uniformName) const;
 
+    void SuppressWarningsPush();
+    void SuppressWarningsPop();
+
 private:
+    bool bPrintWarnings = true;
+
     GLuint idShaderProgram = 0; // id of this shader program in GPU memory
 
     std::unordered_map<std::string, i32> uniformLocationsMap;

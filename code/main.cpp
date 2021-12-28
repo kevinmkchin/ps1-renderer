@@ -3,7 +3,6 @@
 
 TODO:
 Task for today:
-    - HIGHLIGHT SELECTION IN EDITOR VIEW with wireframe or something...
     - CHANGE MOUSE PICK TO USE PIXEL COLOR DATA (Get from OpenGL) - COLOR DATA = entity unique ID
     - Level editor gizmo to move and edit placed geometry
 
@@ -101,6 +100,7 @@ INTERNAL std::string __consoleCommandQueue;
 /** Shaders */
 GLOBAL_VAR Shader sceneShader;
 GLOBAL_VAR Shader editorShader;
+GLOBAL_VAR Shader wireframeShader;
 INTERNAL Shader quadShader;
 
 #include "input.cpp"
@@ -568,6 +568,7 @@ int main(int argc, char* argv[])
     Shader::GLLoadShaderProgramFromFile(quadShader, "shaders/quad.vert", "shaders/quad.frag");
     Shader::GLLoadShaderProgramFromFile(sceneShader, "shaders/scene.vert", "shaders/scene.frag");
     Shader::GLLoadShaderProgramFromFile(editorShader, "shaders/editor.vert", "shaders/editor.frag");
+    Shader::GLLoadShaderProgramFromFile(wireframeShader, "shaders/wireframe.vert", "shaders/wireframe.frag");
 
     EditorInitOnStartUp();
     GameInitOnStartUp();

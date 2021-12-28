@@ -10,6 +10,8 @@ struct PropStatic : GameClass
 
     void Render(const Shader& shader) override
     {
+        // PropStatic is always visible regardless of isVisible
+
         MeshGroup* modelToRender = GetModel();
         if(modelToRender)
         {
@@ -62,8 +64,11 @@ struct EditorBrush : GameClass
 
     void Render(const Shader& shader) override
     {
-        shader.GLBindMatrix4fv("modelMatrix", 1, GetTiedEntity()->GetModelMatrix().ptr());
-        mesh.RenderMesh();
+        if(isVisible)
+        {
+            shader.GLBindMatrix4fv("modelMatrix", 1, GetTiedEntity()->GetModelMatrix().ptr());
+            mesh.RenderMesh();
+        }
     }
 
     void EditorModeRender(const Shader& shader) override
@@ -77,7 +82,8 @@ struct EditorBrush : GameClass
             hasCollision ? shader.GLBind3f("modelColor", _RGB(0.f, 255.f, 0.f)) : shader.GLBind3f("modelColor", _RGB(255.f, 255.f, 255.f));
             glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
         }
-        Render(shader);
+        shader.GLBindMatrix4fv("modelMatrix", 1, GetTiedEntity()->GetModelMatrix().ptr());
+        mesh.RenderMesh();
         if(!isVisible)
         {
             shader.GLBind3f("modelColor", _RGB(0.f, 0.f, 0.f));
@@ -442,9 +448,9 @@ INTERNAL void EditorSwitchMap(const std::string& mapName)
     #include <codecvt>
 #endif
 
+#pragma region EditorImGuiStuff
 INTERNAL void UpdateEditorImGui()
 {
-    // Create a window called "My First Tool", with a menu bar.
     ImGui::Begin("Editor", nullptr, ImGuiWindowFlags_MenuBar);
     if (ImGui::BeginMenuBar())
     {
@@ -679,6 +685,7 @@ INTERNAL void UpdateEditorImGui()
 
     ImGui::End();
 }
+#pragma endregion
 
 INTERNAL void EditorUpdate()
 {
@@ -694,15 +701,29 @@ INTERNAL void EditorRender()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
     
+    wireframeShader.UseShader();
+    wireframeShader.GLBindMatrix4fv("viewMatrix", 1, editorCamera.viewMatrix.ptr());
+    wireframeShader.GLBindMatrix4fv("projMatrix", 1, editorCamera.perspectiveMatrix.ptr());
     editorShader.UseShader();
-
     editorShader.GLBindMatrix4fv("viewMatrix", 1, editorCamera.viewMatrix.ptr());
     editorShader.GLBindMatrix4fv("projMatrix", 1, editorCamera.perspectiveMatrix.ptr());
     editorShader.GLBind3f("modelColor", _RGB(0.f, 0.f, 0.f));
 
-    textureA.UseTexture(); // TODO(Kevin): remove
     for(u32 i = 0; i < editorEntities.Count(); ++i)
     {
+        if(selectedEditObj == &editorEntities[i])
+        {
+            wireframeShader.UseShader();
+            LOCAL_PERSIST vec4 selectColor = vec4();
+            wireframeShader.GLBind4f("wireframeColor", _RGB(255.f, 255.f, 0.f), 1.f);
+            glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+            wireframeShader.SuppressWarningsPush();
+            editorEntities[i].GetClass()->EditorModeRender(wireframeShader);
+            wireframeShader.SuppressWarningsPop();
+            glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+            editorShader.UseShader();
+        }
+
         editorEntities[i].GetClass()->EditorModeRender(editorShader);
     }
 
