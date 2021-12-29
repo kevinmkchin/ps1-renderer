@@ -3,7 +3,6 @@
 
 TODO:
 Task for today:
-    - Level editor gizmo to move and edit placed geometry
     - Organize code better - move shit around between files
 
 Backlog:
