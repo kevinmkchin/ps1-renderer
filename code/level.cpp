@@ -615,14 +615,21 @@ INTERNAL void EditorSwitchMap(const std::string& mapName)
     EditorLoad(mapName);
 }
 
+void MoveCameraToSelectedEditorObject()
+{
+    auto selectedObj = GetEditorObjectWithId(selectedEditObjId);
+    if(selectedObj)
+    {
+        editorCamera.position = selectedObj->GetPos() - editorCamera.calculatedDirection * 13.f;
+    }
+}
+
+#pragma region EditorImGuiImGuiStuff
+
 #if (defined _WIN32)
     #include <shobjidl.h>
     #include <codecvt>
 #endif
-
-
-
-#pragma region EditorImGuiImGuiStuff
 
 INTERNAL void UpdateEditorImGui()
 {
@@ -766,6 +773,11 @@ INTERNAL void UpdateEditorImGui()
                     }break;
                     default:{}break;
                 }
+
+                if(ImGui::Button("Go to Selected"))
+                {
+                    MoveCameraToSelectedEditorObject();
+                }
             }
         }break;
         case EDITOR_MODE_CREATE:{
@@ -821,7 +833,8 @@ INTERNAL void UpdateEditorImGui()
                         box->hasCollision = createHasCollision;
                         box->dimensions = createDimensions;
 
-                        selectedEditObj = newEntity;
+                        selectedEditObjId = newEntity->GetId();
+                        transGizmo.attachedObjId = newEntity->GetId();
                     }
                 }break;
                 case EDITOR_CREATE_TYPE_ENTITY:{
@@ -854,7 +867,8 @@ INTERNAL void UpdateEditorImGui()
                         propStatic->hasCollision = createHasCollision;
                         propStatic->SetModel(defaultEntityModel);
 
-                        selectedEditObj = newEntity;
+                        selectedEditObjId = newEntity->GetId();
+                        transGizmo.attachedObjId = newEntity->GetId();
                     }
                 }break;
             }
@@ -870,9 +884,9 @@ INTERNAL void UpdateEditorImGui()
 
 INTERNAL void EditorUpdate()
 {
-    editorCamera.CameraUpdate();
-
     UpdateEditorImGui();
+
+    editorCamera.CameraUpdate();
 
     transGizmo.UpdateGizmo();
 }
