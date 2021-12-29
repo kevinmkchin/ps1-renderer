@@ -3,6 +3,7 @@
 /** INPUT **/
 
 // Stores the mouse delta accumulated between each frame
+GLOBAL_VAR bool gIsLeftMouseDown = false;
 GLOBAL_VAR vec2 gMouseDelta;
 
 // Keyboard State - Access via SDL_Scancode

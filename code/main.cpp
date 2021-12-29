@@ -407,6 +407,10 @@ INTERNAL void SDLProcessEventsRealtime()
         {
             case SDL_MOUSEBUTTONUP:{
                 SDL_MouseButtonEvent mouseUp = event.button;
+                if(mouseUp.button == SDL_BUTTON_LEFT && mouseUp.state == SDL_RELEASED)
+                {
+                    gIsLeftMouseDown = false;
+                }
                 if(mouseUp.button == SDL_BUTTON_RIGHT && mouseUp.state == SDL_RELEASED)
                 {
                     SDL_SetRelativeMouseMode(SDL_FALSE);
@@ -418,15 +422,10 @@ INTERNAL void SDLProcessEventsRealtime()
 
             case SDL_MOUSEBUTTONDOWN:{
                 SDL_MouseButtonEvent mouseDown = event.button;
-                if(mouseDown.button == SDL_BUTTON_RIGHT && mouseDown.state == SDL_PRESSED)
-                {
-                    SDL_SetRelativeMouseMode(SDL_TRUE);
-                    gameCamera.bMouseControl = true;
-                    editorCamera.bMouseControl = true;
-                }
-
                 if(mouseDown.button == SDL_BUTTON_LEFT && mouseDown.state == SDL_PRESSED)
                 {
+                    gIsLeftMouseDown = true;
+
                     if(editorModeActiveFlag)
                     {
                         if(!ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow))
@@ -436,6 +435,12 @@ INTERNAL void SDLProcessEventsRealtime()
                             EditorMousePick(x, backbufferHeight - y);
                         }
                     }
+                }
+                if(mouseDown.button == SDL_BUTTON_RIGHT && mouseDown.state == SDL_PRESSED)
+                {
+                    SDL_SetRelativeMouseMode(SDL_TRUE);
+                    gameCamera.bMouseControl = true;
+                    editorCamera.bMouseControl = true;
                 }
             }break;
 
