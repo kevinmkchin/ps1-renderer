@@ -401,20 +401,13 @@ INTERNAL GameObject* GetEditorObjectWithId(EntityId eid)
     }
     return nullptr;
 }
+INTERNAL GameCamera editorCamera;
 
 enum EditorMode {
     EDITOR_MODE_SELECT,
     EDITOR_MODE_CREATE,
     EDITOR_MODE_EDIT
 };
-
-INTERNAL EditorMode editorMode = EDITOR_MODE_SELECT;
-
-INTERNAL std::string loadedMapPath = "no map loaded...";
-INTERNAL GameCamera editorCamera;
-INTERNAL MeshGroup* defaultEntityModel = nullptr;
-INTERNAL EntityId selectedEditObjId = 0;
-INTERNAL Texture devUnitTexture;
 
 struct Gizmo
 {
@@ -556,6 +549,17 @@ struct TranslationGizmo : Gizmo
 };
 
 INTERNAL TranslationGizmo transGizmo;
+INTERNAL EditorMode editorMode = EDITOR_MODE_SELECT;
+INTERNAL std::string loadedMapPath = "no map loaded...";
+INTERNAL MeshGroup* defaultEntityModel = nullptr;
+INTERNAL EntityId selectedEditObjId = 0;
+INTERNAL Texture devUnitTexture;
+
+INTERNAL void SetSelectedEditObjId(EntityId eid)
+{
+    selectedEditObjId = eid;
+    transGizmo.attachedObjId = eid;
+}
 
 INTERNAL void EditorInitOnStartUp()
 {
@@ -833,8 +837,7 @@ INTERNAL void UpdateEditorImGui()
                         box->hasCollision = createHasCollision;
                         box->dimensions = createDimensions;
 
-                        selectedEditObjId = newEntity->GetId();
-                        transGizmo.attachedObjId = newEntity->GetId();
+                        SetSelectedEditObjId(newEntity->GetId());
                     }
                 }break;
                 case EDITOR_CREATE_TYPE_ENTITY:{
@@ -867,8 +870,7 @@ INTERNAL void UpdateEditorImGui()
                         propStatic->hasCollision = createHasCollision;
                         propStatic->SetModel(defaultEntityModel);
 
-                        selectedEditObjId = newEntity->GetId();
-                        transGizmo.attachedObjId = newEntity->GetId();
+                        SetSelectedEditObjId(newEntity->GetId());
                     }
                 }break;
             }
@@ -990,8 +992,7 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
 
         if(editorMode == EDITOR_MODE_SELECT)
         {
-            selectedEditObjId = pickedId;
-            transGizmo.attachedObjId = selectedEditObjId;
+            SetSelectedEditObjId(pickedId);
         }
         else if(editorMode == EDITOR_MODE_CREATE)
         {
