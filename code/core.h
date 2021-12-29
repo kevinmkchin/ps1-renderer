@@ -69,6 +69,13 @@ enum GAME_CLASS_CODE : u32
     CLASS_PROPDYNAMIC = 0x0080
 };
 
+INTERNAL EntityId GetUniqueEntityId()
+{
+    // 0 is invalid
+    LOCAL_PERSIST EntityId id = 1;
+    return id++;
+}
+
 struct GameClass;
 struct GameObject final
 {
@@ -78,6 +85,7 @@ struct GameObject final
         , scale({ 1.f, 1.f, 1.f })
         , modelMatrix(mat4())
         , isModelMatrixOutdated(false)
+        , entityId(GetUniqueEntityId())
     {}
 
     virtual void Update();
@@ -87,6 +95,8 @@ struct GameObject final
     virtual void OnCollision(CollisionEventArgs collisionInfo);
 
     GAME_CLASS_CODE GetGameClassCode() const;
+
+    EntityId GetId() const { return entityId; }
 
     GameClass* GetClass() const;
 
@@ -157,6 +167,7 @@ private:
     GameClass* tiedClass;
     mat4 modelMatrix;
     bool32 isModelMatrixOutdated;
+    EntityId entityId;
 };
 
 struct GameClass
@@ -186,7 +197,7 @@ struct GameClass
     }
 
     /** What to render in Editor mode. Must implement. */
-    virtual void EditorModeRender(const Shader& shader) = 0;
+    virtual void EditorModeRender(const Shader& shader, bool mousePicking) = 0;
 
     GAME_CLASS_CODE GetGameClassCode() const { return gameClassCode; }
 

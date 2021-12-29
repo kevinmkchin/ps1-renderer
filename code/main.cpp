@@ -3,15 +3,17 @@
 
 TODO:
 Task for today:
-    - CHANGE MOUSE PICK TO USE PIXEL COLOR DATA (Get from OpenGL) - COLOR DATA = entity unique ID
     - Level editor gizmo to move and edit placed geometry
+    - PropStatic model loading
+    - GameClass reflection + expose subclasses and properties to editor?
+    - Organize code better - move shit around between files
 
 Backlog:
-    - Create mode, show preview of brush that can be moved around and shit
     - Individualize brush faces
         - SELECT TEXTURES for brush faces
         - Save texture data to disk with map
         - Texture UV offset for box editor object 
+    - Create mode, show preview of brush that can be moved around and shit
     - Update EditorExportMap and EditorImportMap to export and import PropStatic
     - Dropdown to select brush type
     - DOUBLE CLICK to place an entity
@@ -105,6 +107,7 @@ INTERNAL std::string __consoleCommandQueue;
 GLOBAL_VAR Shader sceneShader;
 GLOBAL_VAR Shader editorShader;
 GLOBAL_VAR Shader wireframeShader;
+GLOBAL_VAR Shader mousepickShader;
 INTERNAL Shader quadShader;
 
 #include "input.cpp"
@@ -430,11 +433,7 @@ INTERNAL void SDLProcessEventsRealtime()
                         {
                             int x, y;
                             SDL_GetMouseState(&x, &y);
-                            vec2 screenNDC = ScreenSpaceToScreenNDC(x,y);
-                            if(SML_abs(screenNDC.x) <= 1.f && SML_abs(screenNDC.y) <= 1.f)
-                            {
-                                EditorMousePick(screenNDC.x, screenNDC.y);
-                            }
+                            EditorMousePick(x, backbufferHeight - y);
                         }
                     }
                 }
@@ -573,6 +572,7 @@ int main(int argc, char* argv[])
     Shader::GLLoadShaderProgramFromFile(sceneShader, "shaders/scene.vert", "shaders/scene.frag");
     Shader::GLLoadShaderProgramFromFile(editorShader, "shaders/editor.vert", "shaders/editor.frag");
     Shader::GLLoadShaderProgramFromFile(wireframeShader, "shaders/wireframe.vert", "shaders/wireframe.frag");
+    Shader::GLLoadShaderProgramFromFile(mousepickShader, "shaders/mousepick.vert", "shaders/mousepick.frag");
 
     EditorInitOnStartUp();
     GameInitOnStartUp();
