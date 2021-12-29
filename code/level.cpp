@@ -419,8 +419,10 @@ INTERNAL Texture devUnitTexture;
 struct Gizmo
 {
     vec3 position;
+    EntityId attachedObjId = 0;
     // do gizmos need scale? vec3 scale; 
     virtual void InitGizmo() = 0;
+    virtual void UpdateGizmo() = 0;
     virtual void RenderGizmo(const Shader& shader, bool mousePicking) = 0;
 };
 
@@ -434,6 +436,15 @@ struct TranslationGizmo : Gizmo
     // EntityId XYPlaneId;
     // EntityId YZPlaneId;
 
+    enum ActiveTranslationAxis
+    {
+        GIZMO_TRANSLATION_INACTIVE,
+        GIZMO_TRANSLATION_ACTIVE_X,
+        GIZMO_TRANSLATION_ACTIVE_Y,
+        GIZMO_TRANSLATION_ACTIVE_Z,
+    };
+    ActiveTranslationAxis activeAxis = GIZMO_TRANSLATION_INACTIVE;
+
     /* 
     For the translation and scaling gizmos, which are represented as 3 axes, 
     I do the following: I make a vector of the difference between the previous 
@@ -442,6 +453,7 @@ struct TranslationGizmo : Gizmo
     of the mouse movement in world space. Then I take the dot product of the 
     vector in world space with the selected axis. This allows me determine 
     if the mouse movement is in line with the axis or away from the axis.
+    basically getting the projection of the mouse world vector onto the movement axis
 
     Rotation gizmo
     Project the center of the gizmo to screen space.
@@ -467,47 +479,89 @@ struct TranslationGizmo : Gizmo
         arrowModel = MeshGroupAssimpLoad("data/primitives/gizmo_arrow.obj");
     }
 
+    void UpdateGizmo() override
+    {
+        if(!gIsLeftMouseDown)
+        {
+            activeAxis = GIZMO_TRANSLATION_INACTIVE;
+        }
+
+        GameObject* attachedObj = GetEditorObjectWithId(attachedObjId);
+        if(attachedObj && activeAxis != GIZMO_TRANSLATION_INACTIVE)
+        {
+            float scaledDistToObjFromCam = Magnitude(attachedObj->GetPos() - editorCamera.position);
+            mat4 inverseViewMatrix = editorCamera.viewMatrix.GetInverse();
+            mat4 inverseProjMatrix = editorCamera.perspectiveMatrix.GetInverse();
+            float xNDC = gMouseDelta.x / ((float)backbufferWidth/2.f) * scaledDistToObjFromCam;
+            float yNDC = -gMouseDelta.y / ((float)backbufferHeight/2.f) * scaledDistToObjFromCam;
+            printf("NDC %f, %f\n", xNDC, yNDC);
+            vec4 rayCCS = vec4(xNDC, yNDC, 0.f, 0.f);
+            vec4 rayVCS = vec4((inverseProjMatrix * rayCCS).xyz, 0.f);
+            vec3 rayWCS = (inverseViewMatrix * rayVCS).xyz;
+            switch(activeAxis)
+            {
+                case GIZMO_TRANSLATION_ACTIVE_X:{
+                    attachedObj->Move(vec3(Dot(SML_FORWARD_VECTOR, rayWCS), 0.f, 0.f));
+                }break;
+                case GIZMO_TRANSLATION_ACTIVE_Y:{
+                    attachedObj->Move(vec3(0.f, Dot(SML_UP_VECTOR, rayWCS), 0.f));
+                }break;
+                case GIZMO_TRANSLATION_ACTIVE_Z:{
+                    attachedObj->Move(vec3(0.f, 0.f, Dot(SML_RIGHT_VECTOR, rayWCS)));
+                }break;
+                default:{}
+            }
+        }
+    }
+
     void RenderGizmo(const Shader& shader, bool mousePicking) override
     {
-        shader.GLBind1i("dontShade", 1);
+        GameObject* attachedObj = GetEditorObjectWithId(attachedObjId);
+        if(attachedObj)
+        {
+            float scaledDistToObjFromCam = Magnitude(attachedObj->GetPos() - editorCamera.position) * 0.13f;
 
-        mat4 modelMatrix = TranslationMatrix(position);
-        shader.GLBindMatrix4fv("modelMatrix", 1, modelMatrix.ptr());
-        vec3 eidColor = EntityIdToRGB(XArrowId);
-        mousePicking ? shader.GLBind3f("entityIdColor", eidColor.x, eidColor.y, eidColor.z) 
-            : shader.GLBind3f("modelColor", 1.f, 0.f, 0.f);
-        arrowModel->render();
+            shader.GLBind1i("dontShade", 1);
+            
+            mat4 modelMatrix = TranslationMatrix(attachedObj->GetPos());
+            modelMatrix *= ScaleMatrix(scaledDistToObjFromCam, scaledDistToObjFromCam, scaledDistToObjFromCam);
+            shader.GLBindMatrix4fv("modelMatrix", 1, modelMatrix.ptr());
+            vec3 eidColor = EntityIdToRGB(XArrowId);
+            mousePicking ? shader.GLBind3f("entityIdColor", eidColor.x, eidColor.y, eidColor.z) 
+                : shader.GLBind3f("modelColor", 1.f, 0.f, 0.f);
+            arrowModel->render();
 
-        modelMatrix *= RotationMatrix(EulerToQuat(0.f,0.f,90.f*SML_DEG2RAD));
-        shader.GLBindMatrix4fv("modelMatrix", 1, modelMatrix.ptr());
-        eidColor = EntityIdToRGB(YArrowId);
-        mousePicking ? shader.GLBind3f("entityIdColor", eidColor.x, eidColor.y, eidColor.z) 
-            : shader.GLBind3f("modelColor", 0.f, 1.f, 0.f);
-        arrowModel->render();
+            modelMatrix = TranslationMatrix(attachedObj->GetPos());
+            modelMatrix *= ScaleMatrix(scaledDistToObjFromCam, scaledDistToObjFromCam, scaledDistToObjFromCam);
+            modelMatrix *= RotationMatrix(EulerToQuat(0.f,0.f,90.f*SML_DEG2RAD));
+            shader.GLBindMatrix4fv("modelMatrix", 1, modelMatrix.ptr());
+            eidColor = EntityIdToRGB(YArrowId);
+            mousePicking ? shader.GLBind3f("entityIdColor", eidColor.x, eidColor.y, eidColor.z) 
+                : shader.GLBind3f("modelColor", 0.f, 1.f, 0.f);
+            arrowModel->render();
 
-        modelMatrix *= RotationMatrix(EulerToQuat(0.f,-90.f*SML_DEG2RAD,0.f));
-        shader.GLBindMatrix4fv("modelMatrix", 1, modelMatrix.ptr());
-        eidColor = EntityIdToRGB(ZArrowId);
-        mousePicking ? shader.GLBind3f("entityIdColor", eidColor.x, eidColor.y, eidColor.z) 
-            : shader.GLBind3f("modelColor", 0.f, 0.f, 1.f);
-        arrowModel->render();
+            modelMatrix = TranslationMatrix(attachedObj->GetPos());
+            modelMatrix *= ScaleMatrix(scaledDistToObjFromCam, scaledDistToObjFromCam, scaledDistToObjFromCam);
+            modelMatrix *= RotationMatrix(EulerToQuat(0.f,-90.f*SML_DEG2RAD,0.f));
+            shader.GLBindMatrix4fv("modelMatrix", 1, modelMatrix.ptr());
+            eidColor = EntityIdToRGB(ZArrowId);
+            mousePicking ? shader.GLBind3f("entityIdColor", eidColor.x, eidColor.y, eidColor.z) 
+                : shader.GLBind3f("modelColor", 0.f, 0.f, 1.f);
+            arrowModel->render();
 
-        // TODO render quads for moving along XY YZ XZ planes
+            // TODO render quads for moving along XY YZ XZ planes
 
-        shader.GLBind1i("dontShade", 0);
+            shader.GLBind1i("dontShade", 0);
+        }
     }
 };
 
 INTERNAL TranslationGizmo transGizmo;
 // RotationGizmo rotGizmo;
 
-INTERNAL void RenderGizmos(GameObject* fixedObj, const Shader& shader, bool mousePicking)
+INTERNAL void RenderGizmos(const Shader& shader, bool mousePicking)
 {
-    if(fixedObj)
-    {
-        transGizmo.position = fixedObj->GetPos();
-        transGizmo.RenderGizmo(shader, mousePicking);
-    }
+    transGizmo.RenderGizmo(shader, mousePicking);
 }
 
 INTERNAL void EditorInitOnStartUp()
@@ -826,6 +880,8 @@ INTERNAL void EditorUpdate()
     editorCamera.CameraUpdate();
 
     UpdateEditorImGui();
+
+    transGizmo.UpdateGizmo();
 }
 
 INTERNAL void EditorRender()
@@ -870,8 +926,7 @@ INTERNAL void EditorRender()
 
     
     glDisable(GL_DEPTH_TEST);
-    GameObject* selectedEditObj = GetEditorObjectWithId(selectedEditObjId);
-    RenderGizmos(selectedEditObj, editorShader, false);
+    RenderGizmos(editorShader, false);
     glEnable(GL_DEPTH_TEST);
 
     glUseProgram(0);
@@ -896,8 +951,7 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
             gCurrentKeyState[SDL_SCANCODE_LSHIFT] ? false : true);
     }
     glDisable(GL_DEPTH_TEST);
-    GameObject* selectedEditObj = GetEditorObjectWithId(selectedEditObjId);
-    RenderGizmos(selectedEditObj, mousepickShader, true);
+    RenderGizmos(mousepickShader, true);
     glEnable(GL_DEPTH_TEST);
 
     mousepickShader.SuppressWarningsPop();
@@ -912,27 +966,29 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
     printf("pickedId: %d\n", pickedId);
     if(pickedId != 0x00FFFFFF)
     {
-        // check if clicked gizmo
         if(pickedId == transGizmo.XArrowId)
         {
             printf("clicked X arrow\n");
-            // start moving selectedEditObj along X axis until mouse release
+            transGizmo.activeAxis = TranslationGizmo::GIZMO_TRANSLATION_ACTIVE_X;
             return;
         }
         if(pickedId == transGizmo.YArrowId)
         {
             printf("clicked Y arrow\n");
+            transGizmo.activeAxis = TranslationGizmo::GIZMO_TRANSLATION_ACTIVE_Y;
             return;
         }
         if(pickedId == transGizmo.ZArrowId)
         {
             printf("clicked Z arrow\n");
+            transGizmo.activeAxis = TranslationGizmo::GIZMO_TRANSLATION_ACTIVE_Z;
             return;
         }
 
         if(editorMode == EDITOR_MODE_SELECT)
         {
             selectedEditObjId = pickedId;
+            transGizmo.attachedObjId = selectedEditObjId;
         }
         else
         {
