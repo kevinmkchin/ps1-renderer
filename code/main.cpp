@@ -4,11 +4,11 @@
 TODO:
 Task for today:
     - Level editor gizmo to move and edit placed geometry
-    - PropStatic model loading
-    - GameClass reflection + expose subclasses and properties to editor?
     - Organize code better - move shit around between files
 
 Backlog:
+    - PropStatic model loading
+    - GameClass reflection + expose subclasses and properties to editor?
     - Individualize brush faces
         - SELECT TEXTURES for brush faces
         - Save texture data to disk with map
