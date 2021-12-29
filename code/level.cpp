@@ -93,10 +93,10 @@ struct EditorBrush : GameClass
     {
         auto bo = GetBufferObjects();
         mesh.RebindBufferObjects(bo.first.data(), bo.second.data(), (u32)bo.first.size(), (u32)bo.second.size());
-        shader.GLBind1i("isColliderOnly", 0);
+        shader.GLBind1i("dontShade", 0);
         if(!isVisible && !mousePicking)
         {
-            shader.GLBind1i("isColliderOnly", 1);
+            shader.GLBind1i("dontShade", 1);
             hasCollision ? shader.GLBind3f("modelColor", _RGB(0.f, 255.f, 0.f)) : shader.GLBind3f("modelColor", _RGB(255.f, 255.f, 255.f));
             glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
         }
@@ -416,6 +416,100 @@ INTERNAL MeshGroup* defaultEntityModel = nullptr;
 INTERNAL EntityId selectedEditObjId = 0;
 INTERNAL Texture devUnitTexture;
 
+struct Gizmo
+{
+    vec3 position;
+    // do gizmos need scale? vec3 scale; 
+    virtual void InitGizmo() = 0;
+    virtual void RenderGizmo(const Shader& shader, bool mousePicking) = 0;
+};
+
+struct TranslationGizmo : Gizmo
+{
+    MeshGroup* arrowModel;
+    EntityId XArrowId;
+    EntityId YArrowId;
+    EntityId ZArrowId;
+    // EntityId XZPlaneId;
+    // EntityId XYPlaneId;
+    // EntityId YZPlaneId;
+
+    /* 
+    For the translation and scaling gizmos, which are represented as 3 axes, 
+    I do the following: I make a vector of the difference between the previous 
+    and current mouse position in screen space. Then multiply this vector by 
+    the inverse of the view and projection matrices, which gives me a vector 
+    of the mouse movement in world space. Then I take the dot product of the 
+    vector in world space with the selected axis. This allows me determine 
+    if the mouse movement is in line with the axis or away from the axis.
+
+    Rotation gizmo
+    Project the center of the gizmo to screen space.
+    Get the angle between the vectors GizmoToLastMouse and GizmoToCurrentMouse using the dot product 
+    formula: acos(Dot(GizmoToLastMouse, GizmoToCurrentMouse) / (GizmoToLastMouse.Length() * GizmoToCurrentMouse.Length()))
+    Get the sign of the angle by taking the cross of the GizmoToLastMouse and GizmoToCurrentMouse 
+    and dotting it with the screen normal. Get another sign (times 1.0f or -1.0f) based on the 
+    orientation of the gizmo, by taking the dot product between the rotated axis and a vector 
+    from the center of the gizmo to the camera. Apply the rotation based on the angle and the
+    two signs to the appropriate axis.
+
+    */
+
+    TranslationGizmo()
+    {
+        XArrowId = GetUniqueEntityId();
+        YArrowId = GetUniqueEntityId();
+        ZArrowId = GetUniqueEntityId();
+    }
+
+    void InitGizmo() override
+    {
+        arrowModel = MeshGroupAssimpLoad("data/primitives/gizmo_arrow.obj");
+    }
+
+    void RenderGizmo(const Shader& shader, bool mousePicking) override
+    {
+        shader.GLBind1i("dontShade", 1);
+
+        mat4 modelMatrix = TranslationMatrix(position);
+        shader.GLBindMatrix4fv("modelMatrix", 1, modelMatrix.ptr());
+        vec3 eidColor = EntityIdToRGB(XArrowId);
+        mousePicking ? shader.GLBind3f("entityIdColor", eidColor.x, eidColor.y, eidColor.z) 
+            : shader.GLBind3f("modelColor", 1.f, 0.f, 0.f);
+        arrowModel->render();
+
+        modelMatrix *= RotationMatrix(EulerToQuat(0.f,0.f,90.f*SML_DEG2RAD));
+        shader.GLBindMatrix4fv("modelMatrix", 1, modelMatrix.ptr());
+        eidColor = EntityIdToRGB(YArrowId);
+        mousePicking ? shader.GLBind3f("entityIdColor", eidColor.x, eidColor.y, eidColor.z) 
+            : shader.GLBind3f("modelColor", 0.f, 1.f, 0.f);
+        arrowModel->render();
+
+        modelMatrix *= RotationMatrix(EulerToQuat(0.f,-90.f*SML_DEG2RAD,0.f));
+        shader.GLBindMatrix4fv("modelMatrix", 1, modelMatrix.ptr());
+        eidColor = EntityIdToRGB(ZArrowId);
+        mousePicking ? shader.GLBind3f("entityIdColor", eidColor.x, eidColor.y, eidColor.z) 
+            : shader.GLBind3f("modelColor", 0.f, 0.f, 1.f);
+        arrowModel->render();
+
+        // TODO render quads for moving along XY YZ XZ planes
+
+        shader.GLBind1i("dontShade", 0);
+    }
+};
+
+INTERNAL TranslationGizmo transGizmo;
+// RotationGizmo rotGizmo;
+
+INTERNAL void RenderGizmos(GameObject* fixedObj, const Shader& shader, bool mousePicking)
+{
+    if(fixedObj)
+    {
+        transGizmo.position = fixedObj->GetPos();
+        transGizmo.RenderGizmo(shader, mousePicking);
+    }
+}
+
 INTERNAL void EditorInitOnStartUp()
 {
     editorEntities.Allocate(MAX_EDITOR_ENTITIES_COUNT);
@@ -425,6 +519,8 @@ INTERNAL void EditorInitOnStartUp()
     editorCamera.rotation = {0.0f, 31.56f, -21.f };
 
     defaultEntityModel = MeshGroupAssimpLoad("data/primitives/sphere.obj");
+
+    transGizmo.InitGizmo();
 }
 
 INTERNAL void EditorExportMap(const std::string& mapName);
@@ -772,6 +868,12 @@ INTERNAL void EditorRender()
         editorEntities[i].GetClass()->EditorModeRender(editorShader, false);
     }
 
+    
+    glDisable(GL_DEPTH_TEST);
+    GameObject* selectedEditObj = GetEditorObjectWithId(selectedEditObjId);
+    RenderGizmos(selectedEditObj, editorShader, false);
+    glEnable(GL_DEPTH_TEST);
+
     glUseProgram(0);
 }
 
@@ -785,6 +887,7 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
     mousepickShader.GLBindMatrix4fv("viewMatrix", 1, editorCamera.viewMatrix.ptr());
     mousepickShader.GLBindMatrix4fv("projMatrix", 1, editorCamera.perspectiveMatrix.ptr());
     mousepickShader.SuppressWarningsPush();
+
     for(u32 i = 0; i < editorEntities.Count(); ++i)
     {
         vec3 rgbId = EntityIdToRGB(editorEntities[i].GetId());
@@ -792,18 +895,41 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
         editorEntities[i].GetClass()->EditorModeRender(mousepickShader,
             gCurrentKeyState[SDL_SCANCODE_LSHIFT] ? false : true);
     }
+    glDisable(GL_DEPTH_TEST);
+    GameObject* selectedEditObj = GetEditorObjectWithId(selectedEditObjId);
+    RenderGizmos(selectedEditObj, mousepickShader, true);
+    glEnable(GL_DEPTH_TEST);
+
     mousepickShader.SuppressWarningsPop();
     glFlush();
     glFinish(); 
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     u8 pickedRGBData[4];
-    /* Pixel location is relative to lower left corner of screen. */
     glReadPixels(screenPixelX, screenPixelY, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pickedRGBData);
     glUseProgram(0);
 
     EntityId pickedId = RGBToEntityId(pickedRGBData[0], pickedRGBData[1], pickedRGBData[2]);
+    printf("pickedId: %d\n", pickedId);
     if(pickedId != 0x00FFFFFF)
     {
+        // check if clicked gizmo
+        if(pickedId == transGizmo.XArrowId)
+        {
+            printf("clicked X arrow\n");
+            // start moving selectedEditObj along X axis until mouse release
+            return;
+        }
+        if(pickedId == transGizmo.YArrowId)
+        {
+            printf("clicked Y arrow\n");
+            return;
+        }
+        if(pickedId == transGizmo.ZArrowId)
+        {
+            printf("clicked Z arrow\n");
+            return;
+        }
+
         if(editorMode == EDITOR_MODE_SELECT)
         {
             selectedEditObjId = pickedId;

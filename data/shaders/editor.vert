@@ -10,7 +10,7 @@ out vec3 LIGHT;
 uniform mat4 modelMatrix;
 uniform mat4 viewMatrix;
 uniform mat4 projMatrix;
-uniform bool isColliderOnly;
+uniform bool dontShade;
 
 void main()
 {
@@ -21,7 +21,7 @@ void main()
     const vec4 sunlightWCS = vec4(-0.5, -1.0, -1.0, 0.0);
     vec3 normalWCS = transpose(inverse(mat3(modelMatrix))) * vertex_normal;
 
-    if(isColliderOnly)
+    if(dontShade)
     {
         LIGHT = vec3(1.0);
     }
