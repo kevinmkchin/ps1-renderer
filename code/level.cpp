@@ -494,7 +494,6 @@ struct TranslationGizmo : Gizmo
             mat4 inverseProjMatrix = editorCamera.perspectiveMatrix.GetInverse();
             float xNDC = gMouseDelta.x / ((float)backbufferWidth/2.f) * scaledDistToObjFromCam;
             float yNDC = -gMouseDelta.y / ((float)backbufferHeight/2.f) * scaledDistToObjFromCam;
-            printf("NDC %f, %f\n", xNDC, yNDC);
             vec4 rayCCS = vec4(xNDC, yNDC, 0.f, 0.f);
             vec4 rayVCS = vec4((inverseProjMatrix * rayCCS).xyz, 0.f);
             vec3 rayWCS = (inverseViewMatrix * rayVCS).xyz;
@@ -557,12 +556,6 @@ struct TranslationGizmo : Gizmo
 };
 
 INTERNAL TranslationGizmo transGizmo;
-// RotationGizmo rotGizmo;
-
-INTERNAL void RenderGizmos(const Shader& shader, bool mousePicking)
-{
-    transGizmo.RenderGizmo(shader, mousePicking);
-}
 
 INTERNAL void EditorInitOnStartUp()
 {
@@ -926,7 +919,7 @@ INTERNAL void EditorRender()
 
     
     glDisable(GL_DEPTH_TEST);
-    RenderGizmos(editorShader, false);
+    transGizmo.RenderGizmo(editorShader, false);
     glEnable(GL_DEPTH_TEST);
 
     glUseProgram(0);
@@ -951,7 +944,7 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
             gCurrentKeyState[SDL_SCANCODE_LSHIFT] ? false : true);
     }
     glDisable(GL_DEPTH_TEST);
-    RenderGizmos(mousepickShader, true);
+    transGizmo.RenderGizmo(mousepickShader, true);
     glEnable(GL_DEPTH_TEST);
 
     mousepickShader.SuppressWarningsPop();
@@ -963,24 +956,20 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
     glUseProgram(0);
 
     EntityId pickedId = RGBToEntityId(pickedRGBData[0], pickedRGBData[1], pickedRGBData[2]);
-    printf("pickedId: %d\n", pickedId);
     if(pickedId != 0x00FFFFFF)
     {
         if(pickedId == transGizmo.XArrowId)
         {
-            printf("clicked X arrow\n");
             transGizmo.activeAxis = TranslationGizmo::GIZMO_TRANSLATION_ACTIVE_X;
             return;
         }
         if(pickedId == transGizmo.YArrowId)
         {
-            printf("clicked Y arrow\n");
             transGizmo.activeAxis = TranslationGizmo::GIZMO_TRANSLATION_ACTIVE_Y;
             return;
         }
         if(pickedId == transGizmo.ZArrowId)
         {
-            printf("clicked Z arrow\n");
             transGizmo.activeAxis = TranslationGizmo::GIZMO_TRANSLATION_ACTIVE_Z;
             return;
         }
@@ -989,6 +978,10 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
         {
             selectedEditObjId = pickedId;
             transGizmo.attachedObjId = selectedEditObjId;
+        }
+        else if(editorMode == EDITOR_MODE_CREATE)
+        {
+            
         }
         else
         {
