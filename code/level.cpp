@@ -1,5 +1,23 @@
 /** Level geometry and Editor code */
 
+INTERNAL vec3 EntityIdToRGB(EntityId id)
+{
+    float r = (float) ((id & 0x000000FF) >> 0);
+    float g = (float) ((id & 0x0000FF00) >> 8);
+    float b = (float) ((id & 0x00FF0000) >> 16);
+
+    return vec3(r,g,b)/255.f;
+}
+
+INTERNAL EntityId RGBToEntityId(u8 r, u8 g, u8 b)
+{
+    EntityId pickedEntityId = 
+    r + 
+    g * 256 +
+    b * 256 * 256;
+    return pickedEntityId;
+}
+
 struct PropStatic : GameClass
 {
     PropStatic()
@@ -20,7 +38,7 @@ struct PropStatic : GameClass
         }
     }
 
-    void EditorModeRender(const Shader& shader) override
+    void EditorModeRender(const Shader& shader, bool mousePicking) override
     {
         Render(shader);
     }
@@ -71,12 +89,12 @@ struct EditorBrush : GameClass
         }
     }
 
-    void EditorModeRender(const Shader& shader) override
+    void EditorModeRender(const Shader& shader, bool mousePicking) override
     {
         auto bo = GetBufferObjects();
         mesh.RebindBufferObjects(bo.first.data(), bo.second.data(), (u32)bo.first.size(), (u32)bo.second.size());
         shader.GLBind1i("isColliderOnly", 0);
-        if(!isVisible)
+        if(!isVisible && !mousePicking)
         {
             shader.GLBind1i("isColliderOnly", 1);
             hasCollision ? shader.GLBind3f("modelColor", _RGB(0.f, 255.f, 0.f)) : shader.GLBind3f("modelColor", _RGB(255.f, 255.f, 255.f));
@@ -84,7 +102,7 @@ struct EditorBrush : GameClass
         }
         shader.GLBindMatrix4fv("modelMatrix", 1, GetTiedEntity()->GetModelMatrix().ptr());
         mesh.RenderMesh();
-        if(!isVisible)
+        if(!isVisible && !mousePicking)
         {
             shader.GLBind3f("modelColor", _RGB(0.f, 0.f, 0.f));
             glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
@@ -370,6 +388,19 @@ struct BlockBrush : EditorBrush
 #define MAX_EDITOR_ENTITIES_COUNT 4096
 #define MAX_EDITOR_BRUSH_COUNT 1024
 INTERNAL PreAllocArray<GameObject> editorEntities;
+INTERNAL GameObject* GetEditorObjectWithId(EntityId eid)
+{
+    if(editorEntities.Count() > 0)
+    {
+        EntityId firstId = editorEntities[0].GetId();
+        EntityId indexForId = eid - firstId;
+        if(editorEntities.Count() > indexForId)
+        {
+            return &editorEntities[indexForId];
+        }
+    }
+    return nullptr;
+}
 
 enum EditorMode {
     EDITOR_MODE_SELECT,
@@ -382,7 +413,7 @@ INTERNAL EditorMode editorMode = EDITOR_MODE_SELECT;
 INTERNAL std::string loadedMapPath = "no map loaded...";
 INTERNAL GameCamera editorCamera;
 INTERNAL MeshGroup* defaultEntityModel = nullptr;
-INTERNAL GameObject* selectedEditObj = nullptr;
+INTERNAL EntityId selectedEditObjId = 0;
 INTERNAL Texture devUnitTexture;
 
 INTERNAL void EditorInitOnStartUp()
@@ -416,8 +447,6 @@ INTERNAL void EditorUnload()
 {
     printf("editor unload\n");
 
-    selectedEditObj = nullptr;
-
 // TODO(Kevin): make these editor brush objects not dynamically allocated. Or is it okay because its only for editor?
     for(u32 i = 0; i < editorEntities.Count(); ++i)
     {
@@ -448,7 +477,10 @@ INTERNAL void EditorSwitchMap(const std::string& mapName)
     #include <codecvt>
 #endif
 
-#pragma region EditorImGuiStuff
+
+
+#pragma region EditorImGuiImGuiStuff
+
 INTERNAL void UpdateEditorImGui()
 {
     ImGui::Begin("Editor", nullptr, ImGuiWindowFlags_MenuBar);
@@ -526,6 +558,10 @@ INTERNAL void UpdateEditorImGui()
                 CoUninitialize();
 #endif
             }
+            if (ImGui::MenuItem("Help"))
+            {
+                // TODO(Kevin): show some info about hotkeys controls etc
+            }
             if (ImGui::MenuItem("Shut down"))  { gIsRunning = false; }
             ImGui::EndMenu();
         }
@@ -552,6 +588,8 @@ INTERNAL void UpdateEditorImGui()
     }
     ImGui::EndGroup();
     ImGui::Separator();
+
+    GameObject* selectedEditObj = GetEditorObjectWithId(selectedEditObjId);
 
     switch(editorMode)
     {
@@ -700,7 +738,7 @@ INTERNAL void EditorRender()
     glClearColor(_RGB(46, 88, 120), 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
-    
+
     wireframeShader.UseShader();
     wireframeShader.GLBindMatrix4fv("viewMatrix", 1, editorCamera.viewMatrix.ptr());
     wireframeShader.GLBindMatrix4fv("projMatrix", 1, editorCamera.perspectiveMatrix.ptr());
@@ -712,7 +750,7 @@ INTERNAL void EditorRender()
     devUnitTexture.UseTexture();
     for(u32 i = 0; i < editorEntities.Count(); ++i)
     {
-        if(selectedEditObj == &editorEntities[i])
+        if(selectedEditObjId == editorEntities[i].GetId())
         {
             wireframeShader.UseShader();
             LOCAL_PERSIST float _breathef = 0.f;
@@ -725,76 +763,54 @@ INTERNAL void EditorRender()
             wireframeShader.GLBind4f("wireframeColor", selectColor.x, selectColor.y, selectColor.z, selectColor.w);
             glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
             wireframeShader.SuppressWarningsPush();
-            editorEntities[i].GetClass()->EditorModeRender(wireframeShader);
+            editorEntities[i].GetClass()->EditorModeRender(wireframeShader, false);
             wireframeShader.SuppressWarningsPop();
             glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
             editorShader.UseShader();
         }
 
-        editorEntities[i].GetClass()->EditorModeRender(editorShader);
+        editorEntities[i].GetClass()->EditorModeRender(editorShader, false);
     }
 
     glUseProgram(0);
 }
 
-INTERNAL void EditorMousePick(float xNDC, float yNDC, float rayLength = 100.f)
+INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
 {
-    mat4 inverseViewMatrix = editorCamera.viewMatrix.GetInverse();
-    mat4 inverseProjMatrix = editorCamera.perspectiveMatrix.GetInverse();
-    vec4 rayCCS = vec4(xNDC, yNDC, -1.f, 1.f);
-    vec4 rayVCS = vec4((inverseProjMatrix * rayCCS).xyz, 0.f);
-    vec3 rayWCS = Normalize((inverseViewMatrix * rayVCS).xyz);
-
-    LineCollider lc;
-    lc.a = editorCamera.position;
-    lc.b = editorCamera.position + rayWCS * rayLength;
-
-
-// TODO(Kevin): REWRITE TO USE PIXEL COLOR DATA
-
-    if(editorMode == EDITOR_MODE_SELECT)
+    glViewport(0, 0, backbufferWidth, backbufferHeight);
+    glClearColor(1.f, 1.f, 1.f, 1.f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glEnable(GL_DEPTH_TEST);
+    mousepickShader.UseShader();
+    mousepickShader.GLBindMatrix4fv("viewMatrix", 1, editorCamera.viewMatrix.ptr());
+    mousepickShader.GLBindMatrix4fv("projMatrix", 1, editorCamera.perspectiveMatrix.ptr());
+    mousepickShader.SuppressWarningsPush();
+    for(u32 i = 0; i < editorEntities.Count(); ++i)
     {
-        // iterate editor/game objects to see which object was clicked on.
-        std::vector<Collider*> collided;
-        std::vector<MeshCollider> collidersToCheck;
-        for(u32 i = 0; i < editorEntities.Count(); ++i)
-        {
-            if(editorEntities[i].GetGameClassCode() == BRUSH_BLOCK)
-            {
-                MeshCollider col;
-                col.owningGameObject = &editorEntities[i];
-                BlockBrush* bb = (BlockBrush*)editorEntities[i].GetClass();
-                col.verticesModelSpace = bb->GetColliders();
-                collidersToCheck.push_back(col);
-            }
-        }
+        vec3 rgbId = EntityIdToRGB(editorEntities[i].GetId());
+        mousepickShader.GLBind3f("entityIdColor", rgbId.x, rgbId.y, rgbId.z);
+        editorEntities[i].GetClass()->EditorModeRender(mousepickShader,
+            gCurrentKeyState[SDL_SCANCODE_LSHIFT] ? false : true);
+    }
+    mousepickShader.SuppressWarningsPop();
+    glFlush();
+    glFinish(); 
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    u8 pickedRGBData[4];
+    /* Pixel location is relative to lower left corner of screen. */
+    glReadPixels(screenPixelX, screenPixelY, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pickedRGBData);
+    glUseProgram(0);
 
-        for(auto& col : collidersToCheck)
+    EntityId pickedId = RGBToEntityId(pickedRGBData[0], pickedRGBData[1], pickedRGBData[2]);
+    if(pickedId != 0x00FFFFFF)
+    {
+        if(editorMode == EDITOR_MODE_SELECT)
         {
-            if(GJK(&col, &lc).hasCollision)
-            {
-                collided.push_back(&col);
-            }
+            selectedEditObjId = pickedId;
         }
-
-        GameObject* first = nullptr;
-        float minDistanceSoFar = FLT_MAX;
-        for(auto c : collided)
+        else
         {
-            if(c->owningGameObject)
-            {
-                float distance = Magnitude(editorCamera.position - c->owningGameObject->GetPos());
-                if(distance < minDistanceSoFar)
-                {
-                    first = c->owningGameObject;
-                    minDistanceSoFar = distance;
-                }
-            }
-        }
-
-        if(first)
-        {
-            selectedEditObj = first;
+            // we should be able to mousepick things while in create or edit mode
         }
     }
 }
