@@ -119,7 +119,7 @@ struct ByteBuffer
 
 #define BYTE_BUFFER_DEFAULT_CAPACITY 1024
 
-void ByteBufferInit(ByteBuffer* buffer)
+INTERNAL void ByteBufferInit(ByteBuffer* buffer)
 {
     // TODO(Kevin): If using custom memory alloc, replace the following line
     buffer->data = (u8*) calloc(BYTE_BUFFER_DEFAULT_CAPACITY, sizeof(u8));
@@ -128,14 +128,14 @@ void ByteBufferInit(ByteBuffer* buffer)
     buffer->capacity = BYTE_BUFFER_DEFAULT_CAPACITY;
 }
 
-ByteBuffer ByteBufferNew()
+INTERNAL ByteBuffer ByteBufferNew()
 {
     ByteBuffer buffer;
     ByteBufferInit(&buffer);
     return buffer;
 }
 
-void ByteBufferFree(ByteBuffer* buffer)
+INTERNAL void ByteBufferFree(ByteBuffer* buffer)
 {
     if(buffer && buffer->data)
     {
@@ -147,13 +147,13 @@ void ByteBufferFree(ByteBuffer* buffer)
     buffer->capacity = 0;
 }
 
-void ByteBufferClear(ByteBuffer* buffer)
+INTERNAL void ByteBufferClear(ByteBuffer* buffer)
 {
     buffer->size = 0;
     buffer->position = 0;
 }
 
-void ByteBufferResize(ByteBuffer* buffer, size_t sz)
+INTERNAL void ByteBufferResize(ByteBuffer* buffer, size_t sz)
 {
     // TODO(Kevin): use custom mem alloc
     u8* data = (u8*)realloc(buffer->data, sz);
@@ -165,22 +165,22 @@ void ByteBufferResize(ByteBuffer* buffer, size_t sz)
     buffer->capacity = (u32)sz;
 }
 
-void ByteBufferSeekToStart(ByteBuffer* buffer)
+INTERNAL void ByteBufferSeekToStart(ByteBuffer* buffer)
 {
     buffer->position = 0;
 }
 
-void ByteBufferSeekToEnd(ByteBuffer* buffer)
+INTERNAL void ByteBufferSeekToEnd(ByteBuffer* buffer)
 {
     buffer->position = buffer->size;
 }
 
-void ByteBufferAdvancePosition(ByteBuffer* buffer, size_t sz)
+INTERNAL void ByteBufferAdvancePosition(ByteBuffer* buffer, size_t sz)
 {
     buffer->position += (u32)sz;
 }
 
-void __byteBufferWriteImpl(ByteBuffer* buffer, void* data, size_t sz)
+INTERNAL void __byteBufferWriteImpl(ByteBuffer* buffer, void* data, size_t sz)
 {
     size_t totalWriteSize = buffer->position + sz;
     if(totalWriteSize >= buffer->capacity)
@@ -227,7 +227,7 @@ do {\
     _bb->position += (u32)(_size);\
 } while(0)
 
-int ByteBufferWriteToFile(ByteBuffer* buffer, const char* filePath)
+INTERNAL int ByteBufferWriteToFile(ByteBuffer* buffer, const char* filePath)
 {
     FILE* fp;
     fp = fopen(filePath, "w");
@@ -244,7 +244,7 @@ int ByteBufferWriteToFile(ByteBuffer* buffer, const char* filePath)
     return 1;
 }
 
-int ByteBufferReadFromFile(ByteBuffer* buffer, const char* filePath)
+INTERNAL int ByteBufferReadFromFile(ByteBuffer* buffer, const char* filePath)
 {
     if(!buffer)
     {

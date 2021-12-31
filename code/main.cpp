@@ -3,7 +3,6 @@
 
 TODO:
 Task for today:
-    - Organize code better - move shit around between files
 
 Backlog:
     - Individualize brush faces
@@ -115,7 +114,7 @@ INTERNAL Shader quadShader;
 #include "file.cpp"
 #include "shader.cpp"
 #include "core.cpp"
-#include "level.cpp"
+#include "editor.cpp"
 #include "game.cpp"
 
 #pragma region PLATFORM_LAYER

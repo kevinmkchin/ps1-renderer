@@ -35,15 +35,15 @@ private:
 
     std::unordered_map<std::string, i32> uniformLocationsMap;
 
-    static void cache_uniform_locations(Shader& shader);
+    static void cacheUniformLocations(Shader& shader);
 
-    static void cache_uniform_location(Shader& shader, const char* uniformName);
+    static void cacheUniformLocation(Shader& shader, const char* uniformName);
 
-    void warning_uniform_not_found(const char* uniformName) const;
+    void warningUniformNotFound(const char* uniformName) const;
 
     // Create shader on GPU and compile shader
-    static void gl_compile_shader(u32 program_id, const char* shader_code, GLenum shaderType);
+    static void GLCompileShader(u32 program_id, const char* shader_code, GLenum shaderType);
 
     // Return true if there was a compile error
-    static bool gl_check_error_and_validate(GLuint program_id);
+    static bool GLCheckErrorAndValidate(GLuint program_id);
 };

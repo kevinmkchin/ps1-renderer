@@ -109,7 +109,7 @@ void Mesh::RenderMesh(GLenum renderMode) const
 {
     if (indicesCount == 0) // Early out if index_count == 0, nothing to draw
     {
-        printf("WARNING: Attempting to render a mesh with 0 index count!\n");
+        printf("WARNING: Attempting to Render a mesh with 0 index count!\n");
         return;
     }
 
@@ -230,14 +230,7 @@ INTERNAL void MeshDelete(Mesh& mesh)
 
 
 
-MeshGroup::MeshGroup(Mesh m, Texture t)
-{
-    meshes.push_back(m);
-    textures.push_back(t);
-    meshToTextureTable.push_back(0);
-}
-
-void MeshGroup::render()
+void MeshGroup::Render()
 {
     LOCAL_PERSIST Texture missingTexture;
     if(missingTexture.textureId == 0)
@@ -966,6 +959,7 @@ INTERNAL GJKEPACollisionInfo GJK(Collider* colA, Collider* colB)
         }
     }
 }
+
 
 
 

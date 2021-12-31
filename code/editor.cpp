@@ -34,7 +34,7 @@ struct PropStatic : GameClass
         if(modelToRender)
         {
             shader.GLBindMatrix4fv("modelMatrix", 1, GetTiedEntity()->GetModelMatrix().ptr());
-            modelToRender->render();
+            modelToRender->Render();
         }
     }
 
@@ -409,18 +409,10 @@ enum EditorMode {
     EDITOR_MODE_EDIT
 };
 
-struct Gizmo
+struct TranslationGizmo
 {
-    vec3 position;
     EntityId attachedObjId = 0;
-    // do gizmos need scale? vec3 scale; 
-    virtual void InitGizmo() = 0;
-    virtual void UpdateGizmo() = 0;
-    virtual void RenderGizmo(const Shader& shader, bool mousePicking) = 0;
-};
 
-struct TranslationGizmo : Gizmo
-{
     MeshGroup* arrowModel;
     EntityId XArrowId;
     EntityId YArrowId;
@@ -467,12 +459,12 @@ struct TranslationGizmo : Gizmo
         ZArrowId = GetUniqueEntityId();
     }
 
-    void InitGizmo() override
+    void InitGizmo()
     {
         arrowModel = MeshGroupAssimpLoad("data/primitives/gizmo_arrow.obj");
     }
 
-    void UpdateGizmo() override
+    void UpdateGizmo()
     {
         if(!gIsLeftMouseDown)
         {
@@ -506,7 +498,7 @@ struct TranslationGizmo : Gizmo
         }
     }
 
-    void RenderGizmo(const Shader& shader, bool mousePicking) override
+    void RenderGizmo(const Shader& shader, bool mousePicking)
     {
         GameObject* attachedObj = GetEditorObjectWithId(attachedObjId);
         if(attachedObj)
@@ -521,7 +513,7 @@ struct TranslationGizmo : Gizmo
             vec3 eidColor = EntityIdToRGB(XArrowId);
             mousePicking ? shader.GLBind3f("entityIdColor", eidColor.x, eidColor.y, eidColor.z) 
                 : shader.GLBind3f("modelColor", 1.f, 0.f, 0.f);
-            arrowModel->render();
+            arrowModel->Render();
 
             modelMatrix = TranslationMatrix(attachedObj->GetPos());
             modelMatrix *= ScaleMatrix(scaledDistToObjFromCam, scaledDistToObjFromCam, scaledDistToObjFromCam);
@@ -530,7 +522,7 @@ struct TranslationGizmo : Gizmo
             eidColor = EntityIdToRGB(YArrowId);
             mousePicking ? shader.GLBind3f("entityIdColor", eidColor.x, eidColor.y, eidColor.z) 
                 : shader.GLBind3f("modelColor", 0.f, 1.f, 0.f);
-            arrowModel->render();
+            arrowModel->Render();
 
             modelMatrix = TranslationMatrix(attachedObj->GetPos());
             modelMatrix *= ScaleMatrix(scaledDistToObjFromCam, scaledDistToObjFromCam, scaledDistToObjFromCam);
@@ -539,9 +531,9 @@ struct TranslationGizmo : Gizmo
             eidColor = EntityIdToRGB(ZArrowId);
             mousePicking ? shader.GLBind3f("entityIdColor", eidColor.x, eidColor.y, eidColor.z) 
                 : shader.GLBind3f("modelColor", 0.f, 0.f, 1.f);
-            arrowModel->render();
+            arrowModel->Render();
 
-            // TODO render quads for moving along XY YZ XZ planes
+            // TODO Render quads for moving along XY YZ XZ planes
 
             shader.GLBind1i("dontShade", 0);
         }

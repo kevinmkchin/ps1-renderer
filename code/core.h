@@ -42,14 +42,13 @@ struct MeshGroup
     std::vector<u16>      meshToTextureTable; // stores index of textures element corresponding to mesh
     std::string           filePath = "";
 
-    MeshGroup() = default;
-    MeshGroup(Mesh m, Texture t);
-
-    void render();
+    void Render();
 };
 
 
 struct GameObject;
+struct GameClass;
+
 struct CollisionEventArgs
 {
     vec3 normal;
@@ -76,7 +75,6 @@ INTERNAL EntityId GetUniqueEntityId()
     return id++;
 }
 
-struct GameClass;
 struct GameObject final
 {
     GameObject()
@@ -185,7 +183,7 @@ struct GameClass
     {
         // do nothing by default
     }
-    /** Rendering if this class should render anything. */
+    /** Rendering if this class should Render anything. */
     virtual void Render(const Shader& shader)
     {
         // do nothing by default
@@ -196,7 +194,7 @@ struct GameClass
         // do nothing by default
     }
 
-    /** What to render in Editor mode. Must implement. */
+    /** What to Render in Editor mode. Must implement. */
     virtual void EditorModeRender(const Shader& shader, bool mousePicking) = 0;
 
     GAME_CLASS_CODE GetGameClassCode() const { return gameClassCode; }
@@ -213,7 +211,6 @@ struct GameClass
     }
 
 public:
-    // TODO(Kevin): REPLACE WITH PURE VIRTUAL GETTERS AND SETTERS SO THAT SUBCLASS CAN CHOOSE WHETHER CLASS CAN COLLIDE OR BE VISIBLE OR NOT
     bool isVisible = false;
     bool hasCollision = false;
 protected:
@@ -235,7 +232,7 @@ struct GameCamera
     float farClip               = 2000.f;
     float moveSpeed             = 6.f;
     float turnSpeed             = 0.04f;
-    bool bMouseControl          = false;
+    bool  bMouseControl          = false;
 
     void CameraUpdate();
     void CameraCalculatePerspectiveMatrix();
