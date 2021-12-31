@@ -6,17 +6,16 @@ Task for today:
     - Organize code better - move shit around between files
 
 Backlog:
-    - PropStatic model loading
-    - GameClass reflection + expose subclasses and properties to editor?
     - Individualize brush faces
         - SELECT TEXTURES for brush faces
         - Save texture data to disk with map
         - Texture UV offset for box editor object 
+    - GAME_CLASS_CODE: instead of using bits, just use integer number
+    - GameClass reflection + expose subclasses and properties to editor?
     - Create mode, show preview of brush that can be moved around and shit
     - Update EditorExportMap and EditorImportMap to export and import PropStatic
     - Dropdown to select brush type
     - DOUBLE CLICK to place an entity
-    - GAME_CLASS_CODE: instead of using bits, just use integer number
     - Should we reference count models and textures?
     - Load map to game
     - shaded toggleable - brush can be shaded or not shaded
@@ -45,9 +44,12 @@ BUILD MODES:
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
+#define PATH_MAX MAX_PATH 
 #endif
 
 #include <stdio.h>
+#include <direct.h> 
+#include <limits.h>
 #include <string>
 #include <fstream>
 #include <array>
@@ -173,10 +175,9 @@ INTERNAL bool SDLInitialize()
 }
 
 #if (defined __APPLE__ || defined _APPLE)
-#include <unistd.h> // for chdir
+#include <unistd.h>
 #include <libgen.h> // for dirname
 #include <mach-o/dyld.h> // for _NSGetExecutablePath
-#include <limits.h> // for PATH_MAX?
 INTERNAL void SetWorkingDirectory()
 {
     char path[PATH_MAX];

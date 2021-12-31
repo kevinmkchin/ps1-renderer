@@ -635,6 +635,80 @@ void MoveCameraToSelectedEditorObject()
     #include <codecvt>
 #endif
 
+INTERNAL std::string OpenFilePrompt()
+{
+    std::string filePathString;
+#if (defined _WIN32)
+    IFileOpenDialog *pFileOpen;
+    HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL,
+                          IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
+    if (SUCCEEDED(hr))
+    {
+        // Show the Open dialog box.
+        hr = pFileOpen->Show(NULL);
+        // Get the file name from the dialog box.
+        if (SUCCEEDED(hr))
+        {
+            IShellItem *pItem;
+            hr = pFileOpen->GetResult(&pItem);
+            if (SUCCEEDED(hr))
+            {
+                PWSTR pszFilePath;
+                hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+
+                if (SUCCEEDED(hr))
+                {
+                    std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converterX;
+                    filePathString = converterX.to_bytes(pszFilePath);
+                    CoTaskMemFree(pszFilePath);
+                }
+                pItem->Release();
+            }
+        }
+        pFileOpen->Release();
+    }
+    CoUninitialize();
+#endif
+    return filePathString;
+}
+
+INTERNAL std::string SaveFilePrompt()
+{
+    std::string filePathString;
+#if (defined _WIN32)
+    IFileSaveDialog* pFileSave;
+    HRESULT hr = CoCreateInstance(CLSID_FileSaveDialog, NULL, CLSCTX_ALL,
+                                  IID_IFileSaveDialog, reinterpret_cast<void**>(&pFileSave));
+    if (SUCCEEDED(hr))
+    {
+        // Show the Open dialog box.
+        hr = pFileSave->Show(NULL);
+        // Get the file name from the dialog box.
+        if (SUCCEEDED(hr))
+        {
+            IShellItem *pItem;
+            hr = pFileSave->GetResult(&pItem);
+            if (SUCCEEDED(hr))
+            {
+                PWSTR pszFilePath;
+                hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+
+                if (SUCCEEDED(hr))
+                {
+                    std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converterX;
+                    filePathString = converterX.to_bytes(pszFilePath);
+                    CoTaskMemFree(pszFilePath);
+                }
+                pItem->Release();
+            }
+        }
+        pFileSave->Release();
+    }
+    CoUninitialize();
+#endif
+    return filePathString;
+}
+
 INTERNAL void UpdateEditorImGui()
 {
     ImGui::Begin("Editor", nullptr, ImGuiWindowFlags_MenuBar);
@@ -644,73 +718,11 @@ INTERNAL void UpdateEditorImGui()
         {
             if (ImGui::MenuItem("Open..", "Ctrl+O"))
             {
-#if (defined _WIN32)
-                IFileOpenDialog *pFileOpen;
-                HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL,
-                                      IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
-                if (SUCCEEDED(hr))
-                {
-                    // Show the Open dialog box.
-                    hr = pFileOpen->Show(NULL);
-                    // Get the file name from the dialog box.
-                    if (SUCCEEDED(hr))
-                    {
-                        IShellItem *pItem;
-                        hr = pFileOpen->GetResult(&pItem);
-                        if (SUCCEEDED(hr))
-                        {
-                            PWSTR pszFilePath;
-                            hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
-
-                            if (SUCCEEDED(hr))
-                            {
-                                std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converterX;
-                                std::string filePathString = converterX.to_bytes(pszFilePath);
-                                EditorSwitchMap(filePathString);
-                                CoTaskMemFree(pszFilePath);
-                            }
-                            pItem->Release();
-                        }
-                    }
-                    pFileOpen->Release();
-                }
-                CoUninitialize();
-#endif
+                EditorSwitchMap(OpenFilePrompt());
             }
             if (ImGui::MenuItem("Save", "Ctrl+S"))
             {
-#if (defined _WIN32)
-                IFileSaveDialog* pFileSave;
-                HRESULT hr = CoCreateInstance(CLSID_FileSaveDialog, NULL, CLSCTX_ALL,
-                                              IID_IFileSaveDialog, reinterpret_cast<void**>(&pFileSave));
-                if (SUCCEEDED(hr))
-                {
-                    // Show the Open dialog box.
-                    hr = pFileSave->Show(NULL);
-                    // Get the file name from the dialog box.
-                    if (SUCCEEDED(hr))
-                    {
-                        IShellItem *pItem;
-                        hr = pFileSave->GetResult(&pItem);
-                        if (SUCCEEDED(hr))
-                        {
-                            PWSTR pszFilePath;
-                            hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
-
-                            if (SUCCEEDED(hr))
-                            {
-                                std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> converterX;
-                                std::string filePathString = converterX.to_bytes(pszFilePath);
-                                EditorExportMap(filePathString);
-                                CoTaskMemFree(pszFilePath);
-                            }
-                            pItem->Release();
-                        }
-                    }
-                    pFileSave->Release();
-                }
-                CoUninitialize();
-#endif
+                EditorExportMap(SaveFilePrompt());
             }
             if (ImGui::MenuItem("Help"))
             {
@@ -775,7 +787,23 @@ INTERNAL void UpdateEditorImGui()
                         ImGui::Checkbox("Tile texture", &box->textureTileFlag);
                         ImGui::Checkbox("Texture orientation", &box->textureOrientationFlag);
                     }break;
-                    default:{}break;
+                    case CLASS_PROPSTATIC:{
+                        PropStatic* ps = (PropStatic*) selectedEditObj->GetClass();
+                        if(ImGui::Button("Load Model"))
+                        {
+                            std::string modelPath = OpenFilePrompt();
+                            char cwd[PATH_MAX];
+                            if (_getcwd(cwd, sizeof(cwd)) != NULL) 
+                            {
+                                modelPath = modelPath.substr(std::string(cwd).length()+1);
+                            }
+                            printf("PropStatic loaded model: %s\n", modelPath.c_str());
+                            ps->SetModel(MeshGroupAssimpLoad(modelPath.c_str()));
+                        }
+                    }break;
+                    default:{
+                        // use code reflection to list class properties
+                    }break;
                 }
 
                 if(ImGui::Button("Go to Selected"))
