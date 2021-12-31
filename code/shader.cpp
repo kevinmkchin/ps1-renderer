@@ -28,18 +28,18 @@ void Shader::GLCreateShaderProgram(Shader& shader, const char* vertexShaderStr, 
         printf("Failed to create shader program! Aborting.\n");
         return;
     }
-    gl_compile_shader(shader.idShaderProgram, vertexShaderStr, GL_VERTEX_SHADER); // Compile and attach the shaders
-    gl_compile_shader(shader.idShaderProgram, fragmentShaderStr, GL_FRAGMENT_SHADER);
+    GLCompileShader(shader.idShaderProgram, vertexShaderStr, GL_VERTEX_SHADER); // Compile and attach the shaders
+    GLCompileShader(shader.idShaderProgram, fragmentShaderStr, GL_FRAGMENT_SHADER);
     glLinkProgram(shader.idShaderProgram); // Actually create the exectuable shader program on the graphics card
 
 #if INTERNAL_BUILD
-    if (gl_check_error_and_validate(shader.idShaderProgram))
+    if (GLCheckErrorAndValidate(shader.idShaderProgram))
     {
         return;
     }
 #endif
 
-    Shader::cache_uniform_locations(shader);
+    Shader::cacheUniformLocations(shader);
 }
 
 void Shader::GLCreateShaderProgram(Shader& shader, const char* vertexShaderStr, const char* geometryShaderStr, const char* fragmentShaderStr)
@@ -51,19 +51,19 @@ void Shader::GLCreateShaderProgram(Shader& shader, const char* vertexShaderStr, 
         printf("Failed to create shader program! Aborting.\n");
         return;
     }
-    gl_compile_shader(shader.idShaderProgram, vertexShaderStr, GL_VERTEX_SHADER); // Compile and attach the shaders
-    gl_compile_shader(shader.idShaderProgram, geometryShaderStr, GL_GEOMETRY_SHADER);
-    gl_compile_shader(shader.idShaderProgram, fragmentShaderStr, GL_FRAGMENT_SHADER);
+    GLCompileShader(shader.idShaderProgram, vertexShaderStr, GL_VERTEX_SHADER); // Compile and attach the shaders
+    GLCompileShader(shader.idShaderProgram, geometryShaderStr, GL_GEOMETRY_SHADER);
+    GLCompileShader(shader.idShaderProgram, fragmentShaderStr, GL_FRAGMENT_SHADER);
     glLinkProgram(shader.idShaderProgram); // Actually create the exectuable shader program on the graphics card
 
 #if INTERNAL_BUILD
-    if (gl_check_error_and_validate(shader.idShaderProgram))
+    if (GLCheckErrorAndValidate(shader.idShaderProgram))
     {
         return;
     }
 #endif
 
-    Shader::cache_uniform_locations(shader);
+    Shader::cacheUniformLocations(shader);
 }
 
 #if GL_VERSION_4_3
@@ -75,21 +75,21 @@ void Shader::GLCreateComputeShaderProgram(Shader& shader, const char* computeSha
         printf("Failed to create shader program! Aborting.\n");
         return;
     }
-    gl_compile_shader(shader.idShaderProgram, computeShaderStr, GL_COMPUTE_SHADER);
+    GLCompileShader(shader.idShaderProgram, computeShaderStr, GL_COMPUTE_SHADER);
     glLinkProgram(shader.idShaderProgram);
 
 #if INTERNAL_BUILD
-    if (gl_check_error_and_validate(shader.idShaderProgram))
+    if (GLCheckErrorAndValidate(shader.idShaderProgram))
     {
         return;
     }
 #endif
 
-    Shader::cache_uniform_locations(shader);
+    Shader::cacheUniformLocations(shader);
 }
 #endif
 
-bool Shader::gl_check_error_and_validate(GLuint program_id)
+bool Shader::GLCheckErrorAndValidate(GLuint program_id)
 {
 #if INTERNAL_BUILD
     GLint result = 0;
@@ -137,7 +137,7 @@ void Shader::GLLoadComputeShaderProgramFromFile(Shader& shader, const char* comp
 }
 #endif
 
-void Shader::cache_uniform_locations(Shader &shader)
+void Shader::cacheUniformLocations(Shader &shader)
 {
     shader.uniformLocationsMap.clear();
 
@@ -159,11 +159,11 @@ void Shader::cache_uniform_locations(Shader &shader)
     for (GLint i = 0; i < number_of_uniforms; ++i)
     {
         glGetActiveUniform(shader.idShaderProgram, i, longest_uniform_name_length, &readlength, &size, &type, uniformName);
-        cache_uniform_location(shader, uniformName);
+        cacheUniformLocation(shader, uniformName);
     }
 }
 
-void Shader::cache_uniform_location(Shader& shader, const char *uniformName)
+void Shader::cacheUniformLocation(Shader& shader, const char *uniformName)
 {
     i32 location = glGetUniformLocation(shader.idShaderProgram, uniformName);
     if (location != 0xffffffff)
@@ -176,7 +176,7 @@ void Shader::cache_uniform_location(Shader& shader, const char *uniformName)
     }
 }
 
-void Shader::gl_compile_shader(u32 program_id, const char* shader_code, GLenum shaderType)
+void Shader::GLCompileShader(u32 program_id, const char* shader_code, GLenum shaderType)
 {
     GLuint id_shader = glCreateShader(shaderType);             // Create an empty shader of given type and get id
     GLint code_length = (GLint) strlen(shader_code);
@@ -205,7 +205,7 @@ void Shader::GLBind1i(const char* uniformName, GLint v0) const
     }
     else
     {
-        warning_uniform_not_found(uniformName);
+        warningUniformNotFound(uniformName);
     }
 }
 
@@ -218,7 +218,7 @@ void Shader::GLBind2i(const char* uniformName, GLint v0, GLint v1) const
     }
     else
     {
-        warning_uniform_not_found(uniformName);
+        warningUniformNotFound(uniformName);
     }
 }
 
@@ -231,7 +231,7 @@ void Shader::GLBind3i(const char* uniformName, GLint v0, GLint v1, GLint v2) con
     }
     else
     {
-        warning_uniform_not_found(uniformName);
+        warningUniformNotFound(uniformName);
     }
 }
 
@@ -244,7 +244,7 @@ void Shader::GLBind4i(const char* uniformName, GLint v0, GLint v1, GLint v2, GLi
     }
     else
     {
-        warning_uniform_not_found(uniformName);
+        warningUniformNotFound(uniformName);
     }
 }
 
@@ -257,7 +257,7 @@ void Shader::GLBind1f(const char* uniformName, GLfloat v0) const
     }
     else
     {
-        warning_uniform_not_found(uniformName);
+        warningUniformNotFound(uniformName);
     }
 }
 
@@ -270,7 +270,7 @@ void Shader::GLBind2f(const char* uniformName, GLfloat v0, GLfloat v1) const
     }
     else
     {
-        warning_uniform_not_found(uniformName);
+        warningUniformNotFound(uniformName);
     }
 }
 
@@ -283,7 +283,7 @@ void Shader::GLBind3f(const char* uniformName, GLfloat v0, GLfloat v1, GLfloat v
     }
     else
     {
-        warning_uniform_not_found(uniformName);
+        warningUniformNotFound(uniformName);
     }
 }
 
@@ -296,7 +296,7 @@ void Shader::GLBind4f(const char* uniformName, GLfloat v0, GLfloat v1, GLfloat v
     }
     else
     {
-        warning_uniform_not_found(uniformName);
+        warningUniformNotFound(uniformName);
     }
 }
 
@@ -309,7 +309,7 @@ void Shader::GLBindMatrix3fv(const char* uniformName, GLsizei count, const GLflo
     }
     else
     {
-        warning_uniform_not_found(uniformName);
+        warningUniformNotFound(uniformName);
     }
 }
 
@@ -322,7 +322,7 @@ void Shader::GLBindMatrix4fv(const char* uniformName, GLsizei count, const GLflo
     }
     else
     {
-        warning_uniform_not_found(uniformName);
+        warningUniformNotFound(uniformName);
     }
 }
 
@@ -346,7 +346,7 @@ void Shader::SuppressWarningsPop()
     bPrintWarnings = true;
 }
 
-void Shader::warning_uniform_not_found(const char* uniformName) const
+void Shader::warningUniformNotFound(const char* uniformName) const
 {
     if(bPrintWarnings)
     {
