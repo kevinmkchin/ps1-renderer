@@ -57,63 +57,26 @@ private:
     MeshGroup* model;
 };
 
-struct EditorBrush : GameClass
-{
-// PRIMITIVES
-// - Blocks
-// - Cylinder
-// - Sphere
-// - Planes and one-sided surfaces.
-// - Pyramids/spikes
-
-    /** Every brush type only needs to implement these methods. */
-    virtual std::pair<std::vector<float>, std::vector<u32>> GetBufferObjects() = 0;
-    virtual std::vector<vec3> GetColliders() = 0;
-
-    EditorBrush()
-    {
-        MeshCreate(mesh, nullptr, nullptr, 0, 0);
-    }
-
-    virtual ~EditorBrush()
-    {
-        MeshDelete(mesh);
-    }
-
-    void Render(const Shader& shader) override
-    {
-        if(isVisible)
-        {
-            shader.GLBindMatrix4fv("modelMatrix", 1, GetTiedEntity()->GetModelMatrix().ptr());
-            mesh.RenderMesh();
-        }
-    }
-
-    void EditorModeRender(const Shader& shader, bool mousePicking) override
-    {
-        auto bo = GetBufferObjects();
-        mesh.RebindBufferObjects(bo.first.data(), bo.second.data(), (u32)bo.first.size(), (u32)bo.second.size());
-        shader.GLBind1i("dontShade", 0);
-        if(!isVisible && !mousePicking)
-        {
-            shader.GLBind1i("dontShade", 1);
-            hasCollision ? shader.GLBind3f("modelColor", _RGB(0.f, 255.f, 0.f)) : shader.GLBind3f("modelColor", _RGB(255.f, 255.f, 255.f));
-            glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-        }
-        shader.GLBindMatrix4fv("modelMatrix", 1, GetTiedEntity()->GetModelMatrix().ptr());
-        //shader.GLBindMatrix4fv("modelMatrix", 1, mat4().ptr());
-        mesh.RenderMesh();
-        if(!isVisible && !mousePicking)
-        {
-            shader.GLBind3f("modelColor", _RGB(0.f, 0.f, 0.f));
-            glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-        }
-    }
-
-    Texture texture; // TODO(Kevin): use texture
-protected:
-    Mesh mesh;
-};
+// void EditorModeRender(const Shader& shader, bool mousePicking) override
+// {
+//     auto bo = GetBufferObjects();
+//     mesh.RebindBufferObjects(bo.first.data(), bo.second.data(), (u32)bo.first.size(), (u32)bo.second.size());
+//     shader.GLBind1i("dontShade", 0);
+//     if(!isVisible && !mousePicking)
+//     {
+//         shader.GLBind1i("dontShade", 1);
+//         hasCollision ? shader.GLBind3f("modelColor", _RGB(0.f, 255.f, 0.f)) : shader.GLBind3f("modelColor", _RGB(255.f, 255.f, 255.f));
+//         glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+//     }
+//     shader.GLBindMatrix4fv("modelMatrix", 1, GetTiedEntity()->GetModelMatrix().ptr());
+//     //shader.GLBindMatrix4fv("modelMatrix", 1, mat4().ptr());
+//     mesh.RenderMesh();
+//     if(!isVisible && !mousePicking)
+//     {
+//         shader.GLBind3f("modelColor", _RGB(0.f, 0.f, 0.f));
+//         glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+//     }
+// }
 
 struct LevelGeometry : GameClass  // we could have subclasses of level geometry which do respond to collision or update
 {
@@ -363,277 +326,6 @@ struct LevelGeometryBrush : GameClass
         }
 
         return vbo;
-    }
-};
-
-struct BlockBrush : EditorBrush
-{
-    vec3 dimensions;                    // width, height, length
-    vec3 originAsOffsetFromMinCorner;
-    vec2 textureScale;                  // i.e. how many world units is one UV unit
-    bool textureTileFlag;
-    bool textureOrientationFlag;
-
-    BlockBrush()
-        : dimensions(vec3())
-        , originAsOffsetFromMinCorner(vec3())
-        , textureScale(vec2(1.f, 1.f))
-        , textureTileFlag(true)
-        , textureOrientationFlag(true)
-    {
-        gameClassCode = BRUSH_BLOCK;
-    }
-
-    std::pair<std::vector<float>, std::vector<u32>> GetBufferObjects() override
-    {
-        // Get Mesh VBO for vertex position, texture coords, normals, indices
-        // Use Mesh VBOs to rebind a mesh on a Mesh+GameObject in the scene.
-#pragma region MakingBufferObjects
-        vec3 posArray[24] = {
-                {0.f, 0.f, 0.f},
-                {0.f, 0.f, dimensions.z},
-                {0.f, dimensions.y, dimensions.z},
-                {0.f, dimensions.y, 0.f},
-
-                {0.f, 0.f, dimensions.z},
-                {dimensions.x, 0.f, dimensions.z },
-                {dimensions.x, dimensions.y, dimensions.z},
-                {0.f, dimensions.y, dimensions.z},
-
-                {dimensions.x, 0.f, 0.f},
-                {dimensions.x, 0.f, dimensions.z},
-                {dimensions.x, dimensions.y, dimensions.z},
-                {dimensions.x, dimensions.y, 0.f},
-
-                {0.f, 0.f, 0.f},
-                {dimensions.x, 0.f, 0.f},
-                {dimensions.x, dimensions.y, 0.f},
-                {0.f, dimensions.y, 0.f},
-
-                {0.f, dimensions.y, 0.f},
-                {0.f, dimensions.y, dimensions.z},
-                {dimensions.x, dimensions.y, dimensions.z},
-                {dimensions.x, dimensions.y, 0.f},
-
-                {0.f, 0.f, 0.f},
-                {0.f, 0.f, dimensions.z},
-                {dimensions.x, 0.f, dimensions.z},
-                {dimensions.x, 0.f, 0.f}
-        };
-        vec2 uvArray[24] = {
-                {0.f, 0.f},
-                {dimensions.z / textureScale.x, 0.f},
-                {dimensions.z / textureScale.x, dimensions.y / textureScale.y},
-                {0.f, dimensions.y / textureScale.y},
-
-                {0.f, 0.f},
-                {dimensions.x / textureScale.x, 0.f},
-                {dimensions.x / textureScale.x, dimensions.y / textureScale.y},
-                {0.f, dimensions.y / textureScale.y},
-
-                {0.f, 0.f},
-                {dimensions.z / textureScale.x, 0.f},
-                {dimensions.z / textureScale.x, dimensions.y / textureScale.y},
-                {0.f, dimensions.y / textureScale.y},
-
-                {0.f, 0.f},
-                {dimensions.x / textureScale.x, 0.f},
-                {dimensions.x / textureScale.x, dimensions.y / textureScale.y},
-                {0.f, dimensions.y / textureScale.y},
-
-                {0.f, 0.f},
-                {dimensions.z / textureScale.x, 0.f},
-                {dimensions.z / textureScale.x, dimensions.x / textureScale.y},
-                {0.f, dimensions.x / textureScale.y},
-
-                {0.f, 0.f},
-                {dimensions.z / textureScale.x, 0.f},
-                {dimensions.z / textureScale.x, dimensions.x / textureScale.y},
-                {0.f, dimensions.x / textureScale.y},
-        };
-
-        if(!textureTileFlag)
-        {
-            uvArray[0] = {0.f, 0.f};
-            uvArray[1] = {1.f, 0.f};
-            uvArray[2] = {1.f, 1.f};
-            uvArray[3] = {0.f, 1.f};
-
-            uvArray[4] = {0.f, 0.f};
-            uvArray[5] = {1.f, 0.f};
-            uvArray[6] = {1.f, 1.f};
-            uvArray[7] = {0.f, 1.f};
-
-            uvArray[8] = {0.f, 0.f};
-            uvArray[9] = {1.f, 0.f};
-            uvArray[10] = {1.f, 1.f};
-            uvArray[11] = {0.f, 1.f};
-
-            uvArray[12] = {0.f, 0.f};
-            uvArray[13] = {1.f, 0.f};
-            uvArray[14] = {1.f, 1.f};
-            uvArray[15] = {0.f, 1.f};
-
-            uvArray[16] = {0.f, 0.f};
-            uvArray[17] = {1.f, 0.f};
-            uvArray[18] = {1.f, 1.f};
-            uvArray[19] = {0.f, 1.f};
-
-            uvArray[20] = {0.f, 0.f};
-            uvArray[21] = {1.f, 0.f};
-            uvArray[22] = {1.f, 1.f};
-            uvArray[23] = {0.f, 1.f};
-        }
-
-        const vec3 normalArray[24] = {
-                {-1.f, 0.f, 0.f},
-                {-1.f, 0.f, 0.f},
-                {-1.f, 0.f, 0.f},
-                {-1.f, 0.f, 0.f},
-
-                {0.f, 0.f, 1.f},
-                {0.f, 0.f, 1.f},
-                {0.f, 0.f, 1.f},
-                {0.f, 0.f, 1.f},
-
-                {1.f, 0.f, 0.f},
-                {1.f, 0.f, 0.f},
-                {1.f, 0.f, 0.f},
-                {1.f, 0.f, 0.f},
-
-                {0.f, 0.f, -1.f},
-                {0.f, 0.f, -1.f},
-                {0.f, 0.f, -1.f},
-                {0.f, 0.f, -1.f},
-
-                {0.f, 1.f, 0.f},
-                {0.f, 1.f, 0.f},
-                {0.f, 1.f, 0.f},
-                {0.f, 1.f, 0.f},
-
-                {0.f, -1.f, 0.f},
-                {0.f, -1.f, 0.f},
-                {0.f, -1.f, 0.f},
-                {0.f, -1.f, 0.f}
-        };
-
-        std::vector<float> vbo;
-        std::vector<u32> indices = {
-                0, 1, 2,
-                3, 0, 2,
-
-                4, 5, 6,
-                7, 4, 6,
-
-                8, 10, 9,
-                11, 10, 8,
-
-                12, 14, 13,
-                15, 14, 12,
-
-                16, 17, 18,
-                19, 16, 18,
-
-                20, 22, 21,
-                23, 22, 20
-        };
-
-        for(int i = 0; i < 24; ++i)
-        {
-            // and THEN we use the origin offset to go and offset the vertex positions
-            posArray[i].x -= originAsOffsetFromMinCorner.x;
-            posArray[i].y -= originAsOffsetFromMinCorner.y;
-            posArray[i].z -= originAsOffsetFromMinCorner.z;
-        }
-
-        if(textureOrientationFlag)
-        {
-            if(textureTileFlag)
-            {
-                uvArray[16] = {0.f, dimensions.z / textureScale.y};
-                uvArray[17] = {0.f, 0.f};
-                uvArray[18] = {dimensions.x / textureScale.x, 0.f};
-                uvArray[19] = {dimensions.x / textureScale.x, dimensions.z / textureScale.y};
-
-                uvArray[20] = {0.f, dimensions.z / textureScale.y};
-                uvArray[21] = {0.f, 0.f};
-                uvArray[22] = {dimensions.x / textureScale.x, 0.f};
-                uvArray[23] = {dimensions.x / textureScale.x, dimensions.z / textureScale.y};
-            }
-            else
-            {
-                uvArray[16] = {0.f, 1.f};
-                uvArray[17] = {0.f, 0.f};
-                uvArray[18] = {1.f, 0.f};
-                uvArray[19] = {1.f, 1.f};
-
-                uvArray[20] = {0.f, 1.f};
-                uvArray[21] = {0.f, 0.f};
-                uvArray[22] = {1.f, 0.f};
-                uvArray[23] = {1.f, 1.f};
-            }
-        }
-
-        // populate vbo
-        for(int i = 0; i < 24; ++i)
-        {
-            vbo.push_back(posArray[i].x);
-            vbo.push_back(posArray[i].y);
-            vbo.push_back(posArray[i].z);
-            vbo.push_back(uvArray[i].x);
-            vbo.push_back(uvArray[i].y);
-            vbo.push_back(normalArray[i].x);
-            vbo.push_back(normalArray[i].y);
-            vbo.push_back(normalArray[i].z);
-        }
-#pragma endregion
-        return { vbo, indices };
-    }
-    std::vector<vec3> GetColliders() override
-    {
-#pragma region MakeColliderVertices
-        // Returns a vector of vertex positions for use with MeshCollider
-        std::vector<vec3> colliderVertices = {
-                {0.f, 0.f, 0.f},
-                {0.f, 0.f, dimensions.z},
-                {0.f, dimensions.y, dimensions.z},
-                {0.f, dimensions.y, 0.f},
-
-                {0.f, 0.f, dimensions.z},
-                {dimensions.x, 0.f, dimensions.z },
-                {dimensions.x, dimensions.y, dimensions.z},
-                {0.f, dimensions.y, dimensions.z},
-
-                {dimensions.x, 0.f, 0.f},
-                {dimensions.x, 0.f, dimensions.z},
-                {dimensions.x, dimensions.y, dimensions.z},
-                {dimensions.x, dimensions.y, 0.f},
-
-                {0.f, 0.f, 0.f},
-                {dimensions.x, 0.f, 0.f},
-                {dimensions.x, dimensions.y, 0.f},
-                {0.f, dimensions.y, 0.f},
-
-                {0.f, dimensions.y, 0.f},
-                {0.f, dimensions.y, dimensions.z},
-                {dimensions.x, dimensions.y, dimensions.z},
-                {dimensions.x, dimensions.y, 0.f},
-
-                {0.f, 0.f, 0.f},
-                {0.f, 0.f, dimensions.z},
-                {dimensions.x, 0.f, dimensions.z},
-                {dimensions.x, 0.f, 0.f}
-        };
-
-        for(int i = 0; i < 24; ++i)
-        {
-            // and THEN we use the origin offset to go and offset the vertex positions
-            colliderVertices[i].x -= originAsOffsetFromMinCorner.x;
-            colliderVertices[i].y -= originAsOffsetFromMinCorner.y;
-            colliderVertices[i].z -= originAsOffsetFromMinCorner.z;
-        }
-#pragma endregion
-        return colliderVertices;
     }
 };
 
@@ -1026,14 +718,14 @@ INTERNAL void UpdateEditorImGui()
                 switch(selectedEditObj->GetGameClassCode())
                 {
                     case BRUSH_BLOCK:{
-                        BlockBrush* box = (BlockBrush*) selectedEditObj->GetClass();
-                        ImGui::Checkbox("Visible", &box->isVisible);
-                        ImGui::Checkbox("Collidable", &box->hasCollision);
-                        ImGui::DragFloat3("Dimensions", &box->dimensions.x, 0.01f);
-                        ImGui::DragFloat3("Origin offset", &box->originAsOffsetFromMinCorner.x, 0.01f);
-                        ImGui::DragFloat2("Texture scale", &box->textureScale.x, 0.01f);
-                        ImGui::Checkbox("Tile texture", &box->textureTileFlag);
-                        ImGui::Checkbox("Texture orientation", &box->textureOrientationFlag);
+                        // BlockBrush* box = (BlockBrush*) selectedEditObj->GetClass();
+                        // ImGui::Checkbox("Visible", &box->isVisible);
+                        // ImGui::Checkbox("Collidable", &box->hasCollision);
+                        // ImGui::DragFloat3("Dimensions", &box->dimensions.x, 0.01f);
+                        // ImGui::DragFloat3("Origin offset", &box->originAsOffsetFromMinCorner.x, 0.01f);
+                        // ImGui::DragFloat2("Texture scale", &box->textureScale.x, 0.01f);
+                        // ImGui::Checkbox("Tile texture", &box->textureTileFlag);
+                        // ImGui::Checkbox("Texture orientation", &box->textureOrientationFlag);
                     }break;
                     case CLASS_PROPSTATIC:{
                         PropStatic* ps = (PropStatic*) selectedEditObj->GetClass();
@@ -1047,6 +739,16 @@ INTERNAL void UpdateEditorImGui()
                             }
                             printf("PropStatic loaded model: %s\n", modelPath.c_str());
                             ps->SetModel(MeshGroupAssimpLoad(modelPath.c_str()));
+                        }
+                    }break;
+                    case BRUSH_LEVELGEOM:{
+                        LevelGeometryBrush* lgb = (LevelGeometryBrush*) selectedEditObj->GetClass();
+                        for(int i = 0; i < lgb->vertices.size(); ++i)
+                        {
+                            vec3& v = lgb->vertices[i];
+                            ImGui::PushID(i);
+                            ImGui::DragFloat3("v", &v.x, 0.01f);
+                            ImGui::PopID();
                         }
                     }break;
                     default:{
@@ -1107,11 +809,11 @@ INTERNAL void UpdateEditorImGui()
                         newEntity->SetOrientation(createOrientation);
                         newEntity->SetScale(createScale);
 
-                        BlockBrush* box = new BlockBrush();
-                        newEntity->SetClass(box);
-                        box->isVisible = createIsVisible;
-                        box->hasCollision = createHasCollision;
-                        box->dimensions = createDimensions;
+                        // BlockBrush* box = new BlockBrush();
+                        // newEntity->SetClass(box);
+                        // box->isVisible = createIsVisible;
+                        // box->hasCollision = createHasCollision;
+                        // box->dimensions = createDimensions;
 
                         SetSelectedEditObjId(newEntity->GetId());
                     }
@@ -1307,15 +1009,15 @@ INTERNAL void EditorExportMap(const std::string& mapName)
         switch (editorEntities[i].GetGameClassCode())
         {
             case BRUSH_BLOCK:{
-                auto* boxObj = (BlockBrush*) editorEntities[i].GetClass();
-                vec3 dimensions = boxObj->dimensions;
-                vec3 origin = boxObj->originAsOffsetFromMinCorner;
-                vec2 textureScale = boxObj->textureScale;
-                ByteBufferWriteBulk(&exportBuffer, &dimensions, 3*sizeof(float));
-                ByteBufferWriteBulk(&exportBuffer, &origin, 3*sizeof(float));
-                ByteBufferWriteBulk(&exportBuffer, &textureScale, 2*sizeof(float));
-                ByteBufferWrite(&exportBuffer, bool, boxObj->textureTileFlag);
-                ByteBufferWrite(&exportBuffer, bool, boxObj->textureOrientationFlag);
+                // auto* boxObj = (BlockBrush*) editorEntities[i].GetClass();
+                // vec3 dimensions = boxObj->dimensions;
+                // vec3 origin = boxObj->originAsOffsetFromMinCorner;
+                // vec2 textureScale = boxObj->textureScale;
+                // ByteBufferWriteBulk(&exportBuffer, &dimensions, 3*sizeof(float));
+                // ByteBufferWriteBulk(&exportBuffer, &origin, 3*sizeof(float));
+                // ByteBufferWriteBulk(&exportBuffer, &textureScale, 2*sizeof(float));
+                // ByteBufferWrite(&exportBuffer, bool, boxObj->textureTileFlag);
+                // ByteBufferWrite(&exportBuffer, bool, boxObj->textureOrientationFlag);
             }break;
 
             default:{
@@ -1328,14 +1030,14 @@ INTERNAL void EditorExportMap(const std::string& mapName)
     ByteBufferFree(&exportBuffer);
 }
 
-INTERNAL void EditorReadBoxFromByteBuffer(ByteBuffer* importBuffer, BlockBrush* box)
-{
-    ByteBufferReadBulk(importBuffer, &box->dimensions, 3*sizeof(float));
-    ByteBufferReadBulk(importBuffer, &box->originAsOffsetFromMinCorner, 3*sizeof(float));
-    ByteBufferReadBulk(importBuffer, &box->textureScale, 2*sizeof(float));
-    ByteBufferRead(importBuffer, bool, &box->textureTileFlag);
-    ByteBufferRead(importBuffer, bool, &box->textureOrientationFlag);
-}
+// INTERNAL void EditorReadBoxFromByteBuffer(ByteBuffer* importBuffer, BlockBrush* box)
+// {
+//     ByteBufferReadBulk(importBuffer, &box->dimensions, 3*sizeof(float));
+//     ByteBufferReadBulk(importBuffer, &box->originAsOffsetFromMinCorner, 3*sizeof(float));
+//     ByteBufferReadBulk(importBuffer, &box->textureScale, 2*sizeof(float));
+//     ByteBufferRead(importBuffer, bool, &box->textureTileFlag);
+//     ByteBufferRead(importBuffer, bool, &box->textureOrientationFlag);
+// }
 
 INTERNAL void EditorImportMap(const std::string& mapName)
 {
@@ -1368,11 +1070,11 @@ INTERNAL void EditorImportMap(const std::string& mapName)
         switch (code & 0xFFFFFFFFC)
         {
             case BRUSH_BLOCK: {
-                BlockBrush* box = new BlockBrush();
-                newEntity->SetClass(box);
-                box->isVisible = code & OBJECT_VISIBLE;
-                box->hasCollision = code & OBJECT_COLLIDABLE;
-                EditorReadBoxFromByteBuffer(&importBuffer, box);
+                // BlockBrush* box = new BlockBrush();
+                // newEntity->SetClass(box);
+                // box->isVisible = code & OBJECT_VISIBLE;
+                // box->hasCollision = code & OBJECT_COLLIDABLE;
+                // EditorReadBoxFromByteBuffer(&importBuffer, box);
             }break;
 
             default: { continue; }
