@@ -115,7 +115,7 @@ protected:
     Mesh mesh;
 };
 
-struct IDFKBrush : EditorBrush
+struct IDFKBrush : GameClass
 {
     // upto the map maker to make convex shapes only.
     // Counter clockwise winding order
@@ -128,16 +128,24 @@ struct IDFKBrush : EditorBrush
         Rotation is applied by model matrix to these vertices -> thus rotation is separate from UV calc. */
 
     std::vector<vec3> vertices;
-    std::vector<u32> indices; // 3 makes a triangle
-
     struct Triangle
     {
         u8 in0;
         u8 in1;
         u8 in2;
     };
-    std::vector<Triangle> tris;
+    struct Face
+    {
+        std::vector<Triangle> tris;
+        // stuff like texture properties
+        // what texture to show
+        // texture offset (NOTE initial offset can be related to world position)
+        // alignment, etc.
+    };
+    std::vector<Face> faces;
 
+    u32 idVAO;
+    u32 idVBO;
 
     IDFKBrush()
     {
@@ -145,111 +153,153 @@ struct IDFKBrush : EditorBrush
             { 0.f, 0.f, 0.f },
             { 0.f, 0.f, 1.f },
             { 0.f, 1.f, 0.f },
-
             { 1.f, 0.f, 0.f },
             { 0.5f, 1.f, -0.3f },
-
             { 0.f, 1.f, 1.f },
-
             { 1.f, 0.f, 1.f },
-            { 0.5f, 1.f, 0.4f },
+            { 0.5f, 1.f, 0.8f },
         };
-        indices = {
-            // 1, 5, 0,
-            // 0, 5, 2,
 
-            // 6, 7, 1,
-            // 1, 7, 5,
-
-            // 3, 4, 6,
-            // 6, 4, 7,
-
-            // 0, 2, 3,
-            // 3, 2, 4,
-
-            // 5, 7, 2,
-            // 2, 7, 4,
-
-            // 0, 3, 1,
-            // 1, 3, 6
+        faces = {
+            {{
+                {1, 5, 0},
+                {0, 5, 2},
+            }},
+            {{
+                {1, 6, 7},
+                {1, 7, 5},
+            }},
+            {{ 
+                {3, 4, 6},
+                {6, 4, 7},
+            }},
+            {{
+                {0, 2, 3},
+                {3, 2, 4},
+            }},
+            {{
+                {5, 7, 2},
+                {2, 7, 4},
+            }},
+            {{
+                {0, 3, 1},
+                {1, 3, 6}
+            }},
         };
-        tris = {
-            // {1, 5, 0},
-            // {0, 5, 2},
 
-            // {6, 7, 1},
-            // {1, 7, 5},
-
-            {3, 4, 6},
-            {6, 4, 7},
-
-            // {0, 2, 3},
-            // {3, 2, 4},
-
-            // {5, 7, 2},
-            // {2, 7, 4},
-
-            // {0, 3, 1},
-            // {1, 3, 6}
-        };
+        glGenVertexArrays(1, &idVAO);
+        glBindVertexArray(idVAO);
+            glGenBuffers(1, &idVBO);
+            glBindBuffer(GL_ARRAY_BUFFER, idVBO);
+                glBufferData(GL_ARRAY_BUFFER, 0, nullptr, GL_DYNAMIC_DRAW);
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, nullptr);
+                glEnableVertexAttribArray(0);
+                glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 8, (void*)(sizeof(float) * 3));
+                glEnableVertexAttribArray(1);
+                glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, (void*)(sizeof(float) * (3 + 2)));
+                glEnableVertexAttribArray(2);
+        glBindVertexArray(0);
     }
 
-    std::pair<std::vector<float>, std::vector<u32>> GetBufferObjects() override
+    virtual ~IDFKBrush()
+    {
+        glDeleteBuffers(1, &idVBO);
+        glDeleteVertexArrays(1, &idVAO);
+    }
+
+    void Render(const Shader& shader) override
+    {
+        shader.GLBind1i("dontShade", 0);
+        shader.GLBindMatrix4fv("modelMatrix", 1, GetTiedEntity()->GetModelMatrix().ptr());
+        glBindVertexArray(idVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, idVBO);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+
+    void EditorModeRender(const Shader& shader, bool mousePicking) override
+    {
+        std::vector<float> vbo = GetBufferObject();
+        glBindVertexArray(idVAO);
+            glBindBuffer(GL_ARRAY_BUFFER, idVBO);
+                glBufferData(GL_ARRAY_BUFFER, 4 * vbo.size(), vbo.data(), GL_DYNAMIC_DRAW);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+
+        Render(shader);
+    }
+
+    std::vector<float> GetBufferObject()
     {
         std::vector<float> vbo;
 
-        for(int i = 0; i < tris.size(); ++i)
+        // TODO resize vbo and ibo before pushback calls
+        for(int f = 0; f < faces.size(); ++f)
         {
-            u8 in0 = tris[i].in0;
-            u8 in1 = tris[i].in1;
-            u8 in2 = tris[i].in2;
-
-            vec3 normal = Normalize(Cross(vertices[in1] - vertices[in0], vertices[in2] - vertices[in0]));
-            vec3 uAxis = Normalize(Cross(SML_UP_VECTOR, normal));
-            if(Dot(SML_UP_VECTOR, normal) > 0.98f)
-            {
-                // if normal == SML_UP_VECTOR then triangle facing perfectly up and Cross product gives 0,0,0
+            Face& face = faces[f];
+            vec3 vtx0 = vertices[face.tris[0].in0];
+            vec3 vtx1 = vertices[face.tris[0].in1];
+            vec3 vtx2 = vertices[face.tris[0].in2];
+            vec3 uvNormal = Normalize(Cross(vtx1 - vtx0, vtx2 - vtx0)); // we could average instead?
+            float upDownCheck = Dot(SML_UP_VECTOR, uvNormal);
+            vec3 uAxis;
+            if(upDownCheck > 0.98f) {
                 uAxis = SML_RIGHT_VECTOR;
+            } else if(upDownCheck < -0.98f) {
+                uAxis = -SML_RIGHT_VECTOR;
+            } else {
+                uAxis = Normalize(Cross(SML_UP_VECTOR, uvNormal));
             }
-            vec3 vAxis = Normalize(Cross(normal, uAxis));
+            vec3 vAxis = Normalize(Cross(uvNormal, uAxis));
+            
+            //     WORLD ALIGNMENT:
+            //     // actually i dont think it matters that we are using up forward right but rather that 
+            //     all the triangles are using the same
+            //     uAxis = SML_FORWARD_VECTOR or SML_RIGHT_VECTOR; 
+            //     vec3 vAxis = SML_UP_VECTOR;
 
-            vbo.push_back(vertices[in0].x);
-            vbo.push_back(vertices[in0].y);
-            vbo.push_back(vertices[in0].z);
-            vbo.push_back(0.f);
-            vbo.push_back(0.f);
-            vbo.push_back(normal.x);
-            vbo.push_back(normal.y);
-            vbo.push_back(normal.z);
+            for(int t = 0; t < face.tris.size(); ++t)
+            {
+                u8 in0 = face.tris[t].in0;
+                u8 in1 = face.tris[t].in1;
+                u8 in2 = face.tris[t].in2;
+                vec3 normal = Normalize(Cross(vertices[in1] - vertices[in0], vertices[in2] - vertices[in0]));
 
-            vbo.push_back(vertices[in1].x);
-            vbo.push_back(vertices[in1].y);
-            vbo.push_back(vertices[in1].z);
-            vbo.push_back(Dot(vertices[in1]-vertices[in0], uAxis));
-            vbo.push_back(Dot(vertices[in1]-vertices[in0], vAxis));
-            vbo.push_back(normal.x);
-            vbo.push_back(normal.y);
-            vbo.push_back(normal.z);
+                // NOTE(Kevin): we could have texture id (which texture to use) as a vertex attribute
+                vbo.push_back(vertices[in0].x);
+                vbo.push_back(vertices[in0].y);
+                vbo.push_back(vertices[in0].z);
+                vbo.push_back(0.f);
+                vbo.push_back(0.f);
+                vbo.push_back(normal.x);
+                vbo.push_back(normal.y);
+                vbo.push_back(normal.z);
 
-            vbo.push_back(vertices[in2].x);
-            vbo.push_back(vertices[in2].y);
-            vbo.push_back(vertices[in2].z);
-            vbo.push_back(Dot(vertices[in2]-vertices[in0], uAxis));
-            vbo.push_back(Dot(vertices[in2]-vertices[in0], vAxis));
-            vbo.push_back(normal.x);
-            vbo.push_back(normal.y);
-            vbo.push_back(normal.z);
+                vbo.push_back(vertices[in1].x);
+                vbo.push_back(vertices[in1].y);
+                vbo.push_back(vertices[in1].z);
+                vbo.push_back(Dot(vertices[in1]-vertices[in0], uAxis));
+                vbo.push_back(Dot(vertices[in1]-vertices[in0], vAxis));
+                vbo.push_back(normal.x);
+                vbo.push_back(normal.y);
+                vbo.push_back(normal.z);
+
+                vbo.push_back(vertices[in2].x);
+                vbo.push_back(vertices[in2].y);
+                vbo.push_back(vertices[in2].z);
+                vbo.push_back(Dot(vertices[in2]-vertices[in0], uAxis));
+                vbo.push_back(Dot(vertices[in2]-vertices[in0], vAxis));
+                vbo.push_back(normal.x);
+                vbo.push_back(normal.y);
+                vbo.push_back(normal.z);
+            }
         }
 
-        for(int i = 0; i < tris.size() * 3; ++i)
-        {
-            indices.push_back(i);
-        }
-
-        return { vbo, indices };
+        return vbo;
     }
 
-    std::vector<vec3> GetColliders() override
+    std::vector<vec3> GetColliders()
     {
         return vertices;
     }
