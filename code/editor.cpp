@@ -101,6 +101,7 @@ struct EditorBrush : GameClass
             glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
         }
         shader.GLBindMatrix4fv("modelMatrix", 1, GetTiedEntity()->GetModelMatrix().ptr());
+        //shader.GLBindMatrix4fv("modelMatrix", 1, mat4().ptr());
         mesh.RenderMesh();
         if(!isVisible && !mousePicking)
         {
@@ -112,6 +113,149 @@ struct EditorBrush : GameClass
     Texture texture; // TODO(Kevin): use texture
 protected:
     Mesh mesh;
+};
+
+struct IDFKBrush : EditorBrush
+{
+    // upto the map maker to make convex shapes only.
+    // Counter clockwise winding order
+
+    /* Store vertices by position aligned to XYZ grid
+
+        For sides we don't care about horizontal alignment - we can just use horizontal lenght for that
+        we do care about the vertical alignment - we will use Y position of the vertices for that.
+
+        Rotation is applied by model matrix to these vertices -> thus rotation is separate from UV calc. */
+
+    std::vector<vec3> vertices;
+    std::vector<u32> indices; // 3 makes a triangle
+
+    struct Triangle
+    {
+        u8 in0;
+        u8 in1;
+        u8 in2;
+    };
+    std::vector<Triangle> tris;
+
+
+    IDFKBrush()
+    {
+        vertices = {
+            { 0.f, 0.f, 0.f },
+            { 0.f, 0.f, 1.f },
+            { 0.f, 1.f, 0.f },
+
+            { 1.f, 0.f, 0.f },
+            { 0.5f, 1.f, -0.3f },
+
+            { 0.f, 1.f, 1.f },
+
+            { 1.f, 0.f, 1.f },
+            { 0.5f, 1.f, 0.4f },
+        };
+        indices = {
+            // 1, 5, 0,
+            // 0, 5, 2,
+
+            // 6, 7, 1,
+            // 1, 7, 5,
+
+            // 3, 4, 6,
+            // 6, 4, 7,
+
+            // 0, 2, 3,
+            // 3, 2, 4,
+
+            // 5, 7, 2,
+            // 2, 7, 4,
+
+            // 0, 3, 1,
+            // 1, 3, 6
+        };
+        tris = {
+            // {1, 5, 0},
+            // {0, 5, 2},
+
+            // {6, 7, 1},
+            // {1, 7, 5},
+
+            {3, 4, 6},
+            {6, 4, 7},
+
+            // {0, 2, 3},
+            // {3, 2, 4},
+
+            // {5, 7, 2},
+            // {2, 7, 4},
+
+            // {0, 3, 1},
+            // {1, 3, 6}
+        };
+    }
+
+    std::pair<std::vector<float>, std::vector<u32>> GetBufferObjects() override
+    {
+        std::vector<float> vbo;
+
+        for(int i = 0; i < tris.size(); ++i)
+        {
+            u8 in0 = tris[i].in0;
+            u8 in1 = tris[i].in1;
+            u8 in2 = tris[i].in2;
+
+            vec3 normal = Normalize(Cross(vertices[in1] - vertices[in0], vertices[in2] - vertices[in0]));
+            vec3 uAxis = Normalize(Cross(SML_UP_VECTOR, normal));
+            if(Dot(SML_UP_VECTOR, normal) > 0.98f)
+            {
+                // if normal == SML_UP_VECTOR then triangle facing perfectly up and Cross product gives 0,0,0
+                uAxis = SML_RIGHT_VECTOR;
+            }
+            vec3 vAxis = Normalize(Cross(normal, uAxis));
+
+            vbo.push_back(vertices[in0].x);
+            vbo.push_back(vertices[in0].y);
+            vbo.push_back(vertices[in0].z);
+            vbo.push_back(0.f);
+            vbo.push_back(0.f);
+            vbo.push_back(normal.x);
+            vbo.push_back(normal.y);
+            vbo.push_back(normal.z);
+
+            vbo.push_back(vertices[in1].x);
+            vbo.push_back(vertices[in1].y);
+            vbo.push_back(vertices[in1].z);
+            vbo.push_back(Dot(vertices[in1]-vertices[in0], uAxis));
+            vbo.push_back(Dot(vertices[in1]-vertices[in0], vAxis));
+            vbo.push_back(normal.x);
+            vbo.push_back(normal.y);
+            vbo.push_back(normal.z);
+
+            vbo.push_back(vertices[in2].x);
+            vbo.push_back(vertices[in2].y);
+            vbo.push_back(vertices[in2].z);
+            vbo.push_back(Dot(vertices[in2]-vertices[in0], uAxis));
+            vbo.push_back(Dot(vertices[in2]-vertices[in0], vAxis));
+            vbo.push_back(normal.x);
+            vbo.push_back(normal.y);
+            vbo.push_back(normal.z);
+        }
+
+        for(int i = 0; i < tris.size() * 3; ++i)
+        {
+            indices.push_back(i);
+        }
+
+        return { vbo, indices };
+    }
+
+    std::vector<vec3> GetColliders() override
+    {
+        return vertices;
+    }
+
+    // need individual face data
+    // edge data?
 };
 
 struct BlockBrush : EditorBrush
@@ -578,8 +722,12 @@ INTERNAL void EditorLoad(const std::string& mapName)
         EditorImportMap(mapName);
     }
 
+    GameObject* test = &editorEntities.PushBackDefault();
+    test->SetClass(new IDFKBrush());
+
     // Load textures
-    TextureCreateFromFile(devUnitTexture, "data/primitives/dev_unitwall11.png", GL_LINEAR_MIPMAP_LINEAR);
+    TextureCreateFromFile(devUnitTexture, "data/primitives/default.png", GL_LINEAR_MIPMAP_LINEAR);
+    //TextureCreateFromFile(devUnitTexture, "data/primitives/dev_unitwall11.png", GL_LINEAR_MIPMAP_LINEAR);
 }
 
 INTERNAL void EditorUnload()
