@@ -63,6 +63,7 @@ enum GAME_CLASS_CODE : u32
     OBJECT_VISIBLE = 0x0001,
     OBJECT_COLLIDABLE = 0x0002,
 
+    BRUSH_LEVELGEOM = 0x0010,
     BRUSH_BLOCK = 0x0020,
     CLASS_PROPSTATIC = 0x0040,
     CLASS_PROPDYNAMIC = 0x0080
@@ -194,8 +195,11 @@ struct GameClass
         // do nothing by default
     }
 
-    /** What to Render in Editor mode. Must implement. */
-    virtual void EditorModeRender(const Shader& shader, bool mousePicking) = 0;
+    /** What to Render in Editor mode. */
+    virtual void EditorModeRender(const Shader& shader, bool mousePicking)
+    {
+        // do nothing by default
+    }
 
     GAME_CLASS_CODE GetGameClassCode() const { return gameClassCode; }
 

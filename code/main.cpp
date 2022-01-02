@@ -31,6 +31,7 @@ Backlog:
     - Drop-down console port from XNGINE (tilde)
     - Animation
     - Audio
+    - Share textures so that if two faces use same texture they dont use two separate memories
 
 Rules:
      - unit vector (x: 1, y: 0, z: 0), aka positive X, is the "forward" direction for un-rotated objects

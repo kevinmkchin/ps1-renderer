@@ -115,19 +115,71 @@ protected:
     Mesh mesh;
 };
 
-struct IDFKBrush : GameClass
+struct LevelGeometry : GameClass  // we could have subclasses of level geometry which do respond to collision or update
 {
-    // upto the map maker to make convex shapes only.
+    /* Stripped down version of LevelGeometryBrush that can be used in game */
+
+    u32 idVAO;
+    u32 idVBO;
+
+    struct {
+        u32 idTexture;
+        i32 numberOfIndices;
+    } faces[8];
+    u32 facesCount;
+
+    LevelGeometry()
+    {
+        // set gameClassCode to whatever level geometry is
+
+        // maybe we can generate VAOs and VBOs in the create level geometry function instead of the constructor
+        // i.e. make the vaos vbos when importing map
+        glGenVertexArrays(1, &idVAO);
+        glBindVertexArray(idVAO);
+            glGenBuffers(1, &idVBO);
+            glBindBuffer(GL_ARRAY_BUFFER, idVBO);
+                glBufferData(GL_ARRAY_BUFFER, 0, nullptr, GL_DYNAMIC_DRAW);
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, nullptr);
+                glEnableVertexAttribArray(0);
+                glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 8, (void*)(sizeof(float) * 3));
+                glEnableVertexAttribArray(1);
+                glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, (void*)(sizeof(float) * (3 + 2)));
+                glEnableVertexAttribArray(2);
+        glBindVertexArray(0);
+    }
+
+    virtual ~LevelGeometry()
+    {
+        glDeleteBuffers(1, &idVBO);
+        glDeleteVertexArrays(1, &idVAO);
+    }
+
+    void Render(const Shader& shader)
+    {
+        shader.GLBind1i("dontShade", 0);
+        shader.GLBindMatrix4fv("modelMatrix", 1, GetTiedEntity()->GetModelMatrix().ptr());
+
+        glBindVertexArray(idVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, idVBO);
+        i32 indexStart = 0;
+        for(u32 i = 0; i < facesCount; ++i)
+        {
+            // GL USE faces[i].idTexture use whatever texture defined in that face
+            glDrawArrays(GL_TRIANGLES, indexStart, faces[i].numberOfIndices);
+            indexStart += faces[i].numberOfIndices;
+        }
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+};
+
+struct LevelGeometryBrush : GameClass
+{
+    // Up to the map maker to make convex shapes only.
     // Counter clockwise winding order
 
-    /* Store vertices by position aligned to XYZ grid
+    std::vector<vec3> vertices; // independently mutable
 
-        For sides we don't care about horizontal alignment - we can just use horizontal lenght for that
-        we do care about the vertical alignment - we will use Y position of the vertices for that.
-
-        Rotation is applied by model matrix to these vertices -> thus rotation is separate from UV calc. */
-
-    std::vector<vec3> vertices;
     struct Triangle
     {
         u8 in0;
@@ -141,14 +193,21 @@ struct IDFKBrush : GameClass
         // what texture to show
         // texture offset (NOTE initial offset can be related to world position)
         // alignment, etc.
+
+        i32 NumberOfIndices()
+        {
+            return (u32) (tris.size() * 3);
+        }
     };
     std::vector<Face> faces;
 
     u32 idVAO;
     u32 idVBO;
 
-    IDFKBrush()
+    LevelGeometryBrush()
     {
+        gameClassCode = BRUSH_LEVELGEOM;
+
         vertices = {
             { 0.f, 0.f, 0.f },
             { 0.f, 0.f, 1.f },
@@ -201,7 +260,7 @@ struct IDFKBrush : GameClass
         glBindVertexArray(0);
     }
 
-    virtual ~IDFKBrush()
+    virtual ~LevelGeometryBrush()
     {
         glDeleteBuffers(1, &idVBO);
         glDeleteVertexArrays(1, &idVAO);
@@ -213,14 +272,21 @@ struct IDFKBrush : GameClass
         shader.GLBindMatrix4fv("modelMatrix", 1, GetTiedEntity()->GetModelMatrix().ptr());
         glBindVertexArray(idVAO);
         glBindBuffer(GL_ARRAY_BUFFER, idVBO);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        i32 indexStart = 0;
+        for(int i = 0; i < faces.size(); ++i)
+        {
+            Face& face = faces[i];
+            // use whatever texture defined in that face
+            glDrawArrays(GL_TRIANGLES, indexStart, face.NumberOfIndices());
+            indexStart += face.NumberOfIndices();
+        }
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
     }
 
     void EditorModeRender(const Shader& shader, bool mousePicking) override
     {
-        std::vector<float> vbo = GetBufferObject();
+        std::vector<float> vbo = GenerateBufferObject();
         glBindVertexArray(idVAO);
             glBindBuffer(GL_ARRAY_BUFFER, idVBO);
                 glBufferData(GL_ARRAY_BUFFER, 4 * vbo.size(), vbo.data(), GL_DYNAMIC_DRAW);
@@ -230,11 +296,11 @@ struct IDFKBrush : GameClass
         Render(shader);
     }
 
-    std::vector<float> GetBufferObject()
+    std::vector<float> GenerateBufferObject()
     {
         std::vector<float> vbo;
+        // TODO resize vbo before pushback calls
 
-        // TODO resize vbo and ibo before pushback calls
         for(int f = 0; f < faces.size(); ++f)
         {
             Face& face = faces[f];
@@ -298,14 +364,6 @@ struct IDFKBrush : GameClass
 
         return vbo;
     }
-
-    std::vector<vec3> GetColliders()
-    {
-        return vertices;
-    }
-
-    // need individual face data
-    // edge data?
 };
 
 struct BlockBrush : EditorBrush
@@ -773,7 +831,7 @@ INTERNAL void EditorLoad(const std::string& mapName)
     }
 
     GameObject* test = &editorEntities.PushBackDefault();
-    test->SetClass(new IDFKBrush());
+    test->SetClass(new LevelGeometryBrush());
 
     // Load textures
     TextureCreateFromFile(devUnitTexture, "data/primitives/default.png", GL_LINEAR_MIPMAP_LINEAR);
