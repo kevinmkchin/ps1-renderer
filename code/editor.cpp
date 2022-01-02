@@ -176,15 +176,15 @@ struct LevelGeometryBrush : GameClass
             { 0.f, 0.f, 1.f },
             { 0.f, 1.f, 0.f },
             { 1.f, 0.f, 0.f },
-            { 0.5f, 1.f, -0.3f },
+            { 1.f, 1.f, 0.f },
             { 0.f, 1.f, 1.f },
             { 1.f, 0.f, 1.f },
-            { 0.5f, 1.f, 0.8f },
+            { 1.f, 1.f, 1.f },
         };
 
         faces = {
             {{
-                {1, 5, 0},
+                {0, 1, 5},
                 {0, 5, 2},
             }},
             {{
@@ -192,19 +192,19 @@ struct LevelGeometryBrush : GameClass
                 {1, 7, 5},
             }},
             {{ 
-                {3, 4, 6},
+                {6, 3, 4},
                 {6, 4, 7},
             }},
             {{
-                {0, 2, 3},
+                {3, 0, 2},
                 {3, 2, 4},
             }},
             {{
-                {5, 7, 2},
+                {2, 5, 7},
                 {2, 7, 4},
             }},
             {{
-                {0, 3, 1},
+                {1, 0, 3},
                 {1, 3, 6}
             }},
         };
@@ -280,7 +280,7 @@ struct LevelGeometryBrush : GameClass
             } else {
                 uAxis = Normalize(Cross(SML_UP_VECTOR, uvNormal));
             }
-            vec3 vAxis = Normalize(Cross(uvNormal, uAxis));
+            vec3 vAxis = -Normalize(Cross(uvNormal, uAxis));
             
             //     WORLD ALIGNMENT:
             //     // actually i dont think it matters that we are using up forward right but rather that 
@@ -526,8 +526,7 @@ INTERNAL void EditorLoad(const std::string& mapName)
     test->SetClass(new LevelGeometryBrush());
 
     // Load textures
-    TextureCreateFromFile(devUnitTexture, "data/primitives/default.png", GL_LINEAR_MIPMAP_LINEAR);
-    //TextureCreateFromFile(devUnitTexture, "data/primitives/dev_unitwall11.png", GL_LINEAR_MIPMAP_LINEAR);
+    TextureCreateFromFile(devUnitTexture, "data/primitives/dev_unitwall11.png", GL_LINEAR_MIPMAP_LINEAR);
 }
 
 INTERNAL void EditorUnload()
