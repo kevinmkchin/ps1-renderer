@@ -211,7 +211,7 @@ struct GameClass
     }
 
 public:
-    bool isVisible = false;
+    bool isVisible = true;
     bool hasCollision = false;
 protected:
     GAME_CLASS_CODE gameClassCode;
