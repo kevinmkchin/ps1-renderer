@@ -1,5 +1,5 @@
 /** Telling opengl to start using this shader program */
-void Shader::UseShader()
+void Shader::UseShader() const
 {
     if (idShaderProgram == 0)
     {

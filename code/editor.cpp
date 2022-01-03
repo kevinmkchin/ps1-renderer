@@ -7,6 +7,7 @@ enum EditorMode {
 };
 
 INTERNAL EditorMode editorMode = EDITOR_MODE_SELECT;
+INTERNAL Billboard bill;
 
 INTERNAL vec3 EntityIdToRGB(EntityId id)
 {
@@ -269,13 +270,20 @@ struct LevelGeometryBrush : GameClass
 
         if(editorMode == EDITOR_MODE_EDIT)
         {
+            billboardShader.UseShader();
             for(auto& v : vertices)
             {
                 // TODO(Kevin):
                 // check if clickedVertexID is any of these vertices
                 // if true, set this vertex as the selected vertex.
                 // render a sphere or something clickable
+                // if true then also render as diff color
+
+                billboardShader.GLBind3f("quadColor", _RGB(255.f,255.f,255.f));
+                bill.position = GetTiedEntity()->GetPos() + v;
+                bill.RotateAndRender(billboardShader);
             }
+            shader.UseShader();
         }
     }
 
@@ -519,6 +527,9 @@ INTERNAL void EditorInitOnStartUp()
     defaultEntityModel = MeshGroupAssimpLoad("data/primitives/sphere.obj");
 
     transGizmo.InitGizmo();
+
+    bill.target = &editorCamera;
+    bill.InitQuadMesh(0.3f, 0.3f, vec2(0.15f, 0.15f));
 }
 
 INTERNAL void EditorExportMap(const std::string& mapName);
@@ -888,6 +899,9 @@ INTERNAL void EditorRender()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
 
+    billboardShader.UseShader();
+    billboardShader.GLBindMatrix4fv("viewMatrix", 1, editorCamera.viewMatrix.ptr());
+    billboardShader.GLBindMatrix4fv("projMatrix", 1, editorCamera.perspectiveMatrix.ptr());
     wireframeShader.UseShader();
     wireframeShader.GLBindMatrix4fv("viewMatrix", 1, editorCamera.viewMatrix.ptr());
     wireframeShader.GLBindMatrix4fv("projMatrix", 1, editorCamera.perspectiveMatrix.ptr());
@@ -920,7 +934,6 @@ INTERNAL void EditorRender()
 
         editorEntities[i].GetClass()->EditorModeRender(editorShader, false);
     }
-
     
     glDisable(GL_DEPTH_TEST);
     transGizmo.RenderGizmo(editorShader, false);
