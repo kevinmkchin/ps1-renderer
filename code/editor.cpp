@@ -270,7 +270,10 @@ struct LevelGeometryBrush : GameClass
 
         if(editorMode == EDITOR_MODE_EDIT)
         {
-            billboardShader.UseShader();
+            if(!mousePicking)
+            {
+                billboardShader.UseShader();
+            }
             for(auto& v : vertices)
             {
                 // TODO(Kevin):
@@ -278,10 +281,16 @@ struct LevelGeometryBrush : GameClass
                 // if true, set this vertex as the selected vertex.
                 // render a sphere or something clickable
                 // if true then also render as diff color
-
-                billboardShader.GLBind3f("quadColor", _RGB(255.f,255.f,255.f));
                 bill.position = GetTiedEntity()->GetPos() + v;
-                bill.RotateAndRender(billboardShader);
+                if(!mousePicking)
+                {
+                    billboardShader.GLBind3f("quadColor", _RGB(255.f,255.f,255.f));
+                    bill.RotateAndRender(billboardShader);
+                }
+                else
+                {
+                    bill.RotateAndRender(shader);
+                }
             }
             shader.UseShader();
         }
