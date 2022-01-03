@@ -7,7 +7,7 @@ enum EditorMode {
 };
 
 INTERNAL EditorMode editorMode = EDITOR_MODE_SELECT;
-INTERNAL Billboard bill;
+INTERNAL Billboard vertexClickableBillboard;
 
 INTERNAL vec3 EntityIdToRGB(EntityId id)
 {
@@ -132,10 +132,9 @@ struct LevelGeometryBrush : GameClass
     struct Vertex
     {
         vec3 pos;
-        EntityId vid;
     };
 
-    std::vector<vec3> vertices; // independently mutable
+    std::vector<Vertex> vertices; // independently mutable
 
     struct Triangle
     {
@@ -166,14 +165,14 @@ struct LevelGeometryBrush : GameClass
         gameClassCode = BRUSH_LEVELGEOM;
 
         vertices = {
-            { 0.f, 0.f, 0.f },
-            { 0.f, 0.f, 1.f },
-            { 0.f, 1.f, 0.f },
-            { 1.f, 0.f, 0.f },
-            { 1.f, 1.f, 0.f },
-            { 0.f, 1.f, 1.f },
-            { 1.f, 0.f, 1.f },
-            { 1.f, 1.f, 1.f },
+            { { 0.f, 0.f, 0.f } },
+            { { 0.f, 0.f, 1.f } },
+            { { 0.f, 1.f, 0.f } },
+            { { 1.f, 0.f, 0.f } },
+            { { 1.f, 1.f, 0.f } },
+            { { 0.f, 1.f, 1.f } },
+            { { 1.f, 0.f, 1.f } },
+            { { 1.f, 1.f, 1.f } },
         };
 
         faces = {
@@ -230,8 +229,6 @@ struct LevelGeometryBrush : GameClass
 
     void EditorModeRender(const Shader& shader, bool mousePicking) override
     {
-        // TODO render spheres around clickable vertices here too
-
         std::vector<float> vbo = GenerateBufferObject();
         glBindVertexArray(idVAO);
             glBindBuffer(GL_ARRAY_BUFFER, idVBO);
@@ -267,33 +264,6 @@ struct LevelGeometryBrush : GameClass
             shader.GLBind3f("modelColor", _RGB(0.f, 0.f, 0.f));
             glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
         }
-
-        if(editorMode == EDITOR_MODE_EDIT)
-        {
-            if(!mousePicking)
-            {
-                billboardShader.UseShader();
-            }
-            for(auto& v : vertices)
-            {
-                // TODO(Kevin):
-                // check if clickedVertexID is any of these vertices
-                // if true, set this vertex as the selected vertex.
-                // render a sphere or something clickable
-                // if true then also render as diff color
-                bill.position = GetTiedEntity()->GetPos() + v;
-                if(!mousePicking)
-                {
-                    billboardShader.GLBind3f("quadColor", _RGB(255.f,255.f,255.f));
-                    bill.RotateAndRender(billboardShader);
-                }
-                else
-                {
-                    bill.RotateAndRender(shader);
-                }
-            }
-            shader.UseShader();
-        }
     }
 
     std::vector<float> GenerateBufferObject()
@@ -303,9 +273,9 @@ struct LevelGeometryBrush : GameClass
         for(int f = 0; f < faces.size(); ++f)
         {
             Face& face = faces[f];
-            vec3 vtx0 = vertices[face.tris[0].in0];
-            vec3 vtx1 = vertices[face.tris[0].in1];
-            vec3 vtx2 = vertices[face.tris[0].in2];
+            vec3 vtx0 = vertices[face.tris[0].in0].pos;
+            vec3 vtx1 = vertices[face.tris[0].in1].pos;
+            vec3 vtx2 = vertices[face.tris[0].in2].pos;
             vec3 uvNormal = Normalize(Cross(vtx1 - vtx0, vtx2 - vtx0)); // we could average instead?
             float upDownCheck = Dot(SML_UP_VECTOR, uvNormal);
             vec3 uAxis;
@@ -329,31 +299,31 @@ struct LevelGeometryBrush : GameClass
                 u8 in0 = face.tris[t].in0;
                 u8 in1 = face.tris[t].in1;
                 u8 in2 = face.tris[t].in2;
-                vec3 normal = Normalize(Cross(vertices[in1] - vertices[in0], vertices[in2] - vertices[in0]));
+                vec3 normal = Normalize(Cross(vertices[in1].pos - vertices[in0].pos, vertices[in2].pos - vertices[in0].pos));
 
-                vbo.push_back(vertices[in0].x);
-                vbo.push_back(vertices[in0].y);
-                vbo.push_back(vertices[in0].z);
+                vbo.push_back(vertices[in0].pos.x);
+                vbo.push_back(vertices[in0].pos.y);
+                vbo.push_back(vertices[in0].pos.z);
                 vbo.push_back(0.f);
                 vbo.push_back(0.f);
                 vbo.push_back(normal.x);
                 vbo.push_back(normal.y);
                 vbo.push_back(normal.z);
 
-                vbo.push_back(vertices[in1].x);
-                vbo.push_back(vertices[in1].y);
-                vbo.push_back(vertices[in1].z);
-                vbo.push_back(Dot(vertices[in1]-vertices[in0], uAxis));
-                vbo.push_back(Dot(vertices[in1]-vertices[in0], vAxis));
+                vbo.push_back(vertices[in1].pos.x);
+                vbo.push_back(vertices[in1].pos.y);
+                vbo.push_back(vertices[in1].pos.z);
+                vbo.push_back(Dot(vertices[in1].pos-vertices[in0].pos, uAxis));
+                vbo.push_back(Dot(vertices[in1].pos-vertices[in0].pos, vAxis));
                 vbo.push_back(normal.x);
                 vbo.push_back(normal.y);
                 vbo.push_back(normal.z);
 
-                vbo.push_back(vertices[in2].x);
-                vbo.push_back(vertices[in2].y);
-                vbo.push_back(vertices[in2].z);
-                vbo.push_back(Dot(vertices[in2]-vertices[in0], uAxis));
-                vbo.push_back(Dot(vertices[in2]-vertices[in0], vAxis));
+                vbo.push_back(vertices[in2].pos.x);
+                vbo.push_back(vertices[in2].pos.y);
+                vbo.push_back(vertices[in2].pos.z);
+                vbo.push_back(Dot(vertices[in2].pos-vertices[in0].pos, uAxis));
+                vbo.push_back(Dot(vertices[in2].pos-vertices[in0].pos, vAxis));
                 vbo.push_back(normal.x);
                 vbo.push_back(normal.y);
                 vbo.push_back(normal.z);
@@ -381,6 +351,9 @@ INTERNAL GameObject* GetEditorObjectWithId(EntityId eid)
     return nullptr;
 }
 INTERNAL GameCamera editorCamera;
+#define NumberOfReservedClickableVertexIds 32
+INTERNAL EntityId reservedClickableVertexIds[NumberOfReservedClickableVertexIds];
+INTERNAL std::vector<LevelGeometryBrush::Vertex*> selectedClickableVertices;
 
 struct TranslationGizmo
 {
@@ -523,6 +496,7 @@ INTERNAL void SetSelectedEditObjId(EntityId eid)
 {
     selectedEditObjId = eid;
     transGizmo.attachedObjId = eid;
+    selectedClickableVertices.clear();
 }
 
 INTERNAL void EditorInitOnStartUp()
@@ -537,8 +511,13 @@ INTERNAL void EditorInitOnStartUp()
 
     transGizmo.InitGizmo();
 
-    bill.target = &editorCamera;
-    bill.InitQuadMesh(0.3f, 0.3f, vec2(0.15f, 0.15f));
+    for(int i = 0; i < NumberOfReservedClickableVertexIds; ++i)
+    {
+        reservedClickableVertexIds[i] = GetUniqueEntityId();
+    }
+
+    vertexClickableBillboard.target = &editorCamera;
+    vertexClickableBillboard.InitQuadMesh(0.3f, 0.3f, vec2(0.15f, 0.15f));
 }
 
 INTERNAL void EditorExportMap(const std::string& mapName);
@@ -775,7 +754,7 @@ INTERNAL void UpdateEditorImGui()
                         LevelGeometryBrush* lgb = (LevelGeometryBrush*) selectedEditObj->GetClass();
                         for(int i = 0; i < lgb->vertices.size(); ++i)
                         {
-                            vec3& v = lgb->vertices[i];
+                            vec3& v = lgb->vertices[i].pos;
                             ImGui::PushID(i);
                             ImGui::DragFloat3("v", &v.x, 0.01f);
                             ImGui::PopID();
@@ -944,6 +923,30 @@ INTERNAL void EditorRender()
         editorEntities[i].GetClass()->EditorModeRender(editorShader, false);
     }
     
+    auto selectedObj = GetEditorObjectWithId(selectedEditObjId);
+    if(editorMode == EDITOR_MODE_EDIT 
+        && selectedObj
+        && selectedObj->GetGameClassCode() == BRUSH_LEVELGEOM)
+    {
+        LevelGeometryBrush* geom = (LevelGeometryBrush*) selectedObj->GetClass();
+
+        billboardShader.UseShader();
+        for(auto& v : geom->vertices)
+        {
+            billboardShader.GLBind3f("quadColor", _RGB(255.f,255.f,255.f));
+            for(auto vptr : selectedClickableVertices)
+            {
+                if(vptr == &v)
+                {
+                    billboardShader.GLBind3f("quadColor", _RGB(255.f,0.f,0.f));
+                    break;
+                }
+            }
+            vertexClickableBillboard.position = selectedObj->GetPos() + v.pos;
+            vertexClickableBillboard.RotateAndRender(billboardShader);
+        }
+    }
+
     glDisable(GL_DEPTH_TEST);
     transGizmo.RenderGizmo(editorShader, false);
     glEnable(GL_DEPTH_TEST);
@@ -969,9 +972,29 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
         editorEntities[i].GetClass()->EditorModeRender(mousepickShader,
             gCurrentKeyState[SDL_SCANCODE_LSHIFT] ? false : true);
     }
+
+    auto selectedObj = GetEditorObjectWithId(selectedEditObjId);
+    if(editorMode == EDITOR_MODE_EDIT 
+        && selectedObj
+        && selectedObj->GetGameClassCode() == BRUSH_LEVELGEOM)
+    {
+        LevelGeometryBrush* geom = (LevelGeometryBrush*) selectedObj->GetClass();
+        mousepickShader.UseShader();
+        for(int i = 0; i < geom->vertices.size(); ++i)
+        {
+            auto v = geom->vertices[i];
+            auto vid = reservedClickableVertexIds[i];
+            vertexClickableBillboard.position = selectedObj->GetPos() + v.pos;
+            vec3 rgbId = EntityIdToRGB(vid);
+            mousepickShader.GLBind3f("entityIdColor", rgbId.x, rgbId.y, rgbId.z);
+            vertexClickableBillboard.RotateAndRender(mousepickShader);
+        }
+    }
+
     glDisable(GL_DEPTH_TEST);
     transGizmo.RenderGizmo(mousepickShader, true);
     glEnable(GL_DEPTH_TEST);
+
 
     mousepickShader.SuppressWarningsPop();
     glFlush();
@@ -984,6 +1007,18 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
     EntityId pickedId = RGBToEntityId(pickedRGBData[0], pickedRGBData[1], pickedRGBData[2]);
     if(pickedId != 0x00FFFFFF)
     {
+        auto selectedObj = GetEditorObjectWithId(selectedEditObjId);
+        if(editorMode == EDITOR_MODE_EDIT 
+            && selectedObj
+            && selectedObj->GetGameClassCode() == BRUSH_LEVELGEOM
+            && pickedId >= reservedClickableVertexIds[0]
+            && pickedId <= reservedClickableVertexIds[NumberOfReservedClickableVertexIds-1])
+        {
+            auto selectedLevelGeom = (LevelGeometryBrush*) selectedObj->GetClass();
+            int levelGeomVerticesLocalIndex = pickedId - reservedClickableVertexIds[0];
+            selectedClickableVertices.push_back(&selectedLevelGeom->vertices[levelGeomVerticesLocalIndex]);
+        }
+
         if(pickedId == transGizmo.XArrowId)
         {
             transGizmo.activeAxis = TranslationGizmo::GIZMO_TRANSLATION_ACTIVE_X;
