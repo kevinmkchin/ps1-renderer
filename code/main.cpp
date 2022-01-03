@@ -4,9 +4,6 @@
 TODO:
 Task for today:
     - a more flexible brush type that can be deformed and modified and sculpted
-
-Backlog:
-
     EDIT MODE:
         - Select individual brush faces
         - Add/Remove edges
@@ -14,6 +11,10 @@ Backlog:
             - SELECT TEXTURES for brush faces
             - Save texture data to disk with map
             - Texture UV offset for box editor object 
+    - render quads or whatever for selecting vertices
+    - level geometry shouldn't use model matrix -> instead apply transformations when vbo is generated
+
+Backlog:
     - GAME_CLASS_CODE: instead of using bits, just use integer number
     - toggle snap to grid in level editor
     - GameClass reflection + expose subclasses and properties to editor?
