@@ -3,9 +3,6 @@
 
 TODO:
 Task for today:
-    - level geometry shouldn't use model matrix -> instead apply transformations when vbo is generated
-    - vertex editing is detached from rotation and scale and shit right now. fix it.
-    - a more flexible brush type that can be deformed and modified and sculpted
     EDIT MODE:
         - Select individual brush faces
         - Add/Remove edges
@@ -13,7 +10,6 @@ Task for today:
             - SELECT TEXTURES for brush faces
             - Save texture data to disk with map
             - Texture UV offset for box editor object 
-    - render quads or whatever for selecting vertices
 
 Backlog:
     - GAME_CLASS_CODE: instead of using bits, just use integer number

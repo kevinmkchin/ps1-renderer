@@ -133,9 +133,6 @@ struct LevelGeometryBrush : GameClass
     {
         vec3 pos;
     };
-
-    std::vector<Vertex> vertices; // independently mutable
-
     struct Triangle
     {
         u8 in0;
@@ -155,6 +152,8 @@ struct LevelGeometryBrush : GameClass
             return (u32) (tris.size() * 3);
         }
     };
+
+    std::vector<Vertex> vertices; // independently mutable
     std::vector<Face> faces;
 
     u32 idVAO;
@@ -237,7 +236,9 @@ struct LevelGeometryBrush : GameClass
         glBindVertexArray(0);
 
         shader.GLBind1i("dontShade", 0);
-        shader.GLBindMatrix4fv("modelMatrix", 1, GetTiedEntity()->GetModelMatrix().ptr());
+        /** Note(Kevin): LevelGeometryBrush doesn't uses identity model matrix because transformations
+            applied when we call GenerateBufferObject. It's already encoded into the vertex position attribute. */
+        shader.GLBindMatrix4fv("modelMatrix", 1, mat4().ptr());
 
         if(!isVisible && !mousePicking)
         {
@@ -252,6 +253,7 @@ struct LevelGeometryBrush : GameClass
         for(int i = 0; i < faces.size(); ++i)
         {
             Face& face = faces[i];
+            // TODO(Kevin) if mousePicking, render with entity color from reservedClickableFaceIds
             // use whatever texture defined in that face
             glDrawArrays(GL_TRIANGLES, indexStart, face.NumberOfIndices());
             indexStart += face.NumberOfIndices();
@@ -270,12 +272,20 @@ struct LevelGeometryBrush : GameClass
     {
         std::vector<float> vbo;
 
+        std::vector<Vertex> verticesTransformed;
+        for(int i = 0; i < vertices.size(); ++i)
+        {
+            Vertex v;
+            v.pos = (GetTiedEntity()->GetModelMatrix() * vec4(vertices[i].pos, 1.f)).xyz;
+            verticesTransformed.push_back(v);
+        }
+
         for(int f = 0; f < faces.size(); ++f)
         {
             Face& face = faces[f];
-            vec3 vtx0 = vertices[face.tris[0].in0].pos;
-            vec3 vtx1 = vertices[face.tris[0].in1].pos;
-            vec3 vtx2 = vertices[face.tris[0].in2].pos;
+            vec3 vtx0 = verticesTransformed[face.tris[0].in0].pos;
+            vec3 vtx1 = verticesTransformed[face.tris[0].in1].pos;
+            vec3 vtx2 = verticesTransformed[face.tris[0].in2].pos;
             vec3 uvNormal = Normalize(Cross(vtx1 - vtx0, vtx2 - vtx0)); // we could average instead?
             float upDownCheck = Dot(SML_UP_VECTOR, uvNormal);
             vec3 uAxis;
@@ -299,31 +309,31 @@ struct LevelGeometryBrush : GameClass
                 u8 in0 = face.tris[t].in0;
                 u8 in1 = face.tris[t].in1;
                 u8 in2 = face.tris[t].in2;
-                vec3 normal = Normalize(Cross(vertices[in1].pos - vertices[in0].pos, vertices[in2].pos - vertices[in0].pos));
+                vec3 normal = Normalize(Cross(verticesTransformed[in1].pos - verticesTransformed[in0].pos, verticesTransformed[in2].pos - verticesTransformed[in0].pos));
 
-                vbo.push_back(vertices[in0].pos.x);
-                vbo.push_back(vertices[in0].pos.y);
-                vbo.push_back(vertices[in0].pos.z);
+                vbo.push_back(verticesTransformed[in0].pos.x);
+                vbo.push_back(verticesTransformed[in0].pos.y);
+                vbo.push_back(verticesTransformed[in0].pos.z);
                 vbo.push_back(0.f);
                 vbo.push_back(0.f);
                 vbo.push_back(normal.x);
                 vbo.push_back(normal.y);
                 vbo.push_back(normal.z);
 
-                vbo.push_back(vertices[in1].pos.x);
-                vbo.push_back(vertices[in1].pos.y);
-                vbo.push_back(vertices[in1].pos.z);
-                vbo.push_back(Dot(vertices[in1].pos-vertices[in0].pos, uAxis));
-                vbo.push_back(Dot(vertices[in1].pos-vertices[in0].pos, vAxis));
+                vbo.push_back(verticesTransformed[in1].pos.x);
+                vbo.push_back(verticesTransformed[in1].pos.y);
+                vbo.push_back(verticesTransformed[in1].pos.z);
+                vbo.push_back(Dot(verticesTransformed[in1].pos-verticesTransformed[in0].pos, uAxis));
+                vbo.push_back(Dot(verticesTransformed[in1].pos-verticesTransformed[in0].pos, vAxis));
                 vbo.push_back(normal.x);
                 vbo.push_back(normal.y);
                 vbo.push_back(normal.z);
 
-                vbo.push_back(vertices[in2].pos.x);
-                vbo.push_back(vertices[in2].pos.y);
-                vbo.push_back(vertices[in2].pos.z);
-                vbo.push_back(Dot(vertices[in2].pos-vertices[in0].pos, uAxis));
-                vbo.push_back(Dot(vertices[in2].pos-vertices[in0].pos, vAxis));
+                vbo.push_back(verticesTransformed[in2].pos.x);
+                vbo.push_back(verticesTransformed[in2].pos.y);
+                vbo.push_back(verticesTransformed[in2].pos.z);
+                vbo.push_back(Dot(verticesTransformed[in2].pos-verticesTransformed[in0].pos, uAxis));
+                vbo.push_back(Dot(verticesTransformed[in2].pos-verticesTransformed[in0].pos, vAxis));
                 vbo.push_back(normal.x);
                 vbo.push_back(normal.y);
                 vbo.push_back(normal.z);
@@ -354,6 +364,8 @@ INTERNAL GameCamera editorCamera;
 #define NumberOfReservedClickableVertexIds 32
 INTERNAL EntityId reservedClickableVertexIds[NumberOfReservedClickableVertexIds];
 INTERNAL std::vector<LevelGeometryBrush::Vertex*> selectedClickableVertices;
+#define NumberOfReservedClickableFaceIds 32
+INTERNAL EntityId reservedClickableFaceIds[NumberOfReservedClickableFaceIds];
 
 struct TranslationGizmo
 {
@@ -435,19 +447,22 @@ struct TranslationGizmo
                 {
                     for(auto vptr : selectedClickableVertices)
                     {
+                        vec3 vertexTranslationDelta;
                         switch(activeAxis)
                         {
                             case GIZMO_TRANSLATION_ACTIVE_X:{
-                                vptr->pos += vec3(Dot(SML_FORWARD_VECTOR, rayWCS), 0.f, 0.f);
+                                vertexTranslationDelta = vec3(Dot(SML_FORWARD_VECTOR, rayWCS), 0.f, 0.f);
                             }break;
                             case GIZMO_TRANSLATION_ACTIVE_Y:{
-                                vptr->pos += vec3(0.f, Dot(SML_UP_VECTOR, rayWCS), 0.f);
+                                vertexTranslationDelta = vec3(0.f, Dot(SML_UP_VECTOR, rayWCS), 0.f);
                             }break;
                             case GIZMO_TRANSLATION_ACTIVE_Z:{
-                                vptr->pos += vec3(0.f, 0.f, Dot(SML_RIGHT_VECTOR, rayWCS));
+                                vertexTranslationDelta = vec3(0.f, 0.f, Dot(SML_RIGHT_VECTOR, rayWCS));
                             }break;
                             default:{}
                         }
+                        mat4 attachedObjModelMatrix = attachedObj->GetModelMatrix();
+                        vptr->pos += (attachedObjModelMatrix.GetInverse() * vec4(vertexTranslationDelta, 0.f)).xyz;
                     }
                 }
                 return;
@@ -484,7 +499,7 @@ struct TranslationGizmo
                     vec3 avgSelectedVerticesPos;
                     for(auto vptr : selectedClickableVertices)
                     {
-                        avgSelectedVerticesPos += vptr->pos + attachedObj->GetPos(); // TODO(Kevin): not going to use attachedObj.position in the future
+                        avgSelectedVerticesPos += (attachedObj->GetModelMatrix() * vec4(vptr->pos, 1.f)).xyz;
                     }
                     avgSelectedVerticesPos /= (float) selectedClickableVertices.size();
                     attachedPos = avgSelectedVerticesPos;
@@ -560,6 +575,10 @@ INTERNAL void EditorInitOnStartUp()
     for(int i = 0; i < NumberOfReservedClickableVertexIds; ++i)
     {
         reservedClickableVertexIds[i] = GetUniqueEntityId();
+    }
+    for(int i = 0; i < NumberOfReservedClickableFaceIds; ++i)
+    {
+        reservedClickableFaceIds[i] = GetUniqueEntityId();
     }
 }
 
@@ -990,7 +1009,7 @@ INTERNAL void EditorRender()
                     break;
                 }
             }
-            vertexClickableBillboard.position = selectedObj->GetPos() + v.pos;
+            vertexClickableBillboard.position = (selectedObj->GetModelMatrix() * vec4(v.pos, 1.f)).xyz;
             vertexClickableBillboard.RotateAndRender(billboardShader);
         }
     }
@@ -1032,9 +1051,9 @@ INTERNAL void EditorMousePickRender()
         {
             auto v = geom->vertices[i];
             auto vid = reservedClickableVertexIds[i];
-            vertexClickableBillboard.position = selectedObj->GetPos() + v.pos;
             vec3 rgbId = EntityIdToRGB(vid);
             mousepickShader.GLBind3f("entityIdColor", rgbId.x, rgbId.y, rgbId.z);
+            vertexClickableBillboard.position = (selectedObj->GetModelMatrix() * vec4(v.pos, 1.f)).xyz;
             vertexClickableBillboard.RotateAndRender(mousepickShader);
         }
     }
