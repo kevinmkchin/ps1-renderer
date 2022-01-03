@@ -428,18 +428,45 @@ struct TranslationGizmo
             vec4 rayCCS = vec4(xNDC, yNDC, 0.f, 0.f);
             vec4 rayVCS = vec4((inverseProjMatrix * rayCCS).xyz, 0.f);
             vec3 rayWCS = (inverseViewMatrix * rayVCS).xyz;
-            switch(activeAxis)
+
+            if(editorMode == EDITOR_MODE_EDIT)
             {
-                case GIZMO_TRANSLATION_ACTIVE_X:{
-                    attachedObj->Move(vec3(Dot(SML_FORWARD_VECTOR, rayWCS), 0.f, 0.f));
-                }break;
-                case GIZMO_TRANSLATION_ACTIVE_Y:{
-                    attachedObj->Move(vec3(0.f, Dot(SML_UP_VECTOR, rayWCS), 0.f));
-                }break;
-                case GIZMO_TRANSLATION_ACTIVE_Z:{
-                    attachedObj->Move(vec3(0.f, 0.f, Dot(SML_RIGHT_VECTOR, rayWCS)));
-                }break;
-                default:{}
+                if(!selectedClickableVertices.empty())
+                {
+                    for(auto vptr : selectedClickableVertices)
+                    {
+                        switch(activeAxis)
+                        {
+                            case GIZMO_TRANSLATION_ACTIVE_X:{
+                                vptr->pos += vec3(Dot(SML_FORWARD_VECTOR, rayWCS), 0.f, 0.f);
+                            }break;
+                            case GIZMO_TRANSLATION_ACTIVE_Y:{
+                                vptr->pos += vec3(0.f, Dot(SML_UP_VECTOR, rayWCS), 0.f);
+                            }break;
+                            case GIZMO_TRANSLATION_ACTIVE_Z:{
+                                vptr->pos += vec3(0.f, 0.f, Dot(SML_RIGHT_VECTOR, rayWCS));
+                            }break;
+                            default:{}
+                        }
+                    }
+                }
+                return;
+            }
+            else
+            {
+                switch(activeAxis)
+                {
+                    case GIZMO_TRANSLATION_ACTIVE_X:{
+                        attachedObj->Move(vec3(Dot(SML_FORWARD_VECTOR, rayWCS), 0.f, 0.f));
+                    }break;
+                    case GIZMO_TRANSLATION_ACTIVE_Y:{
+                        attachedObj->Move(vec3(0.f, Dot(SML_UP_VECTOR, rayWCS), 0.f));
+                    }break;
+                    case GIZMO_TRANSLATION_ACTIVE_Z:{
+                        attachedObj->Move(vec3(0.f, 0.f, Dot(SML_RIGHT_VECTOR, rayWCS)));
+                    }break;
+                    default:{}
+                }
             }
         }
     }
@@ -449,11 +476,30 @@ struct TranslationGizmo
         GameObject* attachedObj = GetEditorObjectWithId(attachedObjId);
         if(attachedObj)
         {
-            float scaledDistToObjFromCam = Magnitude(attachedObj->GetPos() - editorCamera.position) * 0.13f;
+            vec3 attachedPos = attachedObj->GetPos();
+            if(editorMode == EDITOR_MODE_EDIT)
+            {
+                if(!selectedClickableVertices.empty())
+                {
+                    vec3 avgSelectedVerticesPos;
+                    for(auto vptr : selectedClickableVertices)
+                    {
+                        avgSelectedVerticesPos += vptr->pos + attachedObj->GetPos(); // TODO(Kevin): not going to use attachedObj.position in the future
+                    }
+                    avgSelectedVerticesPos /= (float) selectedClickableVertices.size();
+                    attachedPos = avgSelectedVerticesPos;
+                }
+                else
+                {
+                    return;
+                }
+            }
+
+            float scaledDistToObjFromCam = Magnitude(attachedPos - editorCamera.position) * 0.13f;
 
             shader.GLBind1i("dontShade", 1);
             
-            mat4 modelMatrix = TranslationMatrix(attachedObj->GetPos());
+            mat4 modelMatrix = TranslationMatrix(attachedPos);
             modelMatrix *= ScaleMatrix(scaledDistToObjFromCam, scaledDistToObjFromCam, scaledDistToObjFromCam);
             shader.GLBindMatrix4fv("modelMatrix", 1, modelMatrix.ptr());
             vec3 eidColor = EntityIdToRGB(XArrowId);
@@ -461,7 +507,7 @@ struct TranslationGizmo
                 : shader.GLBind3f("modelColor", 1.f, 0.f, 0.f);
             arrowModel->Render();
 
-            modelMatrix = TranslationMatrix(attachedObj->GetPos());
+            modelMatrix = TranslationMatrix(attachedPos);
             modelMatrix *= ScaleMatrix(scaledDistToObjFromCam, scaledDistToObjFromCam, scaledDistToObjFromCam);
             modelMatrix *= RotationMatrix(EulerToQuat(0.f,0.f,90.f*SML_DEG2RAD));
             shader.GLBindMatrix4fv("modelMatrix", 1, modelMatrix.ptr());
@@ -470,7 +516,7 @@ struct TranslationGizmo
                 : shader.GLBind3f("modelColor", 0.f, 1.f, 0.f);
             arrowModel->Render();
 
-            modelMatrix = TranslationMatrix(attachedObj->GetPos());
+            modelMatrix = TranslationMatrix(attachedPos);
             modelMatrix *= ScaleMatrix(scaledDistToObjFromCam, scaledDistToObjFromCam, scaledDistToObjFromCam);
             modelMatrix *= RotationMatrix(EulerToQuat(0.f,-90.f*SML_DEG2RAD,0.f));
             shader.GLBindMatrix4fv("modelMatrix", 1, modelMatrix.ptr());
