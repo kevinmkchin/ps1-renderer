@@ -116,6 +116,7 @@ GLOBAL_VAR Shader sceneShader;
 GLOBAL_VAR Shader editorShader;
 GLOBAL_VAR Shader wireframeShader;
 GLOBAL_VAR Shader mousepickShader;
+GLOBAL_VAR Shader billboardShader;
 INTERNAL Shader quadShader;
 
 #include "input.cpp"
@@ -585,6 +586,7 @@ int main(int argc, char* argv[])
     Shader::GLLoadShaderProgramFromFile(editorShader, "shaders/editor.vert", "shaders/editor.frag");
     Shader::GLLoadShaderProgramFromFile(wireframeShader, "shaders/wireframe.vert", "shaders/wireframe.frag");
     Shader::GLLoadShaderProgramFromFile(mousepickShader, "shaders/mousepick.vert", "shaders/mousepick.frag");
+    Shader::GLLoadShaderProgramFromFile(billboardShader, "shaders/billboard.vert", "shaders/billboard.frag");
 
     EditorInitOnStartUp();
     GameInitOnStartUp();

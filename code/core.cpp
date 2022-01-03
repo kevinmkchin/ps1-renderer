@@ -1017,3 +1017,69 @@ INTERNAL void CollisionWorldUpdate()
 }
 
 
+
+
+
+struct Billboard
+{
+    GameCamera* target = NULL;
+    vec3 position;
+    bool cylindricalFlag = false; // cylindrical only rotates around Y axis
+
+    void InitQuadMesh(float width, float height, vec2 originOffset)
+    {
+        MeshCreate(quad, nullptr, nullptr, 0, 0, 2, 2, 0, GL_DYNAMIC_DRAW);
+        Resize(width, height, originOffset);
+    }
+
+    void DeleteQuadMesh()
+    {
+        MeshDelete(quad);
+    }
+
+    void Resize(float width, float height, vec2 originOffset)
+    {
+        quadVertices[0] = -originOffset.x;
+        quadVertices[1] = -originOffset.y;
+        quadVertices[4] = width - originOffset.x;
+        quadVertices[5] = -originOffset.y;
+        quadVertices[8] = -originOffset.x;
+        quadVertices[9] = height - originOffset.y;
+        quadVertices[12] = width - originOffset.x;
+        quadVertices[13] = height - originOffset.y;
+        u32 quadIndices[6] = {0,1,3,0,3,2};
+        quad.RebindBufferObjects(quadVertices, quadIndices, 16, 6);
+    }
+
+    void RotateAndRender(const Shader& billboardShader)
+    {
+        mat4 modelMatrix = TranslationMatrix(position);
+        if(target)
+        {
+            vec3 toTarget = target->position - position;
+            vec3 rot;
+            rot.y = atanf(-toTarget.z / toTarget.x);
+            if(!cylindricalFlag)
+            {
+                rot = QuatToEuler(DirectionToOrientation(toTarget));
+                rot.x = 0.f;
+            }
+            modelMatrix *= RotationMatrix(EulerToQuat(rot));
+        }
+        billboardShader.GLBindMatrix4fv("modelMatrix", 1, modelMatrix.ptr());
+
+        // TODO(Kevin): use billboard texture
+
+        quad.RenderMesh();
+    }
+
+private:
+    Mesh quad;
+
+    float quadVertices[16] = {
+        -1.f, -1.f, 0.f, 0.f,
+        1.f, -1.f, 1.f, 0.f,
+        -1.f, 1.f, 0.f, 1.f,
+        1.f, 1.f, 1.f, 1.f
+    };
+};

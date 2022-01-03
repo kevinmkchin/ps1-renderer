@@ -10,7 +10,7 @@ struct Shader
     static void GLCreateComputeShaderProgram(Shader& shader, const char* computeShaderStr);
 #endif
 
-    void UseShader();
+    void UseShader() const;
 
     void GLBind1i(const char* uniformName, GLint v0) const;
     void GLBind2i(const char* uniformName, GLint v0, GLint v1) const;
