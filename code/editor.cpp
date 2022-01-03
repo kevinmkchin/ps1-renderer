@@ -515,9 +515,6 @@ INTERNAL void EditorInitOnStartUp()
     {
         reservedClickableVertexIds[i] = GetUniqueEntityId();
     }
-
-    vertexClickableBillboard.target = &editorCamera;
-    vertexClickableBillboard.InitQuadMesh(0.3f, 0.3f, vec2(0.15f, 0.15f));
 }
 
 INTERNAL void EditorExportMap(const std::string& mapName);
@@ -534,6 +531,9 @@ INTERNAL void EditorLoad(const std::string& mapName)
 
     GameObject* test = &editorEntities.PushBackDefault();
     test->SetClass(new LevelGeometryBrush());
+
+    vertexClickableBillboard.target = &editorCamera;
+    vertexClickableBillboard.InitQuadMesh(0.1f, 0.1f, vec2(0.05f, 0.05f));
 
     // Load textures
     TextureCreateFromFile(devUnitTexture, "data/primitives/dev_unitwall11.png", GL_LINEAR_MIPMAP_LINEAR);
@@ -552,6 +552,8 @@ INTERNAL void EditorUnload()
     editorEntities.Clear();
 
     loadedMapPath = "no map loaded...";
+
+    vertexClickableBillboard.DeleteQuadMesh();
 
     // Unload all textures
     TextureDelete(devUnitTexture);
@@ -863,7 +865,7 @@ INTERNAL void UpdateEditorImGui()
             }
         }break;
         case EDITOR_MODE_EDIT:{
-
+            ImGui::Text("Hold left CTRL to select multiple vertices.");
         }break;
     }
 
@@ -922,7 +924,7 @@ INTERNAL void EditorRender()
 
         editorEntities[i].GetClass()->EditorModeRender(editorShader, false);
     }
-    
+
     auto selectedObj = GetEditorObjectWithId(selectedEditObjId);
     if(editorMode == EDITOR_MODE_EDIT 
         && selectedObj
@@ -947,6 +949,7 @@ INTERNAL void EditorRender()
         }
     }
 
+    editorShader.UseShader();
     glDisable(GL_DEPTH_TEST);
     transGizmo.RenderGizmo(editorShader, false);
     glEnable(GL_DEPTH_TEST);
@@ -954,7 +957,7 @@ INTERNAL void EditorRender()
     glUseProgram(0);
 }
 
-INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
+INTERNAL void EditorMousePickRender()
 {
     glViewport(0, 0, backbufferWidth, backbufferHeight);
     glClearColor(1.f, 1.f, 1.f, 1.f);
@@ -979,7 +982,6 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
         && selectedObj->GetGameClassCode() == BRUSH_LEVELGEOM)
     {
         LevelGeometryBrush* geom = (LevelGeometryBrush*) selectedObj->GetClass();
-        mousepickShader.UseShader();
         for(int i = 0; i < geom->vertices.size(); ++i)
         {
             auto v = geom->vertices[i];
@@ -995,6 +997,12 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
     transGizmo.RenderGizmo(mousepickShader, true);
     glEnable(GL_DEPTH_TEST);
 
+    glUseProgram(0);
+}
+
+INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
+{
+    EditorMousePickRender();
 
     mousepickShader.SuppressWarningsPop();
     glFlush();
@@ -1002,7 +1010,6 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     u8 pickedRGBData[4];
     glReadPixels(screenPixelX, screenPixelY, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pickedRGBData);
-    glUseProgram(0);
 
     EntityId pickedId = RGBToEntityId(pickedRGBData[0], pickedRGBData[1], pickedRGBData[2]);
     if(pickedId != 0x00FFFFFF)
@@ -1014,9 +1021,21 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
             && pickedId >= reservedClickableVertexIds[0]
             && pickedId <= reservedClickableVertexIds[NumberOfReservedClickableVertexIds-1])
         {
+            if(!gCurrentKeyState[SDL_SCANCODE_LCTRL])
+            {
+                selectedClickableVertices.clear();
+            }
             auto selectedLevelGeom = (LevelGeometryBrush*) selectedObj->GetClass();
             int levelGeomVerticesLocalIndex = pickedId - reservedClickableVertexIds[0];
+            for(auto selectedVertexPtr : selectedClickableVertices)
+            {
+                if(selectedVertexPtr == &selectedLevelGeom->vertices[levelGeomVerticesLocalIndex])
+                {
+                    return;
+                }
+            }
             selectedClickableVertices.push_back(&selectedLevelGeom->vertices[levelGeomVerticesLocalIndex]);
+            return;
         }
 
         if(pickedId == transGizmo.XArrowId)
