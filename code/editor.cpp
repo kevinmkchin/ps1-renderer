@@ -1,5 +1,13 @@
 /** Level geometry and Editor code */
 
+enum EditorMode {
+    EDITOR_MODE_SELECT,
+    EDITOR_MODE_CREATE,
+    EDITOR_MODE_EDIT
+};
+
+INTERNAL EditorMode editorMode = EDITOR_MODE_SELECT;
+
 INTERNAL vec3 EntityIdToRGB(EntityId id)
 {
     float r = (float) ((id & 0x000000FF) >> 0);
@@ -57,27 +65,6 @@ private:
     MeshGroup* model;
 };
 
-// void EditorModeRender(const Shader& shader, bool mousePicking) override
-// {
-//     auto bo = GetBufferObjects();
-//     mesh.RebindBufferObjects(bo.first.data(), bo.second.data(), (u32)bo.first.size(), (u32)bo.second.size());
-//     shader.GLBind1i("dontShade", 0);
-//     if(!isVisible && !mousePicking)
-//     {
-//         shader.GLBind1i("dontShade", 1);
-//         hasCollision ? shader.GLBind3f("modelColor", _RGB(0.f, 255.f, 0.f)) : shader.GLBind3f("modelColor", _RGB(255.f, 255.f, 255.f));
-//         glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-//     }
-//     shader.GLBindMatrix4fv("modelMatrix", 1, GetTiedEntity()->GetModelMatrix().ptr());
-//     //shader.GLBindMatrix4fv("modelMatrix", 1, mat4().ptr());
-//     mesh.RenderMesh();
-//     if(!isVisible && !mousePicking)
-//     {
-//         shader.GLBind3f("modelColor", _RGB(0.f, 0.f, 0.f));
-//         glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-//     }
-// }
-
 struct LevelGeometry : GameClass  // we could have subclasses of level geometry which do respond to collision or update
 {
     /* Stripped down version of LevelGeometryBrush that can be used in game */
@@ -93,7 +80,7 @@ struct LevelGeometry : GameClass  // we could have subclasses of level geometry 
 
     LevelGeometry()
     {
-        // set gameClassCode to whatever level geometry is
+        // TODO(Kevin) set gameClassCode to whatever level geometry is
 
         // maybe we can generate VAOs and VBOs in the create level geometry function instead of the constructor
         // i.e. make the vaos vbos when importing map
@@ -141,6 +128,12 @@ struct LevelGeometryBrush : GameClass
     // Up to the map maker to make convex shapes only.
     // Counter clockwise winding order
 
+    struct Vertex
+    {
+        vec3 pos;
+        EntityId vid;
+    };
+
     std::vector<vec3> vertices; // independently mutable
 
     struct Triangle
@@ -154,7 +147,7 @@ struct LevelGeometryBrush : GameClass
         std::vector<Triangle> tris;
         // stuff like texture properties
         // what texture to show
-        // texture offset (NOTE initial offset can be related to world position)
+        // texture offset (NOTE(Kevin) initial offset can be related to world position)
         // alignment, etc.
 
         i32 NumberOfIndices()
@@ -231,8 +224,30 @@ struct LevelGeometryBrush : GameClass
 
     void Render(const Shader& shader) override
     {
+        ASSERT(0); // should never be called. crash.
+    }
+
+    void EditorModeRender(const Shader& shader, bool mousePicking) override
+    {
+        // TODO render spheres around clickable vertices here too
+
+        std::vector<float> vbo = GenerateBufferObject();
+        glBindVertexArray(idVAO);
+            glBindBuffer(GL_ARRAY_BUFFER, idVBO);
+                glBufferData(GL_ARRAY_BUFFER, 4 * vbo.size(), vbo.data(), GL_DYNAMIC_DRAW);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+
         shader.GLBind1i("dontShade", 0);
         shader.GLBindMatrix4fv("modelMatrix", 1, GetTiedEntity()->GetModelMatrix().ptr());
+
+        if(!isVisible && !mousePicking)
+        {
+            shader.GLBind1i("dontShade", 1);
+            hasCollision ? shader.GLBind3f("modelColor", _RGB(0.f, 255.f, 0.f)) : shader.GLBind3f("modelColor", _RGB(255.f, 255.f, 255.f));
+            glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+        }
+
         glBindVertexArray(idVAO);
         glBindBuffer(GL_ARRAY_BUFFER, idVBO);
         i32 indexStart = 0;
@@ -245,24 +260,28 @@ struct LevelGeometryBrush : GameClass
         }
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
-    }
 
-    void EditorModeRender(const Shader& shader, bool mousePicking) override
-    {
-        std::vector<float> vbo = GenerateBufferObject();
-        glBindVertexArray(idVAO);
-            glBindBuffer(GL_ARRAY_BUFFER, idVBO);
-                glBufferData(GL_ARRAY_BUFFER, 4 * vbo.size(), vbo.data(), GL_DYNAMIC_DRAW);
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
+        if(!isVisible && !mousePicking)
+        {
+            shader.GLBind3f("modelColor", _RGB(0.f, 0.f, 0.f));
+            glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+        }
 
-        Render(shader);
+        if(editorMode == EDITOR_MODE_EDIT)
+        {
+            for(auto& v : vertices)
+            {
+                // TODO(Kevin):
+                // check if clickedVertexID is any of these vertices
+                // if true, set this vertex as the selected vertex.
+                // render a sphere or something clickable
+            }
+        }
     }
 
     std::vector<float> GenerateBufferObject()
     {
         std::vector<float> vbo;
-        // TODO resize vbo before pushback calls
 
         for(int f = 0; f < faces.size(); ++f)
         {
@@ -295,7 +314,6 @@ struct LevelGeometryBrush : GameClass
                 u8 in2 = face.tris[t].in2;
                 vec3 normal = Normalize(Cross(vertices[in1] - vertices[in0], vertices[in2] - vertices[in0]));
 
-                // NOTE(Kevin): we could have texture id (which texture to use) as a vertex attribute
                 vbo.push_back(vertices[in0].x);
                 vbo.push_back(vertices[in0].y);
                 vbo.push_back(vertices[in0].z);
@@ -346,12 +364,6 @@ INTERNAL GameObject* GetEditorObjectWithId(EntityId eid)
     return nullptr;
 }
 INTERNAL GameCamera editorCamera;
-
-enum EditorMode {
-    EDITOR_MODE_SELECT,
-    EDITOR_MODE_CREATE,
-    EDITOR_MODE_EDIT
-};
 
 struct TranslationGizmo
 {
@@ -485,7 +497,6 @@ struct TranslationGizmo
 };
 
 INTERNAL TranslationGizmo transGizmo;
-INTERNAL EditorMode editorMode = EDITOR_MODE_SELECT;
 INTERNAL std::string loadedMapPath = "no map loaded...";
 INTERNAL MeshGroup* defaultEntityModel = nullptr;
 INTERNAL EntityId selectedEditObjId = 0;
