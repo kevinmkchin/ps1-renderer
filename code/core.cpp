@@ -1,9 +1,3 @@
-void Texture::UseTexture() const
-{
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, textureId);
-}
-
 INTERNAL std::unordered_map<std::string, Texture> __gpuLoadedTextures;
 
 /** Deletes texture object from GPU memory; resets texture_id, width, height, bit_depth to 0. */
@@ -98,6 +92,26 @@ INTERNAL void TextureCreateFromFile(Texture& texture, const char* textureFilePat
 
     texture.filePath = textureFilePath;
     __gpuLoadedTextures[textureFilePath] = texture;
+}
+
+void Texture::UseTexture() const
+{
+    LOCAL_PERSIST Texture missingTexture;
+    if(missingTexture.textureId == 0)
+    {
+        TextureCreateFromFile(missingTexture, "data/primitives/missing_texture.png");
+    }
+
+    if(textureId == 0)
+    {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, missingTexture.textureId);
+    }
+    else
+    {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureId);
+    }
 }
 
 
@@ -232,24 +246,13 @@ INTERNAL void MeshDelete(Mesh& mesh)
 
 void MeshGroup::Render()
 {
-    LOCAL_PERSIST Texture missingTexture;
-    if(missingTexture.textureId == 0)
-    {
-        TextureCreateFromFile(missingTexture, "data/primitives/missing_texture.png");
-    }
-
     for(size_t i = 0; i < meshes.size(); ++i)
     {
         u16 materialIndex = meshToTextureTable[i];
-        if(materialIndex < textures.size() && textures[materialIndex].textureId != 0)
+        if(materialIndex < textures.size())
         {
             textures[materialIndex].UseTexture();
         }
-        else if(textures[materialIndex].textureId == 0)
-        {
-            missingTexture.UseTexture();
-        }
-
         meshes[i].RenderMesh();
     }
 }
