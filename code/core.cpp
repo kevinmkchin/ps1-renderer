@@ -1024,6 +1024,7 @@ struct Billboard
 {
     GameCamera* target = NULL;
     vec3 position;
+    vec3 scale;
     bool cylindricalFlag = false; // cylindrical only rotates around Y axis
 
     void InitQuadMesh(float width, float height, vec2 originOffset)
@@ -1066,6 +1067,7 @@ struct Billboard
             }
             modelMatrix *= RotationMatrix(EulerToQuat(rot));
         }
+        modelMatrix *= ScaleMatrix(scale);
         billboardShader.GLBindMatrix4fv("modelMatrix", 1, modelMatrix.ptr());
 
         // TODO(Kevin): use billboard texture

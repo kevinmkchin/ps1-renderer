@@ -30,6 +30,7 @@ Backlog:
     - Animation
     - Audio
     - Share textures so that if two faces use same texture they dont use two separate memories
+    - any floor/wall/slope/sprite can be individually shaded or palette swapped to create numerous variations and make objects really pop out
 
 Rules:
      - unit vector (x: 1, y: 0, z: 0), aka positive X, is the "forward" direction for un-rotated objects
