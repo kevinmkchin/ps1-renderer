@@ -655,11 +655,10 @@ INTERNAL std::string OpenFilePromptGetRelativePath()
 {
     std::string path = OpenFilePrompt();
     char cwd[PATH_MAX];
-    if (_getcwd(cwd, sizeof(cwd)) != NULL) 
+    if (!path.empty() && _getcwd(cwd, sizeof(cwd)) != NULL)
     {
         return path.substr(std::string(cwd).length()+1);
     }
-    ASSERT(0);
     return "";
 }
 
@@ -783,9 +782,16 @@ INTERNAL void UpdateEditorImGui()
                         if(ImGui::Button("Load Model"))
                         {
                             std::string modelPath = OpenFilePromptGetRelativePath();
-                            printf("PropStatic loaded model: %s\n", modelPath.c_str());
-                            ps->SetModel(MeshGroupAssimpLoad(modelPath.c_str()));
-                            // TODO(Kevin): We need to unload the old model or something
+                            if(!modelPath.empty())
+                            {
+                                auto _loadedMeshGroupPtr = MeshGroupAssimpLoad(modelPath.c_str());
+                                if(_loadedMeshGroupPtr)
+                                {
+                                    printf("PropStatic loaded model: %s\n", modelPath.c_str());
+                                    ps->SetModel(_loadedMeshGroupPtr);
+                                    // TODO(Kevin): We need to unload the old model or something
+                                }
+                            }
                         }
                     }break;
                     case BRUSH_LEVELGEOM:{
@@ -851,6 +857,8 @@ INTERNAL void UpdateEditorImGui()
                         newEntity->SetOrientation(createOrientation);
                         newEntity->SetScale(createScale);
 
+                        auto levelgeombrush = new LevelGeometryBrush();
+
                         // BlockBrush* box = new BlockBrush();
                         // newEntity->SetClass(box);
                         // box->isVisible = createIsVisible;
@@ -900,51 +908,59 @@ INTERNAL void UpdateEditorImGui()
             ImGui::Text("Hold left CTRL to select multiple vertices or faces.");
             ImGui::Spacing();
             ImGui::Separator();
-            switch(selectedEditObj->GetGameClassCode())
+            if(selectedEditObj)
             {
-                case BRUSH_LEVELGEOM:{
-                    LevelGeometryBrush* lgb = (LevelGeometryBrush*) selectedEditObj->GetClass();
-                    ImGui::TextUnformatted("Vertices");
-                    for(int i = 0; i < lgb->vertices.size(); ++i)
-                    {
-                        vec3& v = lgb->vertices[i].pos;
-                        ImGui::PushID(i);
-                        ImGui::DragFloat3("v", &v.x, 0.01f);
-                        ImGui::PopID();
-                    }
-                    ImGui::Separator();
-                    ImGui::TextUnformatted("Faces");
-                    ImGui::Text("%zd faces selected.", selectedClickableFaces.size());
-                    if(!selectedClickableFaces.empty())
-                    {
-                        bool sameFilePaths = true;
-                        // TODO(Kevin): bool sameSomeOtherProperty
-                        for(auto facePtr : selectedClickableFaces)
+                switch(selectedEditObj->GetGameClassCode())
+                {
+                    case BRUSH_LEVELGEOM:{
+                        LevelGeometryBrush* lgb = (LevelGeometryBrush*) selectedEditObj->GetClass();
+                        ImGui::TextUnformatted("Vertices");
+                        for(int i = 0; i < lgb->vertices.size(); ++i)
                         {
-                            sameFilePaths &= selectedClickableFaces[0]->texture.filePath == facePtr->texture.filePath;
-                            // sameSomeOtherProperty &= selectedClickableFaces[0]->someOtherProperty == facePtr->someOtherProperty;
+                            vec3& v = lgb->vertices[i].pos;
+                            ImGui::PushID(i);
+                            ImGui::DragFloat3("v", &v.x, 0.01f);
+                            ImGui::PopID();
                         }
-                        ImGui::Text("Face texture: %s", (sameFilePaths ? selectedClickableFaces[0]->texture.filePath.c_str() : "multiple"));
-
-                        if(ImGui::Button("Choose texture"))
+                        ImGui::Separator();
+                        ImGui::TextUnformatted("Faces");
+                        ImGui::Text("%zd faces selected.", selectedClickableFaces.size());
+                        if(!selectedClickableFaces.empty())
                         {
-                            Texture _t;
-                            std::string texturePath = OpenFilePromptGetRelativePath();
-                            TextureCreateFromFile(_t, texturePath.c_str());
-                            printf("Face texture loaded: %s\n", texturePath.c_str());
+                            bool sameFilePaths = true;
+                            // TODO(Kevin): bool sameSomeOtherProperty
                             for(auto facePtr : selectedClickableFaces)
                             {
-                                facePtr->texture = _t;
+                                sameFilePaths &= selectedClickableFaces[0]->texture.filePath == facePtr->texture.filePath;
+                                // sameSomeOtherProperty &= selectedClickableFaces[0]->someOtherProperty == facePtr->someOtherProperty;
                             }
-                            // TODO(Kevin): Need to unload old textures or something
+                            ImGui::Text("Face texture: %s", (sameFilePaths ? selectedClickableFaces[0]->texture.filePath.c_str() : "multiple"));
+
+                            if(ImGui::Button("Choose texture"))
+                            {
+                                Texture _t;
+                                std::string texturePath = OpenFilePromptGetRelativePath();
+                                if(!texturePath.empty())
+                                {
+                                    if (TextureCreateFromFile(_t, texturePath.c_str()))
+                                    {
+                                        printf("Face texture loaded: %s\n", texturePath.c_str());
+                                        for (auto facePtr : selectedClickableFaces)
+                                        {
+                                            facePtr->texture = _t;
+                                        }
+                                        // TODO(Kevin): Need to unload old textures or something
+                                    }
+                                }
+                            }
                         }
-                    }
-                    else
-                    {
-                        ImGui::TextUnformatted("Select a face to change its texture");
-                    }
-                }break;
-                default:{}break;
+                        else
+                        {
+                            ImGui::TextUnformatted("Select a face to change its texture");
+                        }
+                    }break;
+                    default:{}break;
+                }
             }
         }break;
     }
