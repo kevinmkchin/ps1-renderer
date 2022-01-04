@@ -74,7 +74,10 @@ INTERNAL std::string ReadFileString(const char* filePath)
 
 INTERNAL void FreeImage(BitmapHandle& imageHandle)
 {
-    FreeFileBinary(imageHandle);
+    if (imageHandle.memory)
+    {
+        FreeFileBinary(imageHandle);
+    }
     imageHandle.width = 0;
     imageHandle.height = 0;
     imageHandle.bitDepth = 0;

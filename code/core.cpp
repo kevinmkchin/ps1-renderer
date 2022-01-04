@@ -1,7 +1,7 @@
 INTERNAL std::unordered_map<std::string, Texture> __gpuLoadedTextures;
 
 /** Deletes texture object from GPU memory; resets texture_id, width, height, bit_depth to 0. */
-INTERNAL void TextureDelete(Texture& texture)
+INTERNAL void TextureDelete(Texture& texture) // TODO(Kevin): rename to "delete from GPU" or something
 {
     if(texture.textureId == 0)
     {
@@ -68,30 +68,37 @@ INTERNAL void TextureCreateFromBitmap(Texture&        texture,
 
 /** Loads texture at file_path; generates a new texture object in GPU mem; stores the id
     of the new texture object into texture.texture_id; sets texture parameters; copies
-    texture data into the texture object in GPU mem; and generates mip maps automatically. */
-INTERNAL void TextureCreateFromFile(Texture& texture, const char* textureFilePath, GLenum filteringMode = GL_NEAREST)
+    texture data into the texture object in GPU mem; and generates mip maps automatically.
+    Returns false if something failed. */
+INTERNAL bool TextureCreateFromFile(Texture& texture, const char* textureFilePath, GLenum filteringMode = GL_NEAREST)
 {
     if(texture.textureId != 0)
     {
         printf("WARNING: Trying to load a Texture when there is already a texture loaded! Clearing texture first...\n");
-        TextureDelete(texture);
+        TextureDelete(texture); // TODO(Kevin): Remove probably because we don't want to delete if we load all textures at start and unload at end
     }
 
     auto textureAlreadyLoaded = __gpuLoadedTextures.find(std::string(textureFilePath));
     if(textureAlreadyLoaded != __gpuLoadedTextures.end())
     {
         texture = textureAlreadyLoaded->second;
-        return;
+        return true;
     }
 
     BitmapHandle textureHandle;
     ReadImage(textureHandle, textureFilePath);
+    if (textureHandle.memory == NULL)
+    {
+        return false;
+    }
     TextureCreateFromBitmap(texture, (unsigned char *) textureHandle.memory, textureHandle.width,
                             textureHandle.height, GL_RGBA, (textureHandle.bitDepth == 3 ? GL_RGB : GL_RGBA), filteringMode);
     FreeImage(textureHandle); // texture data has been copied to GPU memory, so we can free image from memory
 
     texture.filePath = textureFilePath;
     __gpuLoadedTextures[textureFilePath] = texture;
+
+    return true;
 }
 
 void Texture::UseTexture() const

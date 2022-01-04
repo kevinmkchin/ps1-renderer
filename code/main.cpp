@@ -536,7 +536,7 @@ INTERNAL void DearImGuiInit()
 {
     ImGui::CreateContext();
     //ImGuiIO& io = ImGui::GetIO();
-    ImGui::StyleColorsLight();
+    //ImGui::StyleColorsLight();
     ImGui_ImplSDL2_InitForOpenGL(window, openglContext);
     ImGui_ImplOpenGL3_Init("#version 330");
 }
