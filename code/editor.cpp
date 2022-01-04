@@ -228,47 +228,7 @@ struct LevelGeometryBrush : GameClass
         ASSERT(0); // should never be called. crash.
     }
 
-    void EditorModeRender(const Shader& shader, bool mousePicking) override
-    {
-        std::vector<float> vbo = GenerateBufferObject();
-        glBindVertexArray(idVAO);
-            glBindBuffer(GL_ARRAY_BUFFER, idVBO);
-                glBufferData(GL_ARRAY_BUFFER, 4 * vbo.size(), vbo.data(), GL_DYNAMIC_DRAW);
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
-
-        shader.GLBind1i("dontShade", 0);
-        /** Note(Kevin): LevelGeometryBrush doesn't uses identity model matrix because transformations
-            applied when we call GenerateBufferObject. It's already encoded into the vertex position attribute. */
-        shader.GLBindMatrix4fv("modelMatrix", 1, mat4().ptr());
-
-        if(!isVisible && !mousePicking)
-        {
-            shader.GLBind1i("dontShade", 1);
-            hasCollision ? shader.GLBind3f("modelColor", _RGB(0.f, 255.f, 0.f)) : shader.GLBind3f("modelColor", _RGB(255.f, 255.f, 255.f));
-            glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-        }
-
-        glBindVertexArray(idVAO);
-        glBindBuffer(GL_ARRAY_BUFFER, idVBO);
-        i32 indexStart = 0;
-        for(int i = 0; i < faces.size(); ++i)
-        {
-            Face& face = faces[i];
-            // TODO(Kevin) if mousePicking, render with entity color from reservedClickableFaceIds
-            // use whatever texture defined in that face
-            glDrawArrays(GL_TRIANGLES, indexStart, face.NumberOfIndices());
-            indexStart += face.NumberOfIndices();
-        }
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
-
-        if(!isVisible && !mousePicking)
-        {
-            shader.GLBind3f("modelColor", _RGB(0.f, 0.f, 0.f));
-            glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-        }
-    }
+    void EditorModeRender(const Shader& shader, bool mousePicking) override;
 
     std::vector<float> GenerateBufferObject()
     {
@@ -368,6 +328,7 @@ INTERNAL EntityId reservedClickableVertexIds[NumberOfReservedClickableVertexIds]
 INTERNAL std::vector<LevelGeometryBrush::Vertex*> selectedClickableVertices;
 #define NumberOfReservedClickableFaceIds 32
 INTERNAL EntityId reservedClickableFaceIds[NumberOfReservedClickableFaceIds];
+INTERNAL std::vector<LevelGeometryBrush::Face*> selectedClickableFaces;
 
 struct TranslationGizmo
 {
@@ -690,6 +651,18 @@ INTERNAL std::string OpenFilePrompt()
     return filePathString;
 }
 
+INTERNAL std::string OpenFilePromptGetRelativePath()
+{
+    std::string path = OpenFilePrompt();
+    char cwd[PATH_MAX];
+    if (_getcwd(cwd, sizeof(cwd)) != NULL) 
+    {
+        return path.substr(std::string(cwd).length()+1);
+    }
+    ASSERT(0);
+    return "";
+}
+
 INTERNAL std::string SaveFilePrompt()
 {
     std::string filePathString;
@@ -774,11 +747,11 @@ INTERNAL void UpdateEditorImGui()
     ImGui::Separator();
 
     GameObject* selectedEditObj = GetEditorObjectWithId(selectedEditObjId);
+    ImGui::Text("Selected object ID: %d", selectedEditObjId);
 
     switch(editorMode)
     {
         case EDITOR_MODE_SELECT:{
-            ImGui::Text("Selected object: %p", selectedEditObj);
             if(selectedEditObj)
             {
                 vec3 selectedPos = selectedEditObj->GetPos();
@@ -809,25 +782,15 @@ INTERNAL void UpdateEditorImGui()
                         PropStatic* ps = (PropStatic*) selectedEditObj->GetClass();
                         if(ImGui::Button("Load Model"))
                         {
-                            std::string modelPath = OpenFilePrompt();
-                            char cwd[PATH_MAX];
-                            if (_getcwd(cwd, sizeof(cwd)) != NULL) 
-                            {
-                                modelPath = modelPath.substr(std::string(cwd).length()+1);
-                            }
+                            std::string modelPath = OpenFilePromptGetRelativePath();
                             printf("PropStatic loaded model: %s\n", modelPath.c_str());
                             ps->SetModel(MeshGroupAssimpLoad(modelPath.c_str()));
+                            // TODO(Kevin): We need to unload the old model or something
                         }
                     }break;
                     case BRUSH_LEVELGEOM:{
                         LevelGeometryBrush* lgb = (LevelGeometryBrush*) selectedEditObj->GetClass();
-                        for(int i = 0; i < lgb->vertices.size(); ++i)
-                        {
-                            vec3& v = lgb->vertices[i].pos;
-                            ImGui::PushID(i);
-                            ImGui::DragFloat3("v", &v.x, 0.01f);
-                            ImGui::PopID();
-                        }
+                        // what should we do here?
                     }break;
                     default:{
                         // use code reflection to list class properties
@@ -840,6 +803,7 @@ INTERNAL void UpdateEditorImGui()
                 }
             }
         }break;
+
         case EDITOR_MODE_CREATE:{
             enum EditorObjectCreateType {
                 EDITOR_CREATE_TYPE_BRUSH,
@@ -931,8 +895,57 @@ INTERNAL void UpdateEditorImGui()
                 }break;
             }
         }break;
+
         case EDITOR_MODE_EDIT:{
-            ImGui::Text("Hold left CTRL to select multiple vertices.");
+            ImGui::Text("Hold left CTRL to select multiple vertices or faces.");
+            ImGui::Spacing();
+            ImGui::Separator();
+            switch(selectedEditObj->GetGameClassCode())
+            {
+                case BRUSH_LEVELGEOM:{
+                    LevelGeometryBrush* lgb = (LevelGeometryBrush*) selectedEditObj->GetClass();
+                    ImGui::TextUnformatted("Vertices");
+                    for(int i = 0; i < lgb->vertices.size(); ++i)
+                    {
+                        vec3& v = lgb->vertices[i].pos;
+                        ImGui::PushID(i);
+                        ImGui::DragFloat3("v", &v.x, 0.01f);
+                        ImGui::PopID();
+                    }
+                    ImGui::Separator();
+                    ImGui::TextUnformatted("Faces");
+                    ImGui::Text("%zd faces selected.", selectedClickableFaces.size());
+                    if(!selectedClickableFaces.empty())
+                    {
+                        bool sameFilePaths = true;
+                        // TODO(Kevin): bool sameSomeOtherProperty
+                        for(auto facePtr : selectedClickableFaces)
+                        {
+                            sameFilePaths &= selectedClickableFaces[0]->texture.filePath == facePtr->texture.filePath;
+                            // sameSomeOtherProperty &= selectedClickableFaces[0]->someOtherProperty == facePtr->someOtherProperty;
+                        }
+                        ImGui::Text("Face texture: %s", (sameFilePaths ? selectedClickableFaces[0]->texture.filePath.c_str() : "multiple"));
+
+                        if(ImGui::Button("Choose texture"))
+                        {
+                            Texture _t;
+                            std::string texturePath = OpenFilePromptGetRelativePath();
+                            TextureCreateFromFile(_t, texturePath.c_str());
+                            printf("Face texture loaded: %s\n", texturePath.c_str());
+                            for(auto facePtr : selectedClickableFaces)
+                            {
+                                facePtr->texture = _t;
+                            }
+                            // TODO(Kevin): Need to unload old textures or something
+                        }
+                    }
+                    else
+                    {
+                        ImGui::TextUnformatted("Select a face to change its texture");
+                    }
+                }break;
+                default:{}break;
+            }
         }break;
     }
 
@@ -966,8 +979,8 @@ INTERNAL void EditorRender()
     editorShader.GLBindMatrix4fv("viewMatrix", 1, editorCamera.viewMatrix.ptr());
     editorShader.GLBindMatrix4fv("projMatrix", 1, editorCamera.perspectiveMatrix.ptr());
     editorShader.GLBind3f("modelColor", _RGB(0.f, 0.f, 0.f));
+    editorShader.GLBind3f("tint", 1.f, 1.f, 1.f);
 
-    devUnitTexture.UseTexture();
     for(u32 i = 0; i < editorEntities.Count(); ++i)
     {
         if(selectedEditObjId == editorEntities[i].GetId())
@@ -1109,6 +1122,29 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
             return;
         }
 
+        if(editorMode == EDITOR_MODE_EDIT
+            && selectedObj
+            && selectedObj->GetGameClassCode() == BRUSH_LEVELGEOM
+            && pickedId >= reservedClickableFaceIds[0]
+            && pickedId <= reservedClickableFaceIds[NumberOfReservedClickableFaceIds-1])
+        {
+            if(!gCurrentKeyState[SDL_SCANCODE_LCTRL])
+            {
+                selectedClickableFaces.clear();
+            }
+            auto selectedLevelGeom = (LevelGeometryBrush*) selectedObj->GetClass();
+            int levelGeomFacesLocalIndex = pickedId - reservedClickableFaceIds[0];
+            for(auto fptr : selectedClickableFaces)
+            {
+                if(fptr == &selectedLevelGeom->faces[levelGeomFacesLocalIndex])
+                {
+                    return;
+                }
+            }
+            selectedClickableFaces.push_back(&selectedLevelGeom->faces[levelGeomFacesLocalIndex]);
+            return;
+        }
+
         if(pickedId == transGizmo.XArrowId)
         {
             transGizmo.activeAxis = TranslationGizmo::GIZMO_TRANSLATION_ACTIVE_X;
@@ -1125,17 +1161,9 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
             return;
         }
 
-        if(editorMode == EDITOR_MODE_SELECT)
+        if(editorMode == EDITOR_MODE_SELECT || editorMode == EDITOR_MODE_EDIT)
         {
             SetSelectedEditObjId(pickedId);
-        }
-        else if(editorMode == EDITOR_MODE_CREATE)
-        {
-            
-        }
-        else
-        {
-            // we should be able to mousepick things while in create or edit mode
         }
     }
 }
@@ -1303,3 +1331,67 @@ INTERNAL void GameImportMap(const std::string& mapName,
     // }
     // ByteBufferFree(&importBuffer);
 }
+
+void LevelGeometryBrush::EditorModeRender(const Shader& shader, bool mousePicking)
+{
+    std::vector<float> vbo = GenerateBufferObject();
+    glBindVertexArray(idVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, idVBO);
+            glBufferData(GL_ARRAY_BUFFER, 4 * vbo.size(), vbo.data(), GL_DYNAMIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    shader.GLBind1i("dontShade", 0);
+    /** Note(Kevin): LevelGeometryBrush doesn't uses identity model matrix because transformations
+        applied when we call GenerateBufferObject. It's already encoded into the vertex position attribute. */
+    shader.GLBindMatrix4fv("modelMatrix", 1, mat4().ptr());
+
+    if(!isVisible && !mousePicking)
+    {
+        shader.GLBind1i("dontShade", 1);
+        hasCollision ? shader.GLBind3f("modelColor", _RGB(0.f, 255.f, 0.f)) : shader.GLBind3f("modelColor", _RGB(255.f, 255.f, 255.f));
+        glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+    }
+
+    glBindVertexArray(idVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, idVBO);
+    i32 indexStart = 0;
+    for(int i = 0; i < faces.size(); ++i)
+    {
+        Face& face = faces[i];
+        
+        if(GetTiedEntity()->GetId() == selectedEditObjId)
+        {
+            if(mousePicking)
+            {
+                vec3 rgbId = EntityIdToRGB(reservedClickableFaceIds[i]);
+                shader.GLBind3f("entityIdColor", rgbId.x, rgbId.y, rgbId.z);
+            }
+            else if(editorMode == EDITOR_MODE_EDIT)
+            {
+                for(int i = 0; i < selectedClickableFaces.size(); ++i)
+                {
+                    if(selectedClickableFaces[i] == &face)
+                    {
+                        shader.GLBind3f("tint", 1.f, 0.9f, 0.7f);
+                    } 
+                }
+            }
+        }
+
+        face.texture.UseTexture();
+        glDrawArrays(GL_TRIANGLES, indexStart, face.NumberOfIndices());
+        indexStart += face.NumberOfIndices();
+
+        shader.GLBind3f("tint", 1.f, 1.f, 1.f);
+    }
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    if(!isVisible && !mousePicking)
+    {
+        shader.GLBind3f("modelColor", _RGB(0.f, 0.f, 0.f));
+        glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+    }
+}
+

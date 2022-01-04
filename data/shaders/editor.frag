@@ -7,6 +7,7 @@ layout(location = 0) out vec4 out_colour;
 
 uniform sampler2D texture0;
 uniform vec3 modelColor;
+uniform vec3 tint;
 
 void main()
 {
@@ -20,6 +21,6 @@ void main()
         COLOR = modelColor;
     }
 
-    vec3 TOTAL = COLOR * LIGHT;
+    vec3 TOTAL = COLOR * LIGHT * tint;
     out_colour = vec4(TOTAL, 1.0);
 }
