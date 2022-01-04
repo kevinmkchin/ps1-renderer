@@ -3,24 +3,21 @@
 
 TODO:
 Task for today:
-    EDIT MODE:
-        - Select individual brush faces
+    - Create levelgeombrush option
+    - EDIT MODE:
         - Add/Remove edges
-        - Individualize brush faces
-            - SELECT TEXTURES for brush faces
-            - Save texture data to disk with map
-            - Texture UV offset for box editor object 
+        - Texture UV offset for box editor object 
 
 Backlog:
-    - GAME_CLASS_CODE: instead of using bits, just use integer number
     - toggle snap to grid in level editor
-    - GameClass reflection + expose subclasses and properties to editor?
     - Create mode, show preview of brush that can be moved around and shit
-    - Update EditorExportMap and EditorImportMap to export and import PropStatic
-    - Dropdown to select brush type
-    - DOUBLE CLICK to place an entity
-    - Should we reference count models and textures?
+    - GAME_CLASS_CODE: instead of using bits, just use integer number
+    - GameClass reflection + expose subclasses and properties to editor?
+    - Update EditorExportMap and EditorImportMap to export and import PropStatic and LevelGeomBrush
     - Load map to game
+    - Dropdown to select brush type
+    - Maybe DOUBLE CLICK to place an entity
+    - LOAD ALL REQUIRED TEXTURES AT THE START OF THE GAME -> UNLOAD ALL END OF GAME instead of reference counting
     - shaded toggleable - brush can be shaded or not shaded
     - decals
     - fog
