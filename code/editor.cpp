@@ -142,6 +142,8 @@ struct LevelGeometryBrush : GameClass
     struct Face
     {
         std::vector<Triangle> tris;
+
+        Texture texture;
         // stuff like texture properties
         // what texture to show
         // texture offset (NOTE(Kevin) initial offset can be related to world position)
@@ -1000,7 +1002,7 @@ INTERNAL void EditorRender()
         billboardShader.UseShader();
         for(auto& v : geom->vertices)
         {
-            billboardShader.GLBind3f("quadColor", _RGB(255.f,255.f,255.f));
+            billboardShader.GLBind3f("quadColor", _RGB(0.f,255.f,0.f));
             for(auto vptr : selectedClickableVertices)
             {
                 if(vptr == &v)
@@ -1010,6 +1012,8 @@ INTERNAL void EditorRender()
                 }
             }
             vertexClickableBillboard.position = (selectedObj->GetModelMatrix() * vec4(v.pos, 1.f)).xyz;
+            float scaledDistToObjFromCam = Magnitude(vertexClickableBillboard.position - editorCamera.position) * 0.13f;
+            vertexClickableBillboard.scale = vec3(scaledDistToObjFromCam,scaledDistToObjFromCam,scaledDistToObjFromCam);
             vertexClickableBillboard.RotateAndRender(billboardShader);
         }
     }
@@ -1054,6 +1058,8 @@ INTERNAL void EditorMousePickRender()
             vec3 rgbId = EntityIdToRGB(vid);
             mousepickShader.GLBind3f("entityIdColor", rgbId.x, rgbId.y, rgbId.z);
             vertexClickableBillboard.position = (selectedObj->GetModelMatrix() * vec4(v.pos, 1.f)).xyz;
+            float scaledDistToObjFromCam = Magnitude(vertexClickableBillboard.position - editorCamera.position) * 0.13f;
+            vertexClickableBillboard.scale = vec3(scaledDistToObjFromCam,scaledDistToObjFromCam,scaledDistToObjFromCam);
             vertexClickableBillboard.RotateAndRender(mousepickShader);
         }
     }
