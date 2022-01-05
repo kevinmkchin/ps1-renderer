@@ -27,6 +27,7 @@ INTERNAL EntityId RGBToEntityId(u8 r, u8 g, u8 b)
     return pickedEntityId;
 }
 
+
 struct VolumeBrush : GameClass
 {
     // Up to the map maker to make convex shapes only.
@@ -573,20 +574,16 @@ void MoveCameraToSelectedEditorObject()
 
 #pragma region EditorImGuiImGuiStuff
 
-#if (defined _WIN32)
-    #include <shobjidl.h>
-    #include <codecvt>
-#endif
-
-INTERNAL std::string OpenFilePrompt()
+INTERNAL std::string OpenFilePrompt(u32 fileTypesCount, COMDLG_FILTERSPEC fileTypes[])
 {
     std::string filePathString;
-#if (defined _WIN32)
     IFileOpenDialog *pFileOpen;
     HRESULT hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL,
                           IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
     if (SUCCEEDED(hr))
     {
+        hr = pFileOpen->SetFileTypes(fileTypesCount, fileTypes);
+
         // Show the Open dialog box.
         hr = pFileOpen->Show(NULL);
         // Get the file name from the dialog box.
@@ -611,13 +608,12 @@ INTERNAL std::string OpenFilePrompt()
         pFileOpen->Release();
     }
     CoUninitialize();
-#endif
     return filePathString;
 }
 
-INTERNAL std::string OpenFilePromptGetRelativePath()
+INTERNAL std::string OpenFilePromptGetRelativePath(u32 fileTypesCount, COMDLG_FILTERSPEC fileTypes[])
 {
-    std::string path = OpenFilePrompt();
+    std::string path = OpenFilePrompt(fileTypesCount, fileTypes);
     char cwd[PATH_MAX];
     if (!path.empty() && _getcwd(cwd, sizeof(cwd)) != NULL)
     {
@@ -629,12 +625,19 @@ INTERNAL std::string OpenFilePromptGetRelativePath()
 INTERNAL std::string SaveFilePrompt()
 {
     std::string filePathString;
-#if (defined _WIN32)
     IFileSaveDialog* pFileSave;
     HRESULT hr = CoCreateInstance(CLSID_FileSaveDialog, NULL, CLSCTX_ALL,
                                   IID_IFileSaveDialog, reinterpret_cast<void**>(&pFileSave));
     if (SUCCEEDED(hr))
     {
+        // NOTE(Kevin): This is fine. I'm never going to save a non .map file.
+        COMDLG_FILTERSPEC fileTypes[] =
+        {
+            { L"Map files", L"*.map" },
+        };
+        hr = pFileSave->SetFileTypes(1, fileTypes);
+        pFileSave->SetDefaultExtension(L"map");
+
         // Show the Open dialog box.
         hr = pFileSave->Show(NULL);
         // Get the file name from the dialog box.
@@ -659,7 +662,6 @@ INTERNAL std::string SaveFilePrompt()
         pFileSave->Release();
     }
     CoUninitialize();
-#endif
     return filePathString;
 }
 
@@ -672,7 +674,11 @@ INTERNAL void UpdateEditorImGui()
         {
             if (ImGui::MenuItem("Open..", "Ctrl+O"))
             {
-                EditorSwitchMap(OpenFilePrompt());
+                COMDLG_FILTERSPEC fileTypes[] =
+                {
+                    { L"Map files", L"*.map" },
+                };
+                EditorSwitchMap(OpenFilePrompt(ARRAYSIZE(fileTypes), fileTypes));
             }
             if (ImGui::MenuItem("Save", "Ctrl+S"))
             {
@@ -735,7 +741,11 @@ INTERNAL void UpdateEditorImGui()
                         PropStatic* ps = (PropStatic*) selectedEditObj->GetClass();
                         if(ImGui::Button("Load Model"))
                         {
-                            std::string modelPath = OpenFilePromptGetRelativePath();
+                            COMDLG_FILTERSPEC fileTypes[] =
+                            {
+                                { L"Supported 3d formats", L"*.obj;*.fbx;*.3ds;*.gltf" },
+                            };
+                            std::string modelPath = OpenFilePromptGetRelativePath(ARRAYSIZE(fileTypes), fileTypes);
                             if(!modelPath.empty())
                             {
                                 auto _loadedMeshGroupPtr = MeshGroupAssimpLoad(modelPath.c_str());
@@ -889,10 +899,14 @@ INTERNAL void UpdateEditorImGui()
 
                             if(ImGui::Button("Choose texture"))
                             {
-                                Texture _t;
-                                std::string texturePath = OpenFilePromptGetRelativePath();
+                                COMDLG_FILTERSPEC fileTypes[] =
+                                {
+                                    { L"Supported images", L"*.png;*.jpg;*.jpeg;*.bmp" },
+                                };
+                                std::string texturePath = OpenFilePromptGetRelativePath(ARRAYSIZE(fileTypes), fileTypes);
                                 if(!texturePath.empty())
                                 {
+                                    Texture _t;
                                     if (TextureCreateFromFile(_t, texturePath.c_str()))
                                     {
                                         printf("Face texture loaded: %s\n", texturePath.c_str());

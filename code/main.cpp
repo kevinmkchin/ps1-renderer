@@ -10,6 +10,7 @@ Backlog:
     - Face Texture properties: UV rotation, scale, other stuff
     - toggle snap to grid in level editor -> could even make vertices snap to vertex pos on other geom
     - Add/Remove edges
+    - Delete brushes or entities from level editor scene
     - if i'm going to display vertex positions in imgui, then use the transformed vertex pos
     - Create mode, show preview of brush that can be moved around and shit
     - GAME_CLASS_CODE: instead of using bits, just use integer number
@@ -25,7 +26,8 @@ Backlog:
     - Drop-down console port from XNGINE (tilde)
     - Animation
     - Audio
-    - any floor/wall/slope/sprite can be individually shaded or palette swapped to create numerous variations and make objects really pop out
+    - Face texture tint - can create shading effect
+        - any floor/wall/slope/sprite can be individually shaded or palette swapped to create numerous variations and make objects really pop out
 
 Rules:
      - unit vector (x: 1, y: 0, z: 0), aka positive X, is the "forward" direction for un-rotated objects
@@ -62,6 +64,10 @@ BUILD MODES:
 #include "imgui/imgui_impl_sdl.h"
 #include "imgui/imgui_impl_opengl3.h"
 
+#if (defined _WIN32)
+    #include <shobjidl.h>
+    #include <codecvt>
+#endif
 #if (defined _WIN32)
     #include <GL/glew.h>
     #define __KEVIN_OPENGL_USING_GLEW__
