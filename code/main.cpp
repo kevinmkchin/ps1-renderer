@@ -81,7 +81,7 @@ BUILD MODES:
 
 #include "gamedefines.h"
 #include "shader.h"
-#include "file.cpp"
+#include "file.h"
 #include "core.h"
 #include "game.h"
 
