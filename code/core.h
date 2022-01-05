@@ -1,3 +1,9 @@
+struct GameObject;
+struct GameClass;
+struct ByteBuffer;
+struct MeshGroup;
+INTERNAL MeshGroup* MeshGroupAssimpLoad(const char* fileName);
+
 struct Texture
 {
     /** Handle for texture stored in GPU memory */
@@ -44,10 +50,6 @@ struct MeshGroup
 
     void Render();
 };
-
-
-struct GameObject;
-struct GameClass;
 
 struct CollisionEventArgs
 {
@@ -201,6 +203,16 @@ struct GameClass
     {
         // do nothing by default
     }
+    /** Decompose */
+    virtual void Serialize(ByteBuffer* writeBuffer)
+    {
+        printf("WARNING: Attemping to serialize a GameClass that doesn't support it.\n");
+    }
+    /** Reconstruct */
+    virtual void Deserialize(ByteBuffer* readBuffer)
+    {
+        printf("WARNING: Attemping to deserialize to a GameClass that doesn't support it.\n");
+    }
 
     GAME_CLASS_CODE GetGameClassCode() const { return gameClassCode; }
 
@@ -257,6 +269,26 @@ struct PropStatic : GameClass
     void SetModel(MeshGroup* newModelPtr)
     {
         model = newModelPtr;
+    }
+
+    void Serialize(ByteBuffer* writeBuffer) override
+    {
+        const std::string& propfilepath = GetModel()->filePath;
+        ByteBufferWrite(writeBuffer, u64, (u64)propfilepath.size()+1);
+        ByteBufferWriteBulk(writeBuffer, (void*)propfilepath.c_str(), propfilepath.size()+1); 
+    }
+
+    void Deserialize(ByteBuffer* readBuffer) override
+    {
+        u64 propfilepathSize;
+        char tempPropPathBuffer[128];
+        ByteBufferRead(readBuffer, u64, &propfilepathSize);
+        ByteBufferReadBulk(readBuffer, tempPropPathBuffer, propfilepathSize);
+        auto loadedPropModel = MeshGroupAssimpLoad(tempPropPathBuffer);
+        if(loadedPropModel)
+        {
+            SetModel(loadedPropModel);
+        }
     }
 
 private:
