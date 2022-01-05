@@ -3,15 +3,16 @@
 
 TODO:
 Task for today:
-    - Face Texture properties: UV offset
 
 Backlog:
     - Update EditorExportMap and EditorImportMap to export and import PropStatic and LevelGeomBrush
+        - to make this compatible with future changes, its ok if some properties are missing or there are properties we don't know
     - Load map to game
     - Get "game" working - player controller?
     - Face Texture properties: UV rotation, scale, other stuff
     - toggle snap to grid in level editor -> could even make vertices snap to vertex pos on other geom
     - Add/Remove edges
+    - if i'm going to display vertex positions in imgui, then use the transformed vertex pos
     - Create mode, show preview of brush that can be moved around and shit
     - GAME_CLASS_CODE: instead of using bits, just use integer number
     - GameClass reflection + expose subclasses and properties to editor?
