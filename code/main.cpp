@@ -3,11 +3,11 @@
 
 TODO:
 Task for today:
-
-Backlog:
     - Update EditorExportMap and EditorImportMap to export and import PropStatic and LevelGeomBrush
         - to make this compatible with future changes, its ok if some properties are missing or there are properties we don't know
     - Load map to game
+
+Backlog:
     - Get "game" working - player controller?
     - Face Texture properties: UV rotation, scale, other stuff
     - toggle snap to grid in level editor -> could even make vertices snap to vertex pos on other geom

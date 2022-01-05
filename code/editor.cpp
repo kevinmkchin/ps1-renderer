@@ -68,7 +68,7 @@ private:
 
 struct LevelGeometry : GameClass  // we could have subclasses of level geometry which do respond to collision or update
 {
-    /* Stripped down version of LevelGeometryBrush that can be used in game */
+    /* Stripped down version of VolumeBrush that can be used in game */
 
     u32 idVAO;
     u32 idVBO;
@@ -124,7 +124,7 @@ struct LevelGeometry : GameClass  // we could have subclasses of level geometry 
     }
 };
 
-struct LevelGeometryBrush : GameClass
+struct VolumeBrush : GameClass
 {
     // Up to the map maker to make convex shapes only.
     // Counter clockwise winding order
@@ -160,9 +160,9 @@ struct LevelGeometryBrush : GameClass
     u32 idVAO;
     u32 idVBO;
 
-    LevelGeometryBrush()
+    VolumeBrush()
     {
-        gameClassCode = BRUSH_LEVELGEOM;
+        gameClassCode = BRUSH_VOLUME;
 
         vertices = {
             { { 0.f, 0.f, 0.f } },
@@ -216,7 +216,7 @@ struct LevelGeometryBrush : GameClass
         glBindVertexArray(0);
     }
 
-    virtual ~LevelGeometryBrush()
+    virtual ~VolumeBrush()
     {
         glDeleteBuffers(1, &idVBO);
         glDeleteVertexArrays(1, &idVAO);
@@ -324,10 +324,10 @@ INTERNAL GameObject* GetEditorObjectWithId(EntityId eid)
 INTERNAL GameCamera editorCamera;
 #define NumberOfReservedClickableVertexIds 32
 INTERNAL EntityId reservedClickableVertexIds[NumberOfReservedClickableVertexIds];
-INTERNAL std::vector<LevelGeometryBrush::Vertex*> selectedClickableVertices;
+INTERNAL std::vector<VolumeBrush::Vertex*> selectedClickableVertices;
 #define NumberOfReservedClickableFaceIds 32
 INTERNAL EntityId reservedClickableFaceIds[NumberOfReservedClickableFaceIds];
-INTERNAL std::vector<LevelGeometryBrush::Face*> selectedClickableFaces;
+INTERNAL std::vector<VolumeBrush::Face*> selectedClickableFaces;
 
 struct TranslationGizmo
 {
@@ -763,16 +763,6 @@ INTERNAL void UpdateEditorImGui()
                 /* Class specific IMGUI */
                 switch(selectedEditObj->GetGameClassCode())
                 {
-                    case BRUSH_BLOCK:{
-                        // BlockBrush* box = (BlockBrush*) selectedEditObj->GetClass();
-                        // ImGui::Checkbox("Visible", &box->isVisible);
-                        // ImGui::Checkbox("Collidable", &box->hasCollision);
-                        // ImGui::DragFloat3("Dimensions", &box->dimensions.x, 0.01f);
-                        // ImGui::DragFloat3("Origin offset", &box->originAsOffsetFromMinCorner.x, 0.01f);
-                        // ImGui::DragFloat2("Texture scale", &box->textureScale.x, 0.01f);
-                        // ImGui::Checkbox("Tile texture", &box->textureTileFlag);
-                        // ImGui::Checkbox("Texture orientation", &box->textureOrientationFlag);
-                    }break;
                     case CLASS_PROPSTATIC:{
                         PropStatic* ps = (PropStatic*) selectedEditObj->GetClass();
                         if(ImGui::Button("Load Model"))
@@ -790,8 +780,8 @@ INTERNAL void UpdateEditorImGui()
                             }
                         }
                     }break;
-                    case BRUSH_LEVELGEOM:{
-                        LevelGeometryBrush* lgb = (LevelGeometryBrush*) selectedEditObj->GetClass();
+                    case BRUSH_VOLUME:{
+                        VolumeBrush* lgb = (VolumeBrush*) selectedEditObj->GetClass();
                         // what should we do here?
                     }break;
                     default:{
@@ -846,7 +836,7 @@ INTERNAL void UpdateEditorImGui()
                         newEntity->SetOrientation(createOrientation);
                         newEntity->SetScale(createScale);
 
-                        auto createdlevelgeombrush = new LevelGeometryBrush();
+                        auto createdlevelgeombrush = new VolumeBrush();
                         newEntity->SetClass(createdlevelgeombrush);
 
                         SetSelectedEditObjId(newEntity->GetId());
@@ -890,8 +880,8 @@ INTERNAL void UpdateEditorImGui()
             {
                 switch(selectedEditObj->GetGameClassCode())
                 {
-                    case BRUSH_LEVELGEOM:{
-                        LevelGeometryBrush* lgb = (LevelGeometryBrush*) selectedEditObj->GetClass();
+                    case BRUSH_VOLUME:{
+                        VolumeBrush* lgb = (VolumeBrush*) selectedEditObj->GetClass();
 
                         //ImGui::TextUnformatted("Vertices");
                         // for(int i = 0; i < lgb->vertices.size(); ++i)
@@ -1017,9 +1007,9 @@ INTERNAL void EditorRender()
     auto selectedObj = GetEditorObjectWithId(selectedEditObjId);
     if(editorMode == EDITOR_MODE_EDIT 
         && selectedObj
-        && selectedObj->GetGameClassCode() == BRUSH_LEVELGEOM)
+        && selectedObj->GetGameClassCode() == BRUSH_VOLUME)
     {
-        LevelGeometryBrush* geom = (LevelGeometryBrush*) selectedObj->GetClass();
+        VolumeBrush* geom = (VolumeBrush*) selectedObj->GetClass();
 
         billboardShader.UseShader();
         for(auto& v : geom->vertices)
@@ -1070,9 +1060,9 @@ INTERNAL void EditorMousePickRender()
     auto selectedObj = GetEditorObjectWithId(selectedEditObjId);
     if(editorMode == EDITOR_MODE_EDIT 
         && selectedObj
-        && selectedObj->GetGameClassCode() == BRUSH_LEVELGEOM)
+        && selectedObj->GetGameClassCode() == BRUSH_VOLUME)
     {
-        LevelGeometryBrush* geom = (LevelGeometryBrush*) selectedObj->GetClass();
+        VolumeBrush* geom = (VolumeBrush*) selectedObj->GetClass();
         for(int i = 0; i < geom->vertices.size(); ++i)
         {
             auto v = geom->vertices[i];
@@ -1110,7 +1100,7 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
         auto selectedObj = GetEditorObjectWithId(selectedEditObjId);
         if(editorMode == EDITOR_MODE_EDIT 
             && selectedObj
-            && selectedObj->GetGameClassCode() == BRUSH_LEVELGEOM
+            && selectedObj->GetGameClassCode() == BRUSH_VOLUME
             && pickedId >= reservedClickableVertexIds[0]
             && pickedId <= reservedClickableVertexIds[NumberOfReservedClickableVertexIds-1])
         {
@@ -1118,7 +1108,7 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
             {
                 selectedClickableVertices.clear();
             }
-            auto selectedLevelGeom = (LevelGeometryBrush*) selectedObj->GetClass();
+            auto selectedLevelGeom = (VolumeBrush*) selectedObj->GetClass();
             int levelGeomVerticesLocalIndex = pickedId - reservedClickableVertexIds[0];
             for(auto selectedVertexPtr : selectedClickableVertices)
             {
@@ -1133,7 +1123,7 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
 
         if(editorMode == EDITOR_MODE_EDIT
             && selectedObj
-            && selectedObj->GetGameClassCode() == BRUSH_LEVELGEOM
+            && selectedObj->GetGameClassCode() == BRUSH_VOLUME
             && pickedId >= reservedClickableFaceIds[0]
             && pickedId <= reservedClickableFaceIds[NumberOfReservedClickableFaceIds-1])
         {
@@ -1141,7 +1131,7 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
             {
                 selectedClickableFaces.clear();
             }
-            auto selectedLevelGeom = (LevelGeometryBrush*) selectedObj->GetClass();
+            auto selectedLevelGeom = (VolumeBrush*) selectedObj->GetClass();
             int levelGeomFacesLocalIndex = pickedId - reservedClickableFaceIds[0];
             for(auto fptr : selectedClickableFaces)
             {
@@ -1202,7 +1192,7 @@ INTERNAL void EditorExportMap(const std::string& mapName)
 
         switch (editorEntities[i].GetGameClassCode())
         {
-            case BRUSH_BLOCK:{
+            case BRUSH_VOLUME:{
                 // auto* boxObj = (BlockBrush*) editorEntities[i].GetClass();
                 // vec3 dimensions = boxObj->dimensions;
                 // vec3 origin = boxObj->originAsOffsetFromMinCorner;
@@ -1263,7 +1253,7 @@ INTERNAL void EditorImportMap(const std::string& mapName)
 
         switch (code & 0xFFFFFFFFC)
         {
-            case BRUSH_BLOCK: {
+            case BRUSH_VOLUME: {
                 // BlockBrush* box = new BlockBrush();
                 // newEntity->SetClass(box);
                 // box->isVisible = code & OBJECT_VISIBLE;
@@ -1341,7 +1331,7 @@ INTERNAL void GameImportMap(const std::string& mapName,
     // ByteBufferFree(&importBuffer);
 }
 
-void LevelGeometryBrush::EditorModeRender(const Shader& shader, bool mousePicking)
+void VolumeBrush::EditorModeRender(const Shader& shader, bool mousePicking)
 {
     std::vector<float> vbo = GenerateBufferObject();
     glBindVertexArray(idVAO);
@@ -1351,7 +1341,7 @@ void LevelGeometryBrush::EditorModeRender(const Shader& shader, bool mousePickin
     glBindVertexArray(0);
 
     shader.GLBind1i("dontShade", 0);
-    /** Note(Kevin): LevelGeometryBrush doesn't uses identity model matrix because transformations
+    /** Note(Kevin): VolumeBrush doesn't uses identity model matrix because transformations
         applied when we call GenerateBufferObject. It's already encoded into the vertex position attribute. */
     shader.GLBindMatrix4fv("modelMatrix", 1, mat4().ptr());
 
