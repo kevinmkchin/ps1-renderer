@@ -47,7 +47,7 @@ struct VolumeBrush : GameClass
         std::vector<Triangle> tris;
 
         Texture texture;
-        vec2 textureShift; //(NOTE(Kevin) initial offset can be related to world position)
+        vec2 textureShift; //(TODO(Kevin) initial offset can be related to world position)
         // texture scale
         // texture alignment, etc.
 
@@ -205,6 +205,71 @@ struct VolumeBrush : GameClass
         }
 
         return vbo;
+    }
+
+    void Serialize(ByteBuffer* writeBuffer) override
+    {
+        u64 _verticesCount = vertices.size();
+        ByteBufferWrite(writeBuffer, u64, _verticesCount);
+        for(int i = 0; i < _verticesCount; ++i)
+        {
+            ByteBufferWrite(writeBuffer, vec3, vertices[i].pos);
+        }
+        u64 _facesCount = faces.size();
+        ByteBufferWrite(writeBuffer, u64, _facesCount);
+        for(int i = 0; i < _facesCount; ++i)
+        {
+            const Face& _face = faces[i];
+            u64 _trisCount = _face.tris.size();
+            ByteBufferWrite(writeBuffer, u64, _trisCount);
+            for(int j = 0; j < _trisCount; ++j)
+            {
+                ByteBufferWrite(writeBuffer, u8, _face.tris[j].in0);
+                ByteBufferWrite(writeBuffer, u8, _face.tris[j].in1);
+                ByteBufferWrite(writeBuffer, u8, _face.tris[j].in2);
+            }
+            const std::string& _faceTexturePath = _face.texture.filePath;
+            u64 _faceTexturePathSize = _faceTexturePath.size() + 1;
+            ByteBufferWrite(writeBuffer, u64, _faceTexturePathSize);
+            ByteBufferWriteBulk(writeBuffer, (void*)_faceTexturePath.c_str(), _faceTexturePathSize); 
+            ByteBufferWrite(writeBuffer, vec2, _face.textureShift);
+        }
+    }
+
+    void Deserialize(ByteBuffer* readBuffer) override
+    {
+        u64 _verticesCount;
+        ByteBufferRead(readBuffer, u64, &_verticesCount);
+        vertices.resize(_verticesCount);
+        for(int i = 0; i < _verticesCount; ++i)
+        {
+            ByteBufferRead(readBuffer, vec3, &vertices[i].pos);
+        }
+        u64 _facesCount;
+        ByteBufferRead(readBuffer, u64, &_facesCount);
+        faces.resize(_facesCount);
+        for(int i = 0; i < _facesCount; ++i)
+        {
+            Face& _face = faces[i];
+            u64 _trisCount;
+            ByteBufferRead(readBuffer, u64, &_trisCount);
+            _face.tris.resize(_trisCount);
+            for(int j = 0; j < _trisCount; ++j)
+            {
+                ByteBufferWrite(readBuffer, u8, _face.tris[j].in0);
+                ByteBufferWrite(readBuffer, u8, _face.tris[j].in1);
+                ByteBufferWrite(readBuffer, u8, _face.tris[j].in2);
+            }
+            u64 _faceTexturePathSize;
+            char _tempTexturePathBuffer[128];
+            ByteBufferRead(readBuffer, u64, &_faceTexturePathSize);
+            ByteBufferReadBulk(readBuffer, _tempTexturePathBuffer, _faceTexturePathSize);
+            if(_faceTexturePathSize > 1)
+            {
+                TextureCreateFromFile(_face.texture, _tempTexturePathBuffer);
+            }
+            ByteBufferRead(readBuffer, vec2, &_face.textureShift);
+        }
     }
 };
 
@@ -1085,54 +1150,15 @@ INTERNAL void EditorExportMap(const std::string& mapName)
                 | (editorEntities[i].GetClass()->isVisible ? OBJECT_VISIBLE : CLASS_INVALID)
                 | (editorEntities[i].GetClass()->hasCollision ? OBJECT_COLLIDABLE : CLASS_INVALID);
         ByteBufferWrite(&exportBuffer, u32, code);
-
-        vec3 pos = editorEntities[i].GetPos();
-        quat rot = editorEntities[i].GetOrientation();
-        vec3 sca = editorEntities[i].GetScale();
-        ByteBufferWriteBulk(&exportBuffer, &pos, 3*sizeof(float));
-        ByteBufferWriteBulk(&exportBuffer, &rot, 4*sizeof(float));
-        ByteBufferWriteBulk(&exportBuffer, &sca, 3*sizeof(float));
-
-        switch (editorEntities[i].GetGameClassCode())
-        {
-            case BRUSH_VOLUME:{
-                
-                // auto* boxObj = (BlockBrush*) editorEntities[i].GetClass();
-                // vec3 dimensions = boxObj->dimensions;
-                // vec3 origin = boxObj->originAsOffsetFromMinCorner;
-                // vec2 textureScale = boxObj->textureScale;
-                // ByteBufferWriteBulk(&exportBuffer, &dimensions, 3*sizeof(float));
-                // ByteBufferWriteBulk(&exportBuffer, &origin, 3*sizeof(float));
-                // ByteBufferWriteBulk(&exportBuffer, &textureScale, 2*sizeof(float));
-                // ByteBufferWrite(&exportBuffer, bool, boxObj->textureTileFlag);
-                // ByteBufferWrite(&exportBuffer, bool, boxObj->textureOrientationFlag);
-            }break;
-
-            case CLASS_PROPSTATIC:{
-                auto propStaticPtr = (PropStatic*) editorEntities[i].GetClass();
-                const std::string& propfilepath = propStaticPtr->GetModel()->filePath;
-                ByteBufferWrite(&exportBuffer, u64, (u64)propfilepath.size()+1);
-                ByteBufferWriteBulk(&exportBuffer, (void*)propfilepath.c_str(), propfilepath.size()+1);
-            }break;
-
-            default:{
-                printf("WARNING: An EditorBrush doesn't have its editObjCode set or it is an unknown code.\n");
-            }
-        }
+        ByteBufferWrite(&exportBuffer, vec3, editorEntities[i].GetPos());
+        ByteBufferWrite(&exportBuffer, quat, editorEntities[i].GetOrientation());
+        ByteBufferWrite(&exportBuffer, vec3, editorEntities[i].GetScale());
+        editorEntities[i].GetClass()->Serialize(&exportBuffer);
     }
     std::string mapPath = mapName.at(1) == ':' ? mapName : GAME_MAPS_DIRECTORY + mapName;
     ByteBufferWriteToFile(&exportBuffer, mapPath.c_str());
     ByteBufferFree(&exportBuffer);
 }
-
-// INTERNAL void EditorReadBoxFromByteBuffer(ByteBuffer* importBuffer, BlockBrush* box)
-// {
-//     ByteBufferReadBulk(importBuffer, &box->dimensions, 3*sizeof(float));
-//     ByteBufferReadBulk(importBuffer, &box->originAsOffsetFromMinCorner, 3*sizeof(float));
-//     ByteBufferReadBulk(importBuffer, &box->textureScale, 2*sizeof(float));
-//     ByteBufferRead(importBuffer, bool, &box->textureTileFlag);
-//     ByteBufferRead(importBuffer, bool, &box->textureOrientationFlag);
-// }
 
 INTERNAL void EditorImportMap(const std::string& mapName)
 {
@@ -1155,44 +1181,29 @@ INTERNAL void EditorImportMap(const std::string& mapName)
         vec3 pos;
         quat rot;
         vec3 sca;
-        ByteBufferReadBulk(&importBuffer, &pos, 3*sizeof(float));
-        ByteBufferReadBulk(&importBuffer, &rot, 4*sizeof(float));
-        ByteBufferReadBulk(&importBuffer, &sca, 3*sizeof(float));
+        ByteBufferRead(&importBuffer, vec3, &pos);
+        ByteBufferRead(&importBuffer, quat, &rot);
+        ByteBufferRead(&importBuffer, vec3, &sca);
         newEntity->SetPos(pos);
         newEntity->SetOrientation(rot);
         newEntity->SetScale(sca);
 
+        GameClass* gcptr = NULL;
         switch (code & 0xFFFFFFFFC)
         {
             case BRUSH_VOLUME: {
-                // BlockBrush* box = new BlockBrush();
-                // newEntity->SetClass(box);
-                // box->isVisible = code & OBJECT_VISIBLE;
-                // box->hasCollision = code & OBJECT_COLLIDABLE;
-                // EditorReadBoxFromByteBuffer(&importBuffer, box);
+                gcptr = new VolumeBrush();
             }break;
-
             case CLASS_PROPSTATIC:{
-                auto psptr = new PropStatic();
-                newEntity->SetClass(psptr);
-
-                u64 propfilepathSize = 0;
-                char tempPropPathBuffer[128];
-                ByteBufferRead(&importBuffer, u64, &propfilepathSize);
-                ByteBufferReadBulk(&importBuffer, tempPropPathBuffer, propfilepathSize);
-                auto loadedPropModel = MeshGroupAssimpLoad(tempPropPathBuffer);
-                if(loadedPropModel)
-                {
-                    psptr->SetModel(loadedPropModel);
-                }
-                else
-                {
-                    delete psptr;
-                }
+                gcptr = new PropStatic();
             }break;
-
-            default: { continue; }
+            default:{
+                editorEntities.PopBack();
+                continue;
+            }break;
         }
+        gcptr->Deserialize(&importBuffer);
+        newEntity->SetClass(gcptr);
 
         if(editorEntities.Count() >= editorEntities.Capacity())
         {

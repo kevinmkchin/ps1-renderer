@@ -3,8 +3,6 @@
 
 TODO:
 Task for today:
-    - Update EditorExportMap and EditorImportMap to export and import PropStatic and LevelGeomBrush
-        - to make this compatible with future changes, its ok if some properties are missing or there are properties we don't know
     - Load map to game
 
 Backlog:
@@ -83,6 +81,7 @@ BUILD MODES:
 
 #include "gamedefines.h"
 #include "shader.h"
+#include "file.cpp"
 #include "core.h"
 #include "game.h"
 
@@ -115,7 +114,6 @@ GLOBAL_VAR Shader billboardShader;
 INTERNAL Shader quadShader;
 
 #include "input.cpp"
-#include "file.cpp"
 #include "shader.cpp"
 #include "core.cpp"
 #include "editor.cpp"
