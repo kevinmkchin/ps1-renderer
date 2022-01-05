@@ -144,10 +144,9 @@ struct LevelGeometryBrush : GameClass
         std::vector<Triangle> tris;
 
         Texture texture;
-        // stuff like texture properties
-        // what texture to show
-        // texture offset (NOTE(Kevin) initial offset can be related to world position)
-        // alignment, etc.
+        vec2 textureShift; //(NOTE(Kevin) initial offset can be related to world position)
+        // texture scale
+        // texture alignment, etc.
 
         i32 NumberOfIndices()
         {
@@ -276,8 +275,8 @@ struct LevelGeometryBrush : GameClass
                 vbo.push_back(verticesTransformed[in0].pos.x);
                 vbo.push_back(verticesTransformed[in0].pos.y);
                 vbo.push_back(verticesTransformed[in0].pos.z);
-                vbo.push_back(0.f);
-                vbo.push_back(0.f);
+                vbo.push_back(0.f + face.textureShift.x);
+                vbo.push_back(0.f + face.textureShift.y);
                 vbo.push_back(normal.x);
                 vbo.push_back(normal.y);
                 vbo.push_back(normal.z);
@@ -285,8 +284,8 @@ struct LevelGeometryBrush : GameClass
                 vbo.push_back(verticesTransformed[in1].pos.x);
                 vbo.push_back(verticesTransformed[in1].pos.y);
                 vbo.push_back(verticesTransformed[in1].pos.z);
-                vbo.push_back(Dot(verticesTransformed[in1].pos-verticesTransformed[in0].pos, uAxis));
-                vbo.push_back(Dot(verticesTransformed[in1].pos-verticesTransformed[in0].pos, vAxis));
+                vbo.push_back(Dot(verticesTransformed[in1].pos-verticesTransformed[in0].pos, uAxis) + face.textureShift.x);
+                vbo.push_back(Dot(verticesTransformed[in1].pos-verticesTransformed[in0].pos, vAxis) + face.textureShift.y);
                 vbo.push_back(normal.x);
                 vbo.push_back(normal.y);
                 vbo.push_back(normal.z);
@@ -294,8 +293,8 @@ struct LevelGeometryBrush : GameClass
                 vbo.push_back(verticesTransformed[in2].pos.x);
                 vbo.push_back(verticesTransformed[in2].pos.y);
                 vbo.push_back(verticesTransformed[in2].pos.z);
-                vbo.push_back(Dot(verticesTransformed[in2].pos-verticesTransformed[in0].pos, uAxis));
-                vbo.push_back(Dot(verticesTransformed[in2].pos-verticesTransformed[in0].pos, vAxis));
+                vbo.push_back(Dot(verticesTransformed[in2].pos-verticesTransformed[in0].pos, uAxis) + face.textureShift.x);
+                vbo.push_back(Dot(verticesTransformed[in2].pos-verticesTransformed[in0].pos, vAxis) + face.textureShift.y);
                 vbo.push_back(normal.x);
                 vbo.push_back(normal.y);
                 vbo.push_back(normal.z);
@@ -903,19 +902,32 @@ INTERNAL void UpdateEditorImGui()
                         //     ImGui::PopID();
                         // }
                         //ImGui::Separator();
-                        
+
                         ImGui::TextUnformatted("Faces");
                         ImGui::Text("%zd faces selected.", selectedClickableFaces.size());
                         if(!selectedClickableFaces.empty())
                         {
                             bool sameFilePaths = true;
-                            // TODO(Kevin): bool sameSomeOtherProperty
+                            bool sameTextureShift = true;
                             for(auto facePtr : selectedClickableFaces)
                             {
                                 sameFilePaths &= selectedClickableFaces[0]->texture.filePath == facePtr->texture.filePath;
-                                // sameSomeOtherProperty &= selectedClickableFaces[0]->someOtherProperty == facePtr->someOtherProperty;
+                                sameTextureShift &= selectedClickableFaces[0]->textureShift == facePtr->textureShift;
                             }
+
+                            if(!sameFilePaths) { ImGui::BeginDisabled(); }
                             ImGui::Text("Face texture: %s", (sameFilePaths ? selectedClickableFaces[0]->texture.filePath.c_str() : "multiple"));
+                            if(!sameFilePaths) { ImGui::EndDisabled(); }
+
+                            vec2 _textureShiftImgui = sameTextureShift ? selectedClickableFaces[0]->textureShift : vec2();
+                            ImGui::DragFloat2("Texture shift", &_textureShiftImgui.x, 0.001f);
+                            if(ImGui::IsItemActive())
+                            {
+                                for(auto facePtr : selectedClickableFaces)
+                                {
+                                    facePtr->textureShift = _textureShiftImgui;
+                                }
+                            }
 
                             if(ImGui::Button("Choose texture"))
                             {
