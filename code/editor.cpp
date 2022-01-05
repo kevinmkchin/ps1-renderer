@@ -1204,6 +1204,13 @@ INTERNAL void EditorExportMap(const std::string& mapName)
                 // ByteBufferWrite(&exportBuffer, bool, boxObj->textureOrientationFlag);
             }break;
 
+            case CLASS_PROPSTATIC:{
+                auto propStaticPtr = (PropStatic*) editorEntities[i].GetClass();
+                const std::string& propfilepath = propStaticPtr->GetModel()->filePath;
+                ByteBufferWrite(&exportBuffer, u64, (u64)propfilepath.size()+1);
+                ByteBufferWriteBulk(&exportBuffer, (void*)propfilepath.c_str(), propfilepath.size()+1);
+            }break;
+
             default:{
                 printf("WARNING: An EditorBrush doesn't have its editObjCode set or it is an unknown code.\n");
             }
@@ -1259,6 +1266,25 @@ INTERNAL void EditorImportMap(const std::string& mapName)
                 // box->isVisible = code & OBJECT_VISIBLE;
                 // box->hasCollision = code & OBJECT_COLLIDABLE;
                 // EditorReadBoxFromByteBuffer(&importBuffer, box);
+            }break;
+
+            case CLASS_PROPSTATIC:{
+                auto psptr = new PropStatic();
+                newEntity->SetClass(psptr);
+
+                u64 propfilepathSize = 0;
+                char tempPropPathBuffer[128];
+                ByteBufferRead(&importBuffer, u64, &propfilepathSize);
+                ByteBufferReadBulk(&importBuffer, tempPropPathBuffer, propfilepathSize);
+                auto loadedPropModel = MeshGroupAssimpLoad(tempPropPathBuffer);
+                if(loadedPropModel)
+                {
+                    psptr->SetModel(loadedPropModel);
+                }
+                else
+                {
+                    delete psptr;
+                }
             }break;
 
             default: { continue; }
