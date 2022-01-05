@@ -3,18 +3,19 @@
 
 TODO:
 Task for today:
-    - Create levelgeombrush option
-    - EDIT MODE:
-        - Add/Remove edges
-        - Texture UV offset for box editor object 
 
 Backlog:
-    - toggle snap to grid in level editor
+    - Create levelgeombrush option
+    - Face Texture properties: UV offset
+    - Update EditorExportMap and EditorImportMap to export and import PropStatic and LevelGeomBrush
+    - Load map to game
+    - Get "game" working - player controller?
+    - Face Texture properties: UV rotation, scale, other stuff
+    - toggle snap to grid in level editor -> could even make vertices snap to vertex pos on other geom
+    - Add/Remove edges
     - Create mode, show preview of brush that can be moved around and shit
     - GAME_CLASS_CODE: instead of using bits, just use integer number
     - GameClass reflection + expose subclasses and properties to editor?
-    - Update EditorExportMap and EditorImportMap to export and import PropStatic and LevelGeomBrush
-    - Load map to game
     - Dropdown to select brush type
     - Maybe DOUBLE CLICK to place an entity
     - LOAD ALL REQUIRED TEXTURES AT THE START OF THE GAME -> UNLOAD ALL END OF GAME instead of reference counting
