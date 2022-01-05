@@ -3,10 +3,9 @@
 
 TODO:
 Task for today:
+    - Face Texture properties: UV offset
 
 Backlog:
-    - Create levelgeombrush option
-    - Face Texture properties: UV offset
     - Update EditorExportMap and EditorImportMap to export and import PropStatic and LevelGeomBrush
     - Load map to game
     - Get "game" working - player controller?

@@ -557,9 +557,6 @@ INTERNAL void EditorLoad(const std::string& mapName)
         EditorImportMap(mapName);
     }
 
-    GameObject* test = &editorEntities.PushBackDefault();
-    test->SetClass(new LevelGeometryBrush());
-
     vertexClickableBillboard.target = &editorCamera;
     vertexClickableBillboard.InitQuadMesh(0.1f, 0.1f, vec2(0.05f, 0.05f));
 
@@ -834,8 +831,6 @@ INTERNAL void UpdateEditorImGui()
                     LOCAL_PERSIST vec3 createPosition;
                     LOCAL_PERSIST quat createOrientation;
                     LOCAL_PERSIST vec3 createScale = vec3(1.f, 1.f, 1.f);
-                    LOCAL_PERSIST bool createIsVisible = true;
-                    LOCAL_PERSIST bool createHasCollision = true;
 
                     // TODO(Kevin): Add dropdown to choose brush type
 
@@ -844,11 +839,6 @@ INTERNAL void UpdateEditorImGui()
                     ImGui::DragFloat3("Rot", &selectedRot.x, 0.2f);
                     createOrientation = EulerToQuat(selectedRot * SML_DEG2RAD);
                     ImGui::DragFloat3("Scale", &createScale.x, 0.01f);
-                    ImGui::Checkbox("Visible", &createIsVisible);
-                    ImGui::Checkbox("Collidable", &createHasCollision);
-
-                    LOCAL_PERSIST vec3 createDimensions;
-                    ImGui::DragFloat3("Dimensions", &createDimensions.x, 0.01f);
 
                     if(ImGui::Button("Create Brush"))
                     {
@@ -857,13 +847,8 @@ INTERNAL void UpdateEditorImGui()
                         newEntity->SetOrientation(createOrientation);
                         newEntity->SetScale(createScale);
 
-                        auto levelgeombrush = new LevelGeometryBrush();
-
-                        // BlockBrush* box = new BlockBrush();
-                        // newEntity->SetClass(box);
-                        // box->isVisible = createIsVisible;
-                        // box->hasCollision = createHasCollision;
-                        // box->dimensions = createDimensions;
+                        auto createdlevelgeombrush = new LevelGeometryBrush();
+                        newEntity->SetClass(createdlevelgeombrush);
 
                         SetSelectedEditObjId(newEntity->GetId());
                     }
@@ -874,16 +859,12 @@ INTERNAL void UpdateEditorImGui()
                     LOCAL_PERSIST vec3 createPosition;
                     LOCAL_PERSIST quat createOrientation;
                     LOCAL_PERSIST vec3 createScale = vec3(1.f, 1.f, 1.f);
-                    LOCAL_PERSIST bool createIsVisible = true;
-                    LOCAL_PERSIST bool createHasCollision = true;
 
                     ImGui::DragFloat3("Pos", &createPosition.x, 0.01f);
                     vec3 selectedRot = QuatToEuler(createOrientation) * SML_RAD2DEG;
                     ImGui::DragFloat3("Rot", &selectedRot.x, 0.2f);
                     createOrientation = EulerToQuat(selectedRot * SML_DEG2RAD);
                     ImGui::DragFloat3("Scale", &createScale.x, 0.01f);
-                    ImGui::Checkbox("Visible", &createIsVisible);
-                    ImGui::Checkbox("Collidable", &createHasCollision);
 
                     if(ImGui::Button("Create Entity"))
                     {
@@ -894,8 +875,6 @@ INTERNAL void UpdateEditorImGui()
 
                         PropStatic* propStatic = new PropStatic();
                         newEntity->SetClass(propStatic);
-                        propStatic->isVisible = createIsVisible;
-                        propStatic->hasCollision = createHasCollision;
                         propStatic->SetModel(defaultEntityModel);
 
                         SetSelectedEditObjId(newEntity->GetId());
@@ -914,15 +893,17 @@ INTERNAL void UpdateEditorImGui()
                 {
                     case BRUSH_LEVELGEOM:{
                         LevelGeometryBrush* lgb = (LevelGeometryBrush*) selectedEditObj->GetClass();
-                        ImGui::TextUnformatted("Vertices");
-                        for(int i = 0; i < lgb->vertices.size(); ++i)
-                        {
-                            vec3& v = lgb->vertices[i].pos;
-                            ImGui::PushID(i);
-                            ImGui::DragFloat3("v", &v.x, 0.01f);
-                            ImGui::PopID();
-                        }
-                        ImGui::Separator();
+
+                        //ImGui::TextUnformatted("Vertices");
+                        // for(int i = 0; i < lgb->vertices.size(); ++i)
+                        // {
+                        //     vec3& v = lgb->vertices[i].pos;
+                        //     ImGui::PushID(i);
+                        //     ImGui::DragFloat3("v", &v.x, 0.01f);
+                        //     ImGui::PopID();
+                        // }
+                        //ImGui::Separator();
+                        
                         ImGui::TextUnformatted("Faces");
                         ImGui::Text("%zd faces selected.", selectedClickableFaces.size());
                         if(!selectedClickableFaces.empty())
