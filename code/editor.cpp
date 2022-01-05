@@ -27,103 +27,6 @@ INTERNAL EntityId RGBToEntityId(u8 r, u8 g, u8 b)
     return pickedEntityId;
 }
 
-struct PropStatic : GameClass
-{
-    PropStatic()
-        : model(nullptr) 
-    {
-        gameClassCode = CLASS_PROPSTATIC;
-    }
-
-    void Render(const Shader& shader) override
-    {
-        // PropStatic is always visible regardless of isVisible
-
-        MeshGroup* modelToRender = GetModel();
-        if(modelToRender)
-        {
-            shader.GLBindMatrix4fv("modelMatrix", 1, GetTiedEntity()->GetModelMatrix().ptr());
-            modelToRender->Render();
-        }
-    }
-
-    void EditorModeRender(const Shader& shader, bool mousePicking) override
-    {
-        Render(shader);
-    }
-
-    MeshGroup* GetModel() const
-    {
-        return model;
-    }
-
-    void SetModel(MeshGroup* newModelPtr)
-    {
-        model = newModelPtr;
-    }
-
-private:
-    MeshGroup* model;
-};
-
-struct LevelGeometry : GameClass  // we could have subclasses of level geometry which do respond to collision or update
-{
-    /* Stripped down version of VolumeBrush that can be used in game */
-
-    u32 idVAO;
-    u32 idVBO;
-
-    struct {
-        u32 idTexture;
-        i32 numberOfIndices;
-    } faces[8];
-    u32 facesCount;
-
-    LevelGeometry()
-    {
-        // TODO(Kevin) set gameClassCode to whatever level geometry is
-
-        // maybe we can generate VAOs and VBOs in the create level geometry function instead of the constructor
-        // i.e. make the vaos vbos when importing map
-        glGenVertexArrays(1, &idVAO);
-        glBindVertexArray(idVAO);
-            glGenBuffers(1, &idVBO);
-            glBindBuffer(GL_ARRAY_BUFFER, idVBO);
-                glBufferData(GL_ARRAY_BUFFER, 0, nullptr, GL_DYNAMIC_DRAW);
-                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, nullptr);
-                glEnableVertexAttribArray(0);
-                glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 8, (void*)(sizeof(float) * 3));
-                glEnableVertexAttribArray(1);
-                glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 8, (void*)(sizeof(float) * (3 + 2)));
-                glEnableVertexAttribArray(2);
-        glBindVertexArray(0);
-    }
-
-    virtual ~LevelGeometry()
-    {
-        glDeleteBuffers(1, &idVBO);
-        glDeleteVertexArrays(1, &idVAO);
-    }
-
-    void Render(const Shader& shader)
-    {
-        shader.GLBind1i("dontShade", 0);
-        shader.GLBindMatrix4fv("modelMatrix", 1, GetTiedEntity()->GetModelMatrix().ptr());
-
-        glBindVertexArray(idVAO);
-        glBindBuffer(GL_ARRAY_BUFFER, idVBO);
-        i32 indexStart = 0;
-        for(u32 i = 0; i < facesCount; ++i)
-        {
-            // GL USE faces[i].idTexture use whatever texture defined in that face
-            glDrawArrays(GL_TRIANGLES, indexStart, faces[i].numberOfIndices);
-            indexStart += faces[i].numberOfIndices;
-        }
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
-    }
-};
-
 struct VolumeBrush : GameClass
 {
     // Up to the map maker to make convex shapes only.
@@ -1193,6 +1096,7 @@ INTERNAL void EditorExportMap(const std::string& mapName)
         switch (editorEntities[i].GetGameClassCode())
         {
             case BRUSH_VOLUME:{
+                
                 // auto* boxObj = (BlockBrush*) editorEntities[i].GetClass();
                 // vec3 dimensions = boxObj->dimensions;
                 // vec3 origin = boxObj->originAsOffsetFromMinCorner;
