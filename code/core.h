@@ -303,7 +303,7 @@ struct LevelGeometry : GameClass  // we could have subclasses of level geometry 
     u32 idVBO;
 
     struct {
-        u32 idTexture;
+        Texture texture;
         i32 numberOfIndices;
     } faces[8];
     u32 facesCount;
@@ -353,10 +353,7 @@ struct LevelGeometry : GameClass  // we could have subclasses of level geometry 
         i32 indexStart = 0;
         for(u32 i = 0; i < facesCount; ++i)
         {
-            // GL USE faces[i].idTexture use whatever texture defined in that face
-
-            glActiveTexture(GL_TEXTURE0);
-            glBindTexture(GL_TEXTURE_2D, faces[i].idTexture);
+            faces[i].texture.UseTexture();
             glDrawArrays(GL_TRIANGLES, indexStart, faces[i].numberOfIndices);
             indexStart += faces[i].numberOfIndices;
         }
