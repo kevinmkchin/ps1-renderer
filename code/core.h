@@ -334,9 +334,18 @@ struct LevelGeometry : GameClass  // we could have subclasses of level geometry 
         glDeleteVertexArrays(1, &idVAO);
     }
 
+    void RebindBufferObject(u32 byteSize, float* data)
+    {
+        glBindVertexArray(idVAO);
+            glBindBuffer(GL_ARRAY_BUFFER, idVBO);
+                glBufferData(GL_ARRAY_BUFFER, byteSize, data, GL_DYNAMIC_DRAW);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+
     void Render(const Shader& shader)
     {
-        shader.GLBind1i("dontShade", 0);
+        //shader.GLBind1i("dontShade", 0);
         shader.GLBindMatrix4fv("modelMatrix", 1, GetTiedEntity()->GetModelMatrix().ptr());
 
         glBindVertexArray(idVAO);
@@ -345,6 +354,9 @@ struct LevelGeometry : GameClass  // we could have subclasses of level geometry 
         for(u32 i = 0; i < facesCount; ++i)
         {
             // GL USE faces[i].idTexture use whatever texture defined in that face
+
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, faces[i].idTexture);
             glDrawArrays(GL_TRIANGLES, indexStart, faces[i].numberOfIndices);
             indexStart += faces[i].numberOfIndices;
         }

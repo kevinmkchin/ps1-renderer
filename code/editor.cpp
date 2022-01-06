@@ -105,7 +105,18 @@ struct VolumeBrush : GameClass
                 {1, 3, 6}
             }},
         };
+    }
 
+    virtual ~VolumeBrush()
+    {
+        if(idVAO != 0 && idVBO != 0)
+        {
+            DeleteVolumeMeshOnGPU();
+        }
+    }
+
+    void MakeVolumeMeshOnGPU()
+    {
         glGenVertexArrays(1, &idVAO);
         glBindVertexArray(idVAO);
             glGenBuffers(1, &idVBO);
@@ -120,7 +131,7 @@ struct VolumeBrush : GameClass
         glBindVertexArray(0);
     }
 
-    virtual ~VolumeBrush()
+    void DeleteVolumeMeshOnGPU()
     {
         glDeleteBuffers(1, &idVBO);
         glDeleteVertexArrays(1, &idVAO);
@@ -815,6 +826,7 @@ INTERNAL void UpdateEditorImGui()
                         newEntity->SetScale(createScale);
 
                         auto createdlevelgeombrush = new VolumeBrush();
+                        createdlevelgeombrush->MakeVolumeMeshOnGPU();
                         newEntity->SetClass(createdlevelgeombrush);
 
                         SetSelectedEditObjId(newEntity->GetId());
@@ -1206,7 +1218,9 @@ INTERNAL void EditorImportMap(const std::string& mapName)
         switch (code & 0xFFFFFFFFC)
         {
             case BRUSH_VOLUME: {
-                gcptr = new VolumeBrush();
+                auto vbptr = new VolumeBrush();
+                vbptr->MakeVolumeMeshOnGPU();
+                gcptr = vbptr;
             }break;
             case CLASS_PROPSTATIC:{
                 gcptr = new PropStatic();
@@ -1232,58 +1246,70 @@ INTERNAL void GameImportMap(const std::string& mapName,
                             PreAllocArray<GameObject>& staticMapObjects,
                             PreAllocArray<MeshCollider>& staticMapColliders)
 {
-    // if(editorModeActiveFlag)
-    // {
-    //     printf("WARNING: Attempting to load map when game is not active...\n");
-    //     return;
-    // }
+    if(editorModeActiveFlag)
+    {
+        printf("WARNING: Attempting to load map when game is not active...\n");
+        return;
+    }
 
-    // /** If not a brush, then make GameObject with that class
-    //     If brush, then make GameObject with brush's child class */
+    ByteBuffer importBuffer;
+    ByteBufferReadFromFile(&importBuffer, (GAME_MAPS_DIRECTORY + mapName).c_str());
+    while(importBuffer.position < importBuffer.size)
+    {
+        u32 code = CLASS_INVALID;
+        ByteBufferRead(&importBuffer, u32, &code);
 
-    // ByteBuffer importBuffer;
-    // ByteBufferReadFromFile(&importBuffer,  (GAME_MAPS_DIRECTORY + mapName).c_str());
-    // while(importBuffer.position < importBuffer.size)
-    // {
-    //     u32 code = CLASS_INVALID;
-    //     ByteBufferRead(&importBuffer, u32, &code);
+        switch (code & 0xFFFFFFFFC)
+        {
+            case BRUSH_VOLUME: {
+                /* if brush volume, the class we create depends on the class of the volume
+                   by default we make a level geom cuz thatll be the most common use of volume */
 
-    //     switch (code & 0xFFFFFFFFC)
-    //     {
-    //         case BRUSH_BLOCK: {
-    //             BlockBrush box;
+                /* when making levelgeom, then create volumebrush first then get buffer object to make level geom 
+                   then delete the volumebrush */
+                GameObject _tempGameObjectForGenerateVBO = GameObject();
+                vec3 pos;
+                quat rot;
+                vec3 sca;
+                ByteBufferRead(&importBuffer, vec3, &pos);
+                ByteBufferRead(&importBuffer, quat, &rot);
+                ByteBufferRead(&importBuffer, vec3, &sca);
+                _tempGameObjectForGenerateVBO.SetPos(pos);
+                _tempGameObjectForGenerateVBO.SetOrientation(rot);
+                _tempGameObjectForGenerateVBO.SetScale(sca);
+                auto _tempVolumeBrushForGenerateVBO = VolumeBrush();
+                _tempVolumeBrushForGenerateVBO.Deserialize(&importBuffer);
+                _tempGameObjectForGenerateVBO.SetClass(&_tempVolumeBrushForGenerateVBO);
+                std::vector<float>& _tempVolumeMeshVBO = _tempVolumeBrushForGenerateVBO.GenerateBufferObject();
 
-    //             EditorReadBoxFromByteBuffer(&importBuffer, code, &box);
-    //             DefaultGameObject addGameObj;
-    //             if(box.isVisible)
-    //             {
-    //                 auto bo = box.GetBufferObjects();
-    //                 auto vbo = bo.first;
-    //                 auto ibo = bo.second;
-    //                 Mesh m;
-    //                 MeshCreate(m, vbo.data(), ibo.data(), (u32)vbo.size(), (u32)ibo.size());
-    //                 MeshGroup* mg = new MeshGroup(m, Texture());
+                GameObject* addGameObj = &staticMapObjects.PushBackDefault();
+                auto createdLevelGeomPtr = new LevelGeometry();
+                createdLevelGeomPtr->RebindBufferObject((u32)(4*_tempVolumeMeshVBO.size()), _tempVolumeMeshVBO.data());
+                for(int i = 0; i < _tempVolumeBrushForGenerateVBO.faces.size(); ++i)
+                {
+                    auto f = _tempVolumeBrushForGenerateVBO.faces[i];
+                    createdLevelGeomPtr->faces[i].idTexture = f.texture.textureId;
+                    createdLevelGeomPtr->faces[i].numberOfIndices = f.NumberOfIndices();
+                    createdLevelGeomPtr->facesCount++;
+                }
+                addGameObj->SetClass(createdLevelGeomPtr);
 
-    //                 addGameObj.SetModel(mg);
-    //                 addGameObj.SetPos(box.GetPos());
-    //                 addGameObj.SetOrientation(box.GetOrientation());
-    //                 addGameObj.SetScale(box.GetScale());
-    //             }
-    //             staticMapObjects.PushBack(addGameObj);
-    //             if(box.hasCollision)
-    //             {
-    //                 MeshCollider meshCollider;
-    //                 meshCollider.owningGameObject = &staticMapObjects[staticMapObjects.Count()-1];
-    //                 meshCollider.verticesModelSpace = box.GetColliders();
-    //                 staticMapColliders.PushBack(meshCollider);
-    //             }
-    //         }break;
-    //         default: {
-    //             continue;
-    //         }
-    //     }
-    // }
-    // ByteBufferFree(&importBuffer);
+                // TODO(Kevin): check if has collision first
+                MeshCollider meshCollider;
+                meshCollider.owningGameObject = addGameObj;
+                meshCollider.verticesModelSpace.resize(_tempVolumeBrushForGenerateVBO.vertices.size());
+                for(auto v : _tempVolumeBrushForGenerateVBO.vertices)
+                {
+                    meshCollider.verticesModelSpace.push_back(v.pos);
+                }
+                staticMapColliders.PushBack(meshCollider);
+            }break;
+            default: {
+                continue;
+            }
+        }
+    }
+    ByteBufferFree(&importBuffer);
 }
 
 void VolumeBrush::EditorModeRender(const Shader& shader, bool mousePicking)
