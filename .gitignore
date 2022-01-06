@@ -5,3 +5,4 @@ cmake-build-*/
 
 .vs/
 .idea/
+*.DS_Store

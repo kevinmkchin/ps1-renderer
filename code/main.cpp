@@ -1,31 +1,35 @@
-/** Playstation 1 style renderer
+#define START_IN_EDITOR_MODE_ACTIVE
+/** PRIMEVIL
 
 TODO:
-    - Level Editor
-        - creates the Visible level geometry and Collidable level geometry
-        - Save level geom as OPCODE + STRUCT DATA so we know what type of struct we are reading
+Task for today:
+    - organize fucking code
 
-        Types of static level objects in game:
-        - visible meshgroup object no collider              : cosmetic/decorative complex level geometry
-        - visible mesh object no collider                   : cosmetic/decorative simple level geometry
-        - visible meshgroup object with collider            : complex level geometry with collisions
-        - visible mesh object with collider                 : simple level geometry with collisions
-        - hidden mesh (or no mesh?) object with collider    : trigger volumes, level geometry bounds
-
-        How to represent the above in editor?:
-
-
-        Additionally, editor can specify other objects too e.g. power ups and their locations:
-        - We can drop an editor object (no mesh, just a billboard facing the gameCamera indicating what power up it is)
-
-
-        When importing/exporting to/from editor and importing to game, these objects need to be saved or read from disk.
-
-
-
+Backlog:
+    - BIG Get "game" working - player controller?
+    - BIG Classes for volume?
+    - SMALL Face Texture properties: UV rotation, scale, other stuff
+    - SMALL/MED toggle snap to grid in level editor -> could even make vertices snap to vertex pos on other geom
+    - MEDIUM Add/Remove edges
+    - SMALL Delete brushes or entities from level editor scene
+    - SMALL if i'm going to display vertex positions in imgui, then use the transformed vertex pos
+    - SMALL/MED Create mode, show preview of brush that can be moved around and shit
+    - SMALL GAME_CLASS_CODE: instead of using bits, just use integer number
+    - GameClass reflection + expose subclasses and properties to editor?
+    - Dropdown to select brush type
+    - Maybe DOUBLE CLICK to place an entity
+    - LOAD ALL REQUIRED TEXTURES AT THE START OF THE GAME -> UNLOAD ALL END OF GAME instead of reference counting
+    - shaded toggleable - brush can be shaded or not shaded
+    - decals
+    - fog
+    - make gjk col MTV be relative to object we broadcasting to?
+    - Text rendering with kc_truetypeassembler.h
+    - Drop-down console port from XNGINE (tilde)
     - Animation
     - Audio
-    - Text rendering with kc_truetypeassembler.h
+    - NavMesh
+    - Face texture tint - can create shading effect
+        - any floor/wall/slope/sprite can be individually shaded or palette swapped to create numerous variations and make objects really pop out
 
 Rules:
      - unit vector (x: 1, y: 0, z: 0), aka positive X, is the "forward" direction for un-rotated objects
@@ -44,17 +48,35 @@ BUILD MODES:
 
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
+#define PATH_MAX MAX_PATH 
 #endif
 
 #include <stdio.h>
+#include <direct.h> 
+#include <limits.h>
 #include <string>
 #include <fstream>
 #include <array>
 #include <unordered_map>
 #include <mutex>
 #include <thread>
+#include <vector>
 
-#include <GL/glew.h>
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_sdl.h"
+#include "imgui/imgui_impl_opengl3.h"
+
+#if (defined _WIN32)
+    #include <shobjidl.h>
+    #include <codecvt>
+#endif
+#if (defined _WIN32)
+    #include <GL/glew.h>
+    #define __KEVIN_OPENGL_USING_GLEW__
+#elif (defined __APPLE__ || defined _APPLE)
+    #define GL_SILENCE_DEPRECATION
+    #include <OpenGL/gl3.h>
+#endif
 #include <SDL.h>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -67,43 +89,56 @@ BUILD MODES:
 
 #include "gamedefines.h"
 #include "shader.h"
+#include "file.h"
 #include "core.h"
 #include "game.h"
 
+/** Internal resolution : resolution the game is running at
+    Back buffer resolution : resolution actually outputted to screen */
+GLOBAL_VAR u32 internalResolutionWidth = 320;
+GLOBAL_VAR u32 internalResolutionHeight = 240;
+GLOBAL_VAR i32 backbufferWidth = INDEX_NONE;
+GLOBAL_VAR i32 backbufferHeight = INDEX_NONE;
+/** FOV of the game camera */
+GLOBAL_VAR float FOV = 90.f;
+/** Flag to indicate whether to exit the game */
 GLOBAL_VAR bool gIsRunning = true;
+/** Delta time since last tick. Updated every tick.  */
 GLOBAL_VAR float gDeltaTime;
-GLOBAL_VAR const u8* gKeyState = nullptr; // Stores keyboard state this frame. Access via gKeystate[SDL_Scancode].
-GLOBAL_VAR i32 gMouseDeltaX;
-GLOBAL_VAR i32 gMouseDeltaY;
-GLOBAL_VAR GamepadState gGamepadStates[MAX_GAMEPAD_COUNT] = {};
+/** Flag to indicate whether editor mode is active. Do not set directly. */
+GLOBAL_VAR bool editorModeActiveFlag;
 
+/** Console backend */
 GLOBAL_VAR noclip::console console;
 INTERNAL std::mutex __consoleCommandQueueMutex;
 INTERNAL std::string __consoleCommandQueue;
 
+/** Shaders */
+GLOBAL_VAR Shader sceneShader;
+GLOBAL_VAR Shader editorShader;
+GLOBAL_VAR Shader wireframeShader;
+GLOBAL_VAR Shader mousepickShader;
+GLOBAL_VAR Shader billboardShader;
+INTERNAL Shader quadShader;
+
 #include "input.cpp"
-#include "file.cpp"
 #include "shader.cpp"
 #include "core.cpp"
-#include "level.cpp"
+#include "editor.cpp"
 #include "game.cpp"
 
 #pragma region PLATFORM_LAYER
 
-#define WINDOW_TITLE "ps1 style renderer"
+#define WINDOW_TITLE "PRIMEVIL GAME"
 #define WINDOW_INITIAL_WIDTH 960
 #define WINDOW_INITIAL_HEIGHT 720
 
 INTERNAL SDL_Window* window = nullptr;
 INTERNAL SDL_GLContext openglContext = nullptr;
-INTERNAL i32 backbufferWidth = INDEX_NONE;
-INTERNAL i32 backbufferHeight = INDEX_NONE;
 INTERNAL u32 internalFBO = 0;
 INTERNAL u32 internalColorTexture = 0;
 INTERNAL u32 internalDepthBuffer = 0;
 INTERNAL Mesh finalOutputQuad;
-INTERNAL Shader quadShader;
-INTERNAL bool editorModeActiveFlag;
 
 INTERNAL bool SDLInitialize()
 {
@@ -115,12 +150,12 @@ INTERNAL bool SDLInitialize()
     }
 
     // OpenGL Context Attributes
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3); // version major
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3); // version minor
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE); // core means not backward compatible. not using deprecated code.
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // allow forward compatibility
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1); // double buffering is on by default, but let's just call this anyway
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24); // depth buffer precision of 24 bits
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 
     // Setup SDL Window
     if ((window = SDL_CreateWindow(
@@ -145,13 +180,35 @@ INTERNAL bool SDLInitialize()
     }
     printf("SDL Window & OpenGL context created.\n");
 
-    gKeyState = SDL_GetKeyboardState(nullptr);
-
     return true;
 }
 
-INTERNAL bool GLEWInitialize()
+#if (defined __APPLE__ || defined _APPLE)
+#include <unistd.h>
+#include <libgen.h> // for dirname
+#include <mach-o/dyld.h> // for _NSGetExecutablePath
+INTERNAL void SetWorkingDirectory()
 {
+    char path[PATH_MAX];
+    uint32_t pathLen = sizeof(path);
+    int err = _NSGetExecutablePath(path, &pathLen);
+    assert(!err);
+
+    // Switch to the directory of the actual binary
+    chdir(dirname(path));
+    // and then go up three directories to get to the folder of the .app bundle
+    chdir("../Resources");
+}
+#else
+INTERNAL void SetWorkingDirectory()
+{
+
+}
+#endif
+
+INTERNAL bool OpenGLInitialize()
+{
+#ifdef __KEVIN_OPENGL_USING_GLEW__
     glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_OK)
     {
@@ -159,6 +216,7 @@ INTERNAL bool GLEWInitialize()
         return false;
     }
     printf("GLEW initialized.\n");
+#endif
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // alpha blending func: a * (rgb) + (1 - a) * (rgb) = final color output
     glBlendEquation(GL_FUNC_ADD);
@@ -169,6 +227,7 @@ INTERNAL bool GLEWInitialize()
 INTERNAL void SDLWindowSizeChanged()
 {
     SDL_GL_GetDrawableSize(window, &backbufferWidth, &backbufferHeight);
+    editorCamera.CameraCalculatePerspectiveMatrix((float)backbufferWidth/(float)backbufferHeight);
 }
 
 INTERNAL void SDLFullscreen(int mode)
@@ -184,88 +243,35 @@ INTERNAL void SDLFullscreen(int mode)
     }
 }
 
-INTERNAL void SDLProcessEvents()
+INTERNAL vec2 ScreenSpaceToInternalNDC(int x, int y)
 {
-    SDLUpdateGamepads();
-
-    // Store Mouse state
-    gMouseDeltaX = 0;
-    gMouseDeltaY = 0;
-
-    SDL_Event event;
-    while(SDL_PollEvent(&event))
+    float xCentered = (float) x - ((float)backbufferWidth/2.f);
+    float yCentered = -((float) y - ((float)backbufferHeight/2.f));
+    float internal_ratio = (float)internalResolutionWidth / (float)internalResolutionHeight;
+    float screen_ratio = (float)backbufferWidth / (float)backbufferHeight;
+    if(screen_ratio > internal_ratio)
     {
-        switch(event.type)
-        {
-            case SDL_MOUSEBUTTONUP:
-            {
-                SDL_MouseButtonEvent mouseUp = event.button;
-                if(mouseUp.button == SDL_BUTTON_RIGHT && mouseUp.state == SDL_RELEASED)
-                {
-                    SDL_SetRelativeMouseMode(SDL_FALSE);
-                    gameCamera.bMouseControl = false;
-                    editorCamera.bMouseControl = false;
-                }
-            }
-
-            case SDL_MOUSEBUTTONDOWN:
-            {
-                SDL_MouseButtonEvent mouseDown = event.button;
-                if(mouseDown.button == SDL_BUTTON_RIGHT && mouseDown.state == SDL_PRESSED)
-                {
-                    SDL_SetRelativeMouseMode(SDL_TRUE);
-                    gameCamera.bMouseControl = true;
-                    editorCamera.bMouseControl = true;
-                }
-
-                if(mouseDown.button == SDL_BUTTON_LEFT && mouseDown.state == SDL_PRESSED)
-                {
-                    int x, y;
-                    SDL_GetMouseState(&x, &y);
-                    float ix = (float) x * ((float) INTERNAL_RESOLUTION_WIDTH / (float)backbufferWidth);
-                    float iy = (float) y * ((float) INTERNAL_RESOLUTION_HEIGHT / (float)backbufferHeight);
-                    EditorMousePick((int) ix, (int) iy);
-                }
-            }
-
-            case SDL_MOUSEMOTION:
-            {
-                SDL_MouseMotionEvent mouseMotion = event.motion;
-                gMouseDeltaX = mouseMotion.xrel;
-                gMouseDeltaY = mouseMotion.yrel;
-            } break;
-
-            case SDL_WINDOWEVENT:
-            {
-                switch(event.window.event)
-                {
-                    case SDL_WINDOWEVENT_RESIZED:
-                    case SDL_WINDOWEVENT_SIZE_CHANGED:
-                    {
-                        SDLWindowSizeChanged();
-                    } break;
-                }
-            } break;
-
-            case SDL_QUIT:
-            {
-                gIsRunning = false;
-            } break;
-
-            case SDL_KEYDOWN:
-            {
-                if (event.key.keysym.sym == SDLK_ESCAPE)
-                {
-                    gIsRunning = false;
-                }
-            } break;
-        }
+        float ratio = (float)backbufferHeight / (float)internalResolutionHeight;
+        float internalResScreenPixelWidth = ratio * (float)internalResolutionWidth;
+        float xNDC = xCentered / (internalResScreenPixelWidth / 2.f);
+        float yNDC = yCentered / ((float)backbufferHeight / 2.f);
+        return vec2(xNDC, yNDC);
     }
-
-    if(gGamepadStates[0].isConnected && gGamepadStates[0].HasBeenPressed(GAMEPAD_START))
+    else
     {
-        gIsRunning = false;
+        float ratio = (float)backbufferWidth / (float)internalResolutionWidth;
+        float internalResScreenPixelHeight = ratio * (float)internalResolutionHeight;
+        float xNDC = xCentered / ((float)backbufferWidth / 2.f);
+        float yNDC = yCentered / (internalResScreenPixelHeight / 2.f);
+        return vec2(xNDC, yNDC);
     }
+}
+
+INTERNAL vec2 ScreenSpaceToScreenNDC(int x, int y)
+{
+    float xNDC = ((float) x - ((float)backbufferWidth/2.f)) / ((float)backbufferWidth/2.f);
+    float yNDC = ((float) y - ((float)backbufferHeight/2.f)) / ((float)-backbufferHeight/2.f);
+    return vec2(xNDC, yNDC);
 }
 
 INTERNAL void SwitchToEditor(bool activateEditor)
@@ -276,7 +282,7 @@ INTERNAL void SwitchToEditor(bool activateEditor)
         {
             GameUnload();
             editorModeActiveFlag = true;
-            EditorLoad();
+            EditorLoad("");
         }
         else
         {
@@ -315,7 +321,7 @@ INTERNAL bool CreateInternalFramebuffer()
     glBindFramebuffer(GL_FRAMEBUFFER, internalFBO);
         glGenTextures(1, &internalColorTexture);
         glBindTexture(GL_TEXTURE_2D, internalColorTexture);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, INTERNAL_RESOLUTION_WIDTH, INTERNAL_RESOLUTION_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, internalResolutionWidth, internalResolutionHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, internalColorTexture, 0);
@@ -323,7 +329,7 @@ INTERNAL bool CreateInternalFramebuffer()
             glDrawBuffers(1, colorAttachments);
         glGenRenderbuffers(1, &internalDepthBuffer);
         glBindRenderbuffer(GL_RENDERBUFFER, internalDepthBuffer);
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, INTERNAL_RESOLUTION_WIDTH, INTERNAL_RESOLUTION_HEIGHT);
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, internalResolutionWidth, internalResolutionHeight);
             glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, internalDepthBuffer);
         if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         {
@@ -331,10 +337,23 @@ INTERNAL bool CreateInternalFramebuffer()
             return false;
         }
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    Shader::GLLoadShaderProgramFromFile(quadShader, "shaders/quad.vert", "shaders/quad.frag");
     MeshCreate(finalOutputQuad, refQuadVertices, refQuadIndices, 16, 6, 2, 2, 0);
 
     return true;
+}
+
+INTERNAL void UpdateInternalFramebufferSize()
+{
+    glBindFramebuffer(GL_FRAMEBUFFER, internalFBO);
+    glBindTexture(GL_TEXTURE_2D, internalColorTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, internalResolutionWidth, internalResolutionHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+    glBindRenderbuffer(GL_RENDERBUFFER, internalDepthBuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, internalResolutionWidth, internalResolutionHeight);
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    {
+        printf("Failed to change size of Internal FrameBuffer Object.\n");
+    }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 INTERNAL void DrawInternalBufferToBackBuffer()
@@ -347,7 +366,7 @@ INTERNAL void DrawInternalBufferToBackBuffer()
         quadShader.UseShader();
             glActiveTexture(GL_TEXTURE0);
             glBindTexture(GL_TEXTURE_2D, internalColorTexture);
-            float internal_ratio = (float)INTERNAL_RESOLUTION_WIDTH / (float)INTERNAL_RESOLUTION_HEIGHT;
+            float internal_ratio = (float)internalResolutionWidth / (float)internalResolutionHeight;
             float screen_ratio = (float)backbufferWidth / (float)backbufferHeight;
             float finalOutputQuadVertices[16] = {
                 -1.f, -1.f, 0.f, 0.f,
@@ -378,17 +397,139 @@ INTERNAL void DrawInternalBufferToBackBuffer()
         glUseProgram(0);
 }
 
+INTERNAL void ChangeInternalResolution(u32 width, u32 height)
+{
+    internalResolutionWidth = width;
+    internalResolutionHeight = height;
+    UpdateInternalFramebufferSize();
+    gameCamera.CameraCalculatePerspectiveMatrix();
+}
+
+INTERNAL void SDLProcessEventsRealtime()
+{
+    SDL_Event event;
+    while(SDL_PollEvent(&event))
+    {
+        ImGui_ImplSDL2_ProcessEvent(&event);
+
+        switch(event.type)
+        {
+            case SDL_MOUSEBUTTONUP:{
+                SDL_MouseButtonEvent mouseUp = event.button;
+                if(mouseUp.button == SDL_BUTTON_LEFT && mouseUp.state == SDL_RELEASED)
+                {
+                    gIsLeftMouseDown = false;
+                }
+                if(mouseUp.button == SDL_BUTTON_RIGHT && mouseUp.state == SDL_RELEASED)
+                {
+                    SDL_SetRelativeMouseMode(SDL_FALSE);
+                    SDL_WarpMouseInWindow(window, backbufferWidth/2, backbufferHeight/2);
+                    gameCamera.bMouseControl = false;
+                    editorCamera.bMouseControl = false;
+                }
+            }break;
+
+            case SDL_MOUSEBUTTONDOWN:{
+                SDL_MouseButtonEvent mouseDown = event.button;
+                if(mouseDown.button == SDL_BUTTON_LEFT && mouseDown.state == SDL_PRESSED)
+                {
+                    gIsLeftMouseDown = true;
+
+                    if(editorModeActiveFlag)
+                    {
+                        if(!ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow))
+                        {
+                            int x, y;
+                            SDL_GetMouseState(&x, &y);
+                            EditorMousePick(x, backbufferHeight - y);
+                        }
+                    }
+                }
+                if(mouseDown.button == SDL_BUTTON_RIGHT && mouseDown.state == SDL_PRESSED)
+                {
+                    SDL_SetRelativeMouseMode(SDL_TRUE);
+                    gameCamera.bMouseControl = true;
+                    editorCamera.bMouseControl = true;
+                }
+            }break;
+
+            case SDL_MOUSEMOTION:{
+                ProcessSDLMouseMotionEvent(event.motion);
+            }break;
+
+            case SDL_KEYDOWN:{
+                ProcessSDLKeyDownEvent(event.key);
+
+                if (event.key.keysym.sym == SDLK_ESCAPE)
+                {
+                    gIsRunning = false;
+                }
+            }break;
+            case SDL_KEYUP:{
+                ProcessSDLKeyUpEvent(event.key);
+            }break;
+
+
+            case SDL_CONTROLLERBUTTONDOWN:{
+                ProcessSDLControllerButtonDownEvent(event.cbutton);
+            }break;
+            case SDL_CONTROLLERBUTTONUP:{
+                ProcessSDLControllerButtonUpEvent(event.cbutton);
+            }break;
+            case SDL_CONTROLLERAXISMOTION:{
+                ProcessSDLControllerAxisEvent(event.caxis);
+            }break;
+            case SDL_CONTROLLERDEVICEADDED:{
+                SDLControllerConnected(event.cdevice.which);
+            }break;
+            case SDL_CONTROLLERDEVICEREMOVED:{
+                SDLControllerRemoved(event.cdevice.which);
+            }break;
+
+
+            case SDL_WINDOWEVENT:{
+                switch(event.window.event)
+                {
+                    case SDL_WINDOWEVENT_RESIZED:
+                    case SDL_WINDOWEVENT_SIZE_CHANGED:{
+                        SDLWindowSizeChanged();
+                    }break;
+                }
+            }break;
+
+            case SDL_QUIT:{
+                gIsRunning = false;
+            }break;
+        }
+    }
+}
+
+INTERNAL void ResetInputDeltas()
+{
+    /* We accumulate input delta in realtime, but we only read/check
+     * the delta on tick. This means after we read/check the input delta,
+     * we should reset them back to their initial values. */
+    gMouseDelta = vec2(0.f,0.f);
+
+    ResetKeyboardStates();
+    ResetControllerStates();
+}
+
 INTERNAL void BindConsoleCommandsAndVariables()
 {
     console.bind_cmd("fullscreen", SDLFullscreen);
 
-    console.bind_cmd("editor", [](std::istream& is, std::ostream& os){
-        SwitchToEditor(true);
-    });
+    console.bind_cmd("internal_resolution_size", ChangeInternalResolution);
 
     console.bind_cmd("game", [](std::istream& is, std::ostream& os){
         SwitchToEditor(false);
     });
+
+    console.bind_cmd("editor", [](std::istream& is, std::ostream& os){
+        SwitchToEditor(true);
+    });
+    console.bind_cmd("export", EditorExportMap);
+    console.bind_cmd("import", EditorSwitchMap);
 
     console.bind_cmd("camstats", [](std::istream& is, std::ostream& os){
         printf("gameCamera position x: %f, y: %f, z: %f \n", gameCamera.position.x, gameCamera.position.y, gameCamera.position.z);
@@ -398,20 +539,65 @@ INTERNAL void BindConsoleCommandsAndVariables()
     });
 }
 
+INTERNAL void DearImGuiInit()
+{
+    ImGui::CreateContext();
+    //ImGuiIO& io = ImGui::GetIO();
+    //ImGui::StyleColorsLight();
+    ImGui_ImplSDL2_InitForOpenGL(window, openglContext);
+    ImGui_ImplOpenGL3_Init("#version 330");
+}
+
+INTERNAL void DearImGuiBeginNewFrame()
+{
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplSDL2_NewFrame();
+    ImGui::NewFrame();
+}
+
+INTERNAL void DearImGuiEndNewFrame()
+{
+    ImGui::Render();
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+INTERNAL void DearImGuiShutdown()
+{
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
+}
+
 int main(int argc, char* argv[])
 {
-    if(!SDLInitialize() || !GLEWInitialize() || !CreateInternalFramebuffer())
+    SetWorkingDirectory();
+
+    if(!SDLInitialize() || !OpenGLInitialize() || !CreateInternalFramebuffer())
     {
         return -1;
     }
 
+    DearImGuiInit();
+
     BindConsoleCommandsAndVariables();
     std::thread consoleInputThread(PollConsoleInput);
 
+    Shader::GLLoadShaderProgramFromFile(quadShader, "shaders/quad.vert", "shaders/quad.frag");
+    Shader::GLLoadShaderProgramFromFile(sceneShader, "shaders/scene.vert", "shaders/scene.frag");
+    Shader::GLLoadShaderProgramFromFile(editorShader, "shaders/editor.vert", "shaders/editor.frag");
+    Shader::GLLoadShaderProgramFromFile(wireframeShader, "shaders/wireframe.vert", "shaders/wireframe.frag");
+    Shader::GLLoadShaderProgramFromFile(mousepickShader, "shaders/mousepick.vert", "shaders/mousepick.frag");
+    Shader::GLLoadShaderProgramFromFile(billboardShader, "shaders/billboard.vert", "shaders/billboard.frag");
+
     EditorInitOnStartUp();
     GameInitOnStartUp();
-    GameLoad();
+#ifndef START_IN_EDITOR_MODE_ACTIVE
     editorModeActiveFlag = false;
+    GameLoad();
+#else
+    editorModeActiveFlag = true;
+    EditorLoad("");
+#endif
 
     float msPerFrame = 1000.f / (float)TARGET_FPS;
     float msLastTick = (float)SDL_GetTicks();
@@ -422,25 +608,32 @@ int main(int argc, char* argv[])
         msSinceLastUpdate += msThisTick - msLastTick;
         msLastTick = msThisTick;
 
+        SDLProcessEventsRealtime();
+
         while(msSinceLastUpdate > msPerFrame)
         {
             msSinceLastUpdate -= msPerFrame;
             gDeltaTime = msPerFrame / 1000.f;
 
             CheckConsoleCommandQueue();
-            SDLProcessEvents();
             if(gIsRunning == false) { break; }
 
+            DearImGuiBeginNewFrame();
+
             editorModeActiveFlag ? EditorUpdate() : GameUpdate();
-
-            glBindFramebuffer(GL_FRAMEBUFFER, internalFBO);
+            if(!editorModeActiveFlag) glBindFramebuffer(GL_FRAMEBUFFER, internalFBO);
             editorModeActiveFlag ? EditorRender() : GameRender();
+            if(!editorModeActiveFlag) DrawInternalBufferToBackBuffer();
 
-            DrawInternalBufferToBackBuffer();
+            DearImGuiEndNewFrame();
 
             SDL_GL_SwapWindow(window);
+
+            ResetInputDeltas();
         }
     }
+
+    DearImGuiShutdown();
 
     SDL_DestroyWindow(window);
     SDL_GL_DeleteContext(openglContext);
@@ -452,3 +645,12 @@ int main(int argc, char* argv[])
 }
 
 #pragma endregion //PLATFORM_LAYER
+
+#include "imgui/imgui.cpp"
+#include "imgui/imgui_demo.cpp"
+#include "imgui/imgui_draw.cpp"
+#include "imgui/imgui_tables.cpp"
+#include "imgui/imgui_widgets.cpp"
+#include "imgui/imgui_impl_sdl.cpp"
+#define IMGUI_IMPL_OPENGL_LOADER_CUSTOM
+#include "imgui/imgui_impl_opengl3.cpp"

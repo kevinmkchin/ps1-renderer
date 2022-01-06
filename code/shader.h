@@ -5,10 +5,12 @@ struct Shader
     static void GLLoadShaderProgramFromFile(Shader& shader, const char* vertexPath, const char* geometryPath, const char* fragmentPath);
     static void GLCreateShaderProgram(Shader& shader, const char* vertexShaderStr, const char* fragmentShaderStr);
     static void GLCreateShaderProgram(Shader& shader, const char* vertexShaderStr, const char* geometryShaderStr, const char* fragmentShaderStr);
+#if GL_VERSION_4_3
     static void GLLoadComputeShaderProgramFromFile(Shader& shader, const char* computePath);
     static void GLCreateComputeShaderProgram(Shader& shader, const char* computeShaderStr);
+#endif
 
-    void UseShader();
+    void UseShader() const;
 
     void GLBind1i(const char* uniformName, GLint v0) const;
     void GLBind2i(const char* uniformName, GLint v0, GLint v1) const;
@@ -23,20 +25,25 @@ struct Shader
 
     i32 GetCachedUniformLocation(const char* uniformName) const;
 
+    void SuppressWarningsPush();
+    void SuppressWarningsPop();
+
 private:
+    bool bPrintWarnings = true;
+
     GLuint idShaderProgram = 0; // id of this shader program in GPU memory
 
     std::unordered_map<std::string, i32> uniformLocationsMap;
 
-    static void cache_uniform_locations(Shader& shader);
+    static void cacheUniformLocations(Shader& shader);
 
-    static void cache_uniform_location(Shader& shader, const char* uniformName);
+    static void cacheUniformLocation(Shader& shader, const char* uniformName);
 
-    void warning_uniform_not_found(const char* uniformName) const;
+    void warningUniformNotFound(const char* uniformName) const;
 
     // Create shader on GPU and compile shader
-    static void gl_compile_shader(u32 program_id, const char* shader_code, GLenum shaderType);
+    static void GLCompileShader(u32 program_id, const char* shader_code, GLenum shaderType);
 
     // Return true if there was a compile error
-    static bool gl_check_error_and_validate(GLuint program_id);
+    static bool GLCheckErrorAndValidate(GLuint program_id);
 };

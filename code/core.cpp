@@ -1,13 +1,7 @@
-void Texture::UseTexture() const
-{
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, textureId);
-}
-
 INTERNAL std::unordered_map<std::string, Texture> __gpuLoadedTextures;
 
 /** Deletes texture object from GPU memory; resets texture_id, width, height, bit_depth to 0. */
-INTERNAL void TextureDelete(Texture& texture)
+INTERNAL void TextureDelete(Texture& texture) // TODO(Kevin): rename to "delete from GPU" or something
 {
     if(texture.textureId == 0)
     {
@@ -29,13 +23,18 @@ INTERNAL void TextureDelete(Texture& texture)
 
 /** Loads texture from bitmap; generates a new texture object in GPU mem; store the id
     of the new texture object into texture.texture_id; sets texture parameters; copies texture data
-    into the texture object in GPU mem; and generates mip maps automatically. */
+    into the texture object in GPU mem; and generates mip maps automatically. 
+    filteringMode
+    GL_NEAREST : nearest neighbor
+    GL_LINEAR : bilinear filtering
+    GL_LINEAR_MIPMAP_LINEAR : trilinear filtering */
 INTERNAL void TextureCreateFromBitmap(Texture&        texture,
                                       unsigned char*  bitmap,
                                       u32             bitmapWidth,
                                       u32             bitmapHeight,
                                       GLenum          targetFormat,
-                                      GLenum          sourceFormat)
+                                      GLenum          sourceFormat,
+                                      GLenum          filteringMode = GL_NEAREST) 
 {
     if(texture.textureId != 0)
     {
@@ -51,8 +50,8 @@ INTERNAL void TextureCreateFromBitmap(Texture&        texture,
     glBindTexture(GL_TEXTURE_2D, texture.textureId);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filteringMode);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filteringMode);
     glTexImage2D(
             GL_TEXTURE_2D,              // texture target type
             0,                          // level-of-detail number n = n-th mipmap reduction image
@@ -69,24 +68,57 @@ INTERNAL void TextureCreateFromBitmap(Texture&        texture,
 
 /** Loads texture at file_path; generates a new texture object in GPU mem; stores the id
     of the new texture object into texture.texture_id; sets texture parameters; copies
-    texture data into the texture object in GPU mem; and generates mip maps automatically. */
-INTERNAL void TextureCreateFromFile(Texture& texture, const char* textureFilePath)
+    texture data into the texture object in GPU mem; and generates mip maps automatically.
+    Returns false if something failed. */
+INTERNAL bool TextureCreateFromFile(Texture& texture, const char* textureFilePath, GLenum filteringMode = GL_NEAREST)
 {
+    if(texture.textureId != 0)
+    {
+        printf("WARNING: Trying to load a Texture when there is already a texture loaded! Clearing texture first...\n");
+        TextureDelete(texture); // TODO(Kevin): Remove probably because we don't want to delete if we load all textures at start and unload at end
+    }
+
     auto textureAlreadyLoaded = __gpuLoadedTextures.find(std::string(textureFilePath));
     if(textureAlreadyLoaded != __gpuLoadedTextures.end())
     {
         texture = textureAlreadyLoaded->second;
-        return;
+        return true;
     }
 
     BitmapHandle textureHandle;
     ReadImage(textureHandle, textureFilePath);
+    if (textureHandle.memory == NULL)
+    {
+        return false;
+    }
     TextureCreateFromBitmap(texture, (unsigned char *) textureHandle.memory, textureHandle.width,
-                            textureHandle.height, GL_RGBA, (textureHandle.bitDepth == 3 ? GL_RGB : GL_RGBA));
+                            textureHandle.height, GL_RGBA, (textureHandle.bitDepth == 3 ? GL_RGB : GL_RGBA), filteringMode);
     FreeImage(textureHandle); // texture data has been copied to GPU memory, so we can free image from memory
 
     texture.filePath = textureFilePath;
     __gpuLoadedTextures[textureFilePath] = texture;
+
+    return true;
+}
+
+void Texture::UseTexture() const
+{
+    LOCAL_PERSIST Texture missingTexture;
+    if(missingTexture.textureId == 0)
+    {
+        TextureCreateFromFile(missingTexture, "data/primitives/missing_texture.png");
+    }
+
+    if(textureId == 0)
+    {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, missingTexture.textureId);
+    }
+    else
+    {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureId);
+    }
 }
 
 
@@ -98,7 +130,7 @@ void Mesh::RenderMesh(GLenum renderMode) const
 {
     if (indicesCount == 0) // Early out if index_count == 0, nothing to draw
     {
-        printf("WARNING: Attempting to render a mesh with 0 index count!\n");
+        printf("WARNING: Attempting to Render a mesh with 0 index count!\n");
         return;
     }
 
@@ -136,7 +168,7 @@ vertex_attrib_size: vertex coords size (e.g. 3 if x y z)
 texture_attrib_size: texture coords size (e.g. 2 if u v)
 draw_usage: affects optimization; GL_STATIC_DRAW buffer data
 only set once, GL_DYNAMIC_DRAW if buffer modified repeatedly */
-INTERNAL void MeshCreate(Mesh& mesh,
+INTERNAL Mesh MeshCreate(Mesh& mesh,
                          float* vertices,
                          u32* indices,
                          u32 verticesArrayCount,
@@ -187,6 +219,8 @@ INTERNAL void MeshCreate(Mesh& mesh,
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, 4 /*bytes cuz uint32*/ * indicesArrayCount, indices, drawUsage);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0); // Unbind the VAO;
+
+    return mesh;
 }
 
 /** Clearing GPU memory: glDeleteBuffers and glDeleteVertexArrays deletes the buffer
@@ -217,26 +251,15 @@ INTERNAL void MeshDelete(Mesh& mesh)
 
 
 
-void MeshGroup::render()
+void MeshGroup::Render()
 {
-    LOCAL_PERSIST Texture missingTexture;
-    if(missingTexture.textureId == 0)
-    {
-        TextureCreateFromFile(missingTexture, "data/primitives/missing_texture.png");
-    }
-
     for(size_t i = 0; i < meshes.size(); ++i)
     {
         u16 materialIndex = meshToTextureTable[i];
-        if(materialIndex < textures.size() && textures[materialIndex].textureId != 0)
+        if(materialIndex < textures.size())
         {
             textures[materialIndex].UseTexture();
         }
-        else if(textures[materialIndex].textureId == 0)
-        {
-            missingTexture.UseTexture();
-        }
-
         meshes[i].RenderMesh();
     }
 }
@@ -330,6 +353,7 @@ INTERNAL MeshGroup* MeshGroupAssimpLoad(const char* fileName)
     const aiScene* scene = importer.ReadFile(fileName,
                                              aiProcess_Triangulate
                                              |aiProcess_GenNormals
+                                             |aiProcess_FlipUVs // textures were fucked cuz this line was missing
                                              |aiProcess_JoinIdenticalVertices
     );
     if(!scene)
@@ -400,20 +424,71 @@ INTERNAL void MeshGroupDelete(MeshGroup* const modelToDelete)
 
 
 
+
+void GameObject::Update()
+{
+    if(tiedClass)
+    {
+        tiedClass->Update();
+    }
+}
+
+void GameObject::Render(const Shader& shader)
+{
+    if(tiedClass)
+    {
+        tiedClass->Render(shader);
+    }
+}
+
+void GameObject::OnCollision(CollisionEventArgs collisionInfo)
+{
+    if(tiedClass)
+    {
+        tiedClass->OnCollision(collisionInfo);
+    }
+}
+
+GAME_CLASS_CODE GameObject::GetGameClassCode() const
+{
+    if(GetClass())
+    {
+        return GetClass()->GetGameClassCode();
+    }
+    return CLASS_INVALID;
+}
+
+GameClass* GameObject::GetClass() const
+{ 
+    return tiedClass;
+}
+
+void GameObject::SetClass(GameClass* childClass) 
+{
+    tiedClass = childClass;
+    if(tiedClass->GetTiedEntity() != this)
+    {
+        tiedClass->SetTiedEntity(this);
+    }
+}
+
+
+
+
+
+
 void GameCamera::CameraUpdate()
 {
     if(bMouseControl)
     {
-        if(SML_abs(gMouseDeltaX) < 50.f && SML_abs(gMouseDeltaY) < 50.f) // don't move if mouse delta is too big to be normal
-        {
-            rotation.y /*yaw*/ -= ((float)gMouseDeltaX) * turnSpeed * 0.8f;
-            rotation.z /*pitch*/ -= ((float)gMouseDeltaY) * turnSpeed * 0.8f;
-        }
-        if(gGamepadStates[0].isConnected)
-        {
-            rotation.y -= gGamepadStates[0].rightThumbStickDir.x * turnSpeed * gDeltaTime * 260.f;
-            rotation.z += gGamepadStates[0].rightThumbStickDir.y * turnSpeed * gDeltaTime * 260.f;
-        }
+        rotation.y /*yaw*/ -= ((float)gMouseDelta.x) * turnSpeed;
+        rotation.z /*pitch*/ -= ((float)gMouseDelta.y) * turnSpeed;
+    }
+
+    if(gGamepadStates[0].isConnected)
+    {
+        rotation.y -= gGamepadStates[0].rightThumbStickDir.x * turnSpeed * gDeltaTime * 1100.f;
+        rotation.z += gGamepadStates[0].rightThumbStickDir.y * turnSpeed * gDeltaTime * 1100.f;
     }
 
     if(rotation.z > 89.f)
@@ -433,9 +508,8 @@ void GameCamera::CameraUpdate()
 
     if(gGamepadStates[0].isConnected)
     {
-
-        position += calculatedDirection * gGamepadStates[0].leftThumbStickDir.y * gDeltaTime;
-        position += calculatedRight * gGamepadStates[0].leftThumbStickDir.x * gDeltaTime;
+        position += calculatedDirection * gGamepadStates[0].leftThumbStickDir.y * 5.f * gDeltaTime;
+        position += calculatedRight * gGamepadStates[0].leftThumbStickDir.x * 5.f * gDeltaTime;
 
         if (gGamepadStates[0].IsPressed(GAMEPAD_RB)) {
             position.y += moveSpeed * gDeltaTime;
@@ -445,27 +519,27 @@ void GameCamera::CameraUpdate()
         }
     }
 
-    if (gKeyState[SDL_SCANCODE_W])
+    if (gCurrentKeyState[SDL_SCANCODE_W])
     {
         position += calculatedDirection * moveSpeed * gDeltaTime;
     }
-    if (gKeyState[SDL_SCANCODE_A])
+    if (gCurrentKeyState[SDL_SCANCODE_A])
     {
         position += -calculatedRight * moveSpeed * gDeltaTime;
     }
-    if (gKeyState[SDL_SCANCODE_S])
+    if (gCurrentKeyState[SDL_SCANCODE_S])
     {
         position += -calculatedDirection * moveSpeed * gDeltaTime;
     }
-    if (gKeyState[SDL_SCANCODE_D])
+    if (gCurrentKeyState[SDL_SCANCODE_D])
     {
         position += calculatedRight * moveSpeed * gDeltaTime;
     }
-    if (gKeyState[SDL_SCANCODE_Q])
+    if (gCurrentKeyState[SDL_SCANCODE_Q])
     {
         position.y += -moveSpeed * gDeltaTime;
     }
-    if (gKeyState[SDL_SCANCODE_E])
+    if (gCurrentKeyState[SDL_SCANCODE_E])
     {
         position.y += moveSpeed * gDeltaTime;
     }
@@ -475,9 +549,13 @@ void GameCamera::CameraUpdate()
 
 void GameCamera::CameraCalculatePerspectiveMatrix()
 {
-    float fov = 90.f;
-    float aspect_ratio = (float)INTERNAL_RESOLUTION_WIDTH / (float)INTERNAL_RESOLUTION_HEIGHT;
-    perspectiveMatrix = ProjectionMatrixPerspective((fov / 2.f) * SML_DEG2RAD, aspect_ratio, nearClip, farClip);
+    float aspect_ratio = (float)internalResolutionWidth / (float)internalResolutionHeight;
+    perspectiveMatrix = ProjectionMatrixPerspective((FOV / 2.f) * SML_DEG2RAD, aspect_ratio, nearClip, farClip);
+}
+
+void GameCamera::CameraCalculatePerspectiveMatrix(float aspectRatio)
+{
+    perspectiveMatrix = ProjectionMatrixPerspective((FOV / 2.f) * SML_DEG2RAD, aspectRatio, nearClip, farClip);
 }
 
 void GameCamera::CameraCalculateViewMatrix()
@@ -895,6 +973,7 @@ INTERNAL GJKEPACollisionInfo GJK(Collider* colA, Collider* colB)
 
 
 
+
 // Collision World
 
 INTERNAL void NotifyOwningObjectsAboutCollision(Collider* a, Collider* b, GJKEPACollisionInfo collisionInfo)
@@ -948,3 +1027,71 @@ INTERNAL void CollisionWorldUpdate()
 }
 
 
+
+
+
+struct Billboard
+{
+    GameCamera* target = NULL;
+    vec3 position;
+    vec3 scale;
+    bool cylindricalFlag = false; // cylindrical only rotates around Y axis
+
+    void InitQuadMesh(float width, float height, vec2 originOffset)
+    {
+        MeshCreate(quad, nullptr, nullptr, 0, 0, 3, 2, 0, GL_DYNAMIC_DRAW);
+        Resize(width, height, originOffset);
+    }
+
+    void DeleteQuadMesh()
+    {
+        MeshDelete(quad);
+    }
+
+    void Resize(float width, float height, vec2 originOffset)
+    {
+        quadVertices[1] = -originOffset.y;
+        quadVertices[2] = -originOffset.x;
+        quadVertices[6] = -originOffset.y;
+        quadVertices[7] = width - originOffset.x;
+        quadVertices[11] = height - originOffset.y;
+        quadVertices[12] = -originOffset.x;
+        quadVertices[16] = height - originOffset.y;
+        quadVertices[17] = width - originOffset.x;
+        u32 quadIndices[6] = {0,1,3,0,3,2};
+        quad.RebindBufferObjects(quadVertices, quadIndices, 20, 6);
+    }
+
+    void RotateAndRender(const Shader& billboardShader)
+    {
+        mat4 modelMatrix = TranslationMatrix(position);
+        if(target)
+        {
+            vec3 toTarget = target->position - position;
+            vec3 rot;
+            rot.y = atanf(-toTarget.z / toTarget.x);
+            if(!cylindricalFlag)
+            {
+                rot = QuatToEuler(DirectionToOrientation(toTarget));
+                rot.x = 0.f;
+            }
+            modelMatrix *= RotationMatrix(EulerToQuat(rot));
+        }
+        modelMatrix *= ScaleMatrix(scale);
+        billboardShader.GLBindMatrix4fv("modelMatrix", 1, modelMatrix.ptr());
+
+        // TODO(Kevin): use billboard texture
+
+        quad.RenderMesh();
+    }
+
+private:
+    Mesh quad;
+
+    float quadVertices[20] = {
+        0.f, -1.f, -1.f, 0.f, 0.f,
+        0.f, -1.f, 1.f, 1.f, 0.f,
+        0.f, 1.f, -1.f, 0.f, 1.f,
+        0.f, 1.f, 1.f, 1.f, 1.f
+    };
+};

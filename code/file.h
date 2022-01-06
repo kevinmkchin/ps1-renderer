@@ -74,7 +74,10 @@ INTERNAL std::string ReadFileString(const char* filePath)
 
 INTERNAL void FreeImage(BitmapHandle& imageHandle)
 {
-    FreeFileBinary(imageHandle);
+    if (imageHandle.memory)
+    {
+        FreeFileBinary(imageHandle);
+    }
     imageHandle.width = 0;
     imageHandle.height = 0;
     imageHandle.bitDepth = 0;
@@ -111,47 +114,51 @@ INTERNAL void ReadImage(BitmapHandle& imageHandle, const char* imageFilePath)
 
 struct ByteBuffer
 {
-    u8* data;
-    u32 position;  // basically the cursor
-    u32 size;      // currently populated size
-    u32 capacity;  // currently allocated size
+    u8* data = 0;
+    u32 position = 0;  // basically the cursor
+    u32 size = 0;      // currently populated size
+    u32 capacity = 0;  // currently allocated size
 };
 
 #define BYTE_BUFFER_DEFAULT_CAPACITY 1024
 
-void ByteBufferInit(ByteBuffer* buffer)
+INTERNAL void ByteBufferInit(ByteBuffer* buffer)
 {
     // TODO(Kevin): If using custom memory alloc, replace the following line
-    buffer->data = (u8*) malloc(BYTE_BUFFER_DEFAULT_CAPACITY);
-    memset(buffer->data, 0, BYTE_BUFFER_DEFAULT_CAPACITY);
+    buffer->data = (u8*) calloc(BYTE_BUFFER_DEFAULT_CAPACITY, sizeof(u8));
     buffer->position = 0;
     buffer->size = 0;
     buffer->capacity = BYTE_BUFFER_DEFAULT_CAPACITY;
 }
 
-ByteBuffer ByteBufferNew()
+INTERNAL ByteBuffer ByteBufferNew()
 {
-    ByteBuffer buffer = {0};
+    ByteBuffer buffer;
     ByteBufferInit(&buffer);
     return buffer;
 }
 
-void ByteBufferFree(ByteBuffer* buffer)
+INTERNAL void ByteBufferFree(ByteBuffer* buffer)
 {
     if(buffer && buffer->data)
     {
+        // TODO(Kevin): use custom mem alloc
         free(buffer->data);
     }
+    buffer->size = 0;
+    buffer->position = 0;
+    buffer->capacity = 0;
 }
 
-void ByteBufferClear(ByteBuffer* buffer)
+INTERNAL void ByteBufferClear(ByteBuffer* buffer)
 {
     buffer->size = 0;
     buffer->position = 0;
 }
 
-void ByteBufferResize(ByteBuffer* buffer, size_t sz)
+INTERNAL void ByteBufferResize(ByteBuffer* buffer, size_t sz)
 {
+    // TODO(Kevin): use custom mem alloc
     u8* data = (u8*)realloc(buffer->data, sz);
     if(data == NULL)
     {
@@ -161,22 +168,22 @@ void ByteBufferResize(ByteBuffer* buffer, size_t sz)
     buffer->capacity = (u32)sz;
 }
 
-void ByteBufferSeekToStart(ByteBuffer* buffer)
+INTERNAL void ByteBufferSeekToStart(ByteBuffer* buffer)
 {
     buffer->position = 0;
 }
 
-void ByteBufferSeekToEnd(ByteBuffer* buffer)
+INTERNAL void ByteBufferSeekToEnd(ByteBuffer* buffer)
 {
     buffer->position = buffer->size;
 }
 
-void ByteBufferAdvancePosition(ByteBuffer* buffer, size_t sz)
+INTERNAL void ByteBufferAdvancePosition(ByteBuffer* buffer, size_t sz)
 {
     buffer->position += (u32)sz;
 }
 
-void __byteBufferWriteImpl(ByteBuffer* buffer, void* data, size_t sz)
+INTERNAL void __byteBufferWriteImpl(ByteBuffer* buffer, void* data, size_t sz)
 {
     size_t totalWriteSize = buffer->position + sz;
     if(totalWriteSize >= buffer->capacity)
@@ -223,7 +230,7 @@ do {\
     _bb->position += (u32)(_size);\
 } while(0)
 
-int ByteBufferWriteToFile(ByteBuffer* buffer, const char* filePath)
+INTERNAL int ByteBufferWriteToFile(ByteBuffer* buffer, const char* filePath)
 {
     FILE* fp;
     fp = fopen(filePath, "w");
@@ -240,7 +247,7 @@ int ByteBufferWriteToFile(ByteBuffer* buffer, const char* filePath)
     return 1;
 }
 
-int ByteBufferReadFromFile(ByteBuffer* buffer, const char* filePath)
+INTERNAL int ByteBufferReadFromFile(ByteBuffer* buffer, const char* filePath)
 {
     if(!buffer)
     {
@@ -276,6 +283,7 @@ int ByteBufferReadFromFile(ByteBuffer* buffer, const char* filePath)
     }
 
     fread(bb.data, 1, sz, fp);
+    bb.size = (u32)sz;
     *buffer = bb;
 
     fclose(fp);
