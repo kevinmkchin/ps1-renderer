@@ -63,7 +63,8 @@ template<typename T> struct PreAllocArray
 {
     /** An array which pre-allocates memory before use.
      * No dynamic resizing allowed. This is essentially a
-     * wrapper for a C-style array. */
+     * wrapper for a C-style array. Order may not be preserved,
+     * so do NOT use the memory address of elements for references. */
 
     void Allocate(u32 numOfElements)
     {
