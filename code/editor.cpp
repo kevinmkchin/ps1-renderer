@@ -1288,7 +1288,7 @@ INTERNAL void GameImportMap(const std::string& mapName,
                 for(int i = 0; i < _tempVolumeBrushForGenerateVBO.faces.size(); ++i)
                 {
                     auto f = _tempVolumeBrushForGenerateVBO.faces[i];
-                    createdLevelGeomPtr->faces[i].idTexture = f.texture.textureId;
+                    createdLevelGeomPtr->faces[i].texture = f.texture;
                     createdLevelGeomPtr->faces[i].numberOfIndices = f.NumberOfIndices();
                     createdLevelGeomPtr->facesCount++;
                 }
