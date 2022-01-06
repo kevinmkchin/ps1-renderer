@@ -4,10 +4,12 @@
 TODO:
 Task for today:
     - Load map to game
+    - organize fucking code
 
 Backlog:
     - Get "game" working - player controller?
     - Face Texture properties: UV rotation, scale, other stuff
+    - Classes for volume?
     - toggle snap to grid in level editor -> could even make vertices snap to vertex pos on other geom
     - Add/Remove edges
     - Delete brushes or entities from level editor scene
