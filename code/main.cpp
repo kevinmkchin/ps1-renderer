@@ -4,6 +4,7 @@
 TODO:
 Task for today:
     - organize fucking code
+    - PreAllocArray doesn't guarantee order so referencing address from GameClass as tiedEntity is wrong.
 
 Backlog:
     - BIG Get "game" working - player controller?
