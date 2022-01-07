@@ -1,8 +1,8 @@
 struct GameObject;
 struct GameClass;
-struct ByteBuffer;
-struct MeshGroup;
-INTERNAL MeshGroup* MeshGroupAssimpLoad(const char* fileName);
+
+
+
 
 struct Texture
 {
@@ -16,6 +16,33 @@ struct Texture
 
     void UseTexture() const;      // Binds this texture to Texture Unit 1
 };
+
+/** Loads texture from bitmap; generates a new texture object in GPU mem; store the id
+    of the new texture object into texture.texture_id; sets texture parameters; copies texture data
+    into the texture object in GPU mem; and generates mip maps automatically. 
+    filteringMode
+    GL_NEAREST : nearest neighbor
+    GL_LINEAR : bilinear filtering
+    GL_LINEAR_MIPMAP_LINEAR : trilinear filtering */
+INTERNAL void TextureCreateFromBitmap(Texture&        texture,
+                                      unsigned char*  bitmap,
+                                      u32             bitmapWidth,
+                                      u32             bitmapHeight,
+                                      GLenum          targetFormat,
+                                      GLenum          sourceFormat,
+                                      GLenum          filteringMode = GL_NEAREST);
+
+/** Loads texture at file_path; generates a new texture object in GPU mem; stores the id
+    of the new texture object into texture.texture_id; sets texture parameters; copies
+    texture data into the texture object in GPU mem; and generates mip maps automatically.
+    Returns false if something failed. */
+INTERNAL bool TextureCreateFromFile(Texture& texture, const char* textureFilePath, GLenum filteringMode = GL_NEAREST);
+
+/** Deletes texture object from GPU memory; resets texture_id, width, height, bit_depth to 0. */
+INTERNAL void TextureDelete(Texture& texture); // TODO(Kevin): rename to "delete from GPU" or something
+
+
+
 
 
 struct Mesh
@@ -40,6 +67,28 @@ struct Mesh
                              GLenum drawUsage = GL_DYNAMIC_DRAW);
 };
 
+/** Create a Mesh with the given vertices and indices.
+vertex_attrib_size: vertex coords size (e.g. 3 if x y z)
+texture_attrib_size: texture coords size (e.g. 2 if u v)
+draw_usage: affects optimization; GL_STATIC_DRAW buffer data
+only set once, GL_DYNAMIC_DRAW if buffer modified repeatedly */
+INTERNAL Mesh MeshCreate(Mesh& mesh,
+                         float* vertices,
+                         u32* indices,
+                         u32 verticesArrayCount,
+                         u32 indicesArrayCount,
+                         u8 positionAttribSize = 3,  // x y z
+                         u8 textureAttribSize = 2,   // u v
+                         u8 normalAttribSize = 3,    // x y z
+                         GLenum drawUsage = GL_STATIC_DRAW);
+
+/** Clearing GPU memory: glDeleteBuffers and glDeleteVertexArrays deletes the buffer
+    object and vertex array object off the GPU memory. */
+INTERNAL void MeshDelete(Mesh& mesh);
+
+
+
+
 
 struct MeshGroup
 {
@@ -50,6 +99,13 @@ struct MeshGroup
 
     void Render();
 };
+
+/** Load model from disk through Assimp */
+INTERNAL MeshGroup* MeshGroupAssimpLoad(const char* fileName);
+
+
+
+
 
 struct CollisionEventArgs
 {
@@ -90,86 +146,37 @@ struct GameObject final
         , entityId(GetUniqueEntityId())
     {}
 
-    virtual void Update();
+    virtual void    Update();
+    virtual void    Render(const Shader& shader);
+    virtual void    OnCollision(CollisionEventArgs collisionInfo);
 
-    virtual void Render(const Shader& shader);
-
-    virtual void OnCollision(CollisionEventArgs collisionInfo);
-
+    EntityId        GetId() const { return entityId; }
     GAME_CLASS_CODE GetGameClassCode() const;
+    GameClass*      GetClass() const;
+    void            SetClass(GameClass* childClass);
 
-    EntityId GetId() const { return entityId; }
-
-    GameClass* GetClass() const;
-
-    void SetClass(GameClass* childClass);
-
-
-    const mat4& GetModelMatrix()
-    {
-        if(isModelMatrixOutdated)
-        {
-            modelMatrix = mat4();
-            modelMatrix *= TranslationMatrix(position);
-            modelMatrix *= RotationMatrix(orientation);
-            modelMatrix *= ScaleMatrix(scale);
-            isModelMatrixOutdated = false;
-        }
-
-        return modelMatrix;
-    }
-    vec3 GetPos() const
-    {
-        return position;
-    }
-    void SetPos(const vec3& newPos)
-    {
-        position = newPos;
-        isModelMatrixOutdated = true;
-    }
-    void Move(const vec3& moveAmount)
-    {
-        position += moveAmount;
-        isModelMatrixOutdated = true;
-    }
-    quat GetOrientation() const
-    {
-        return orientation;
-    }
-    void SetOrientation(const quat& newOrientation)
-    {
-        orientation = newOrientation;
-        isModelMatrixOutdated = true;
-    }
-    void Rotate(const vec3& eulerInDegrees)
-    {
-        quat q = EulerToQuat(eulerInDegrees * SML_DEG2RAD);
-        Rotate(q);
-    }
-    void Rotate(const quat& rotationAsQuat)
-    {
-        SetOrientation(rotationAsQuat * GetOrientation());
-    }
-    vec3 GetScale() const
-    {
-        return scale;
-    }
-    void SetScale(const vec3& newScale)
-    {
-        scale = newScale;
-        isModelMatrixOutdated = true;
-    }
+    const mat4& GetModelMatrix();
+    vec3 GetPos() const;
+    void SetPos(const vec3& newPos);
+    void Move(const vec3& moveAmount);
+    quat GetOrientation() const;
+    void SetOrientation(const quat& newOrientation);
+    void Rotate(const vec3& eulerInDegrees);
+    void Rotate(const quat& rotationAsQuat);
+    vec3 GetScale() const;
+    void SetScale(const vec3& newScale);
 
 protected:
-    vec3 position; // World space
+    vec3 position;
     quat orientation;
     vec3 scale;
 
 private:
+    EntityId entityId;
     GameClass* tiedClass;
+
     mat4 modelMatrix;
     bool32 isModelMatrixOutdated;
-    EntityId entityId;
 };
 
 struct GameClass
@@ -230,8 +237,10 @@ struct GameClass
 public:
     bool isVisible = true;
     bool hasCollision = false;
+
 protected:
     GAME_CLASS_CODE gameClassCode;
+
 private:
     GameObject* tiedEntity = nullptr;
 };
@@ -383,9 +392,6 @@ struct GameCamera
     void CameraCalculateViewMatrix();
 };
 
-
-
-
 // POINTER to a collider which is described in MODEL SPACE
 // In order to do collision checks, we first move the collider by modelMatrix
 // Colliders are SHARED between objects e.g. cars in a racing game may all have same collider
@@ -518,3 +524,70 @@ struct LineCollider : Collider
         return (distanceA > distanceB ? a : b);
     }
 };
+
+struct Billboard
+{
+    GameCamera* target = NULL;
+    vec3 position;
+    vec3 scale;
+    bool cylindricalFlag = false; // cylindrical only rotates around Y axis
+
+    void InitQuadMesh(float width, float height, vec2 originOffset)
+    {
+        MeshCreate(quad, nullptr, nullptr, 0, 0, 3, 2, 0, GL_DYNAMIC_DRAW);
+        Resize(width, height, originOffset);
+    }
+
+    void DeleteQuadMesh()
+    {
+        MeshDelete(quad);
+    }
+
+    void Resize(float width, float height, vec2 originOffset)
+    {
+        quadVertices[1] = -originOffset.y;
+        quadVertices[2] = -originOffset.x;
+        quadVertices[6] = -originOffset.y;
+        quadVertices[7] = width - originOffset.x;
+        quadVertices[11] = height - originOffset.y;
+        quadVertices[12] = -originOffset.x;
+        quadVertices[16] = height - originOffset.y;
+        quadVertices[17] = width - originOffset.x;
+        u32 quadIndices[6] = {0,1,3,0,3,2};
+        quad.RebindBufferObjects(quadVertices, quadIndices, 20, 6);
+    }
+
+    void RotateAndRender(const Shader& billboardShader)
+    {
+        mat4 modelMatrix = TranslationMatrix(position);
+        if(target)
+        {
+            vec3 toTarget = target->position - position;
+            vec3 rot;
+            rot.y = atanf(-toTarget.z / toTarget.x);
+            if(!cylindricalFlag)
+            {
+                rot = QuatToEuler(DirectionToOrientation(toTarget));
+                rot.x = 0.f;
+            }
+            modelMatrix *= RotationMatrix(EulerToQuat(rot));
+        }
+        modelMatrix *= ScaleMatrix(scale);
+        billboardShader.GLBindMatrix4fv("modelMatrix", 1, modelMatrix.ptr());
+
+        // TODO(Kevin): use billboard texture
+
+        quad.RenderMesh();
+    }
+
+private:
+    Mesh quad;
+
+    float quadVertices[20] = {
+        0.f, -1.f, -1.f, 0.f, 0.f,
+        0.f, -1.f, 1.f, 1.f, 0.f,
+        0.f, 1.f, -1.f, 0.f, 1.f,
+        0.f, 1.f, 1.f, 1.f, 1.f
+    };
+};
+

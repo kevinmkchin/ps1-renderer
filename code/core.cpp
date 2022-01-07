@@ -1,40 +1,65 @@
 INTERNAL std::unordered_map<std::string, Texture> __gpuLoadedTextures;
+INTERNAL std::unordered_map<std::string, MeshGroup> __gpuLoadedModels;
 
-/** Deletes texture object from GPU memory; resets texture_id, width, height, bit_depth to 0. */
-INTERNAL void TextureDelete(Texture& texture) // TODO(Kevin): rename to "delete from GPU" or something
+
+void Texture::UseTexture() const
 {
-    if(texture.textureId == 0)
+    LOCAL_PERSIST Texture missingTexture;
+    if(missingTexture.textureId == 0)
     {
-        return;
-    }
-    glDeleteTextures(1, &texture.textureId);
-
-    auto gpuTextureIter = __gpuLoadedTextures.find(texture.filePath);
-    if(gpuTextureIter != __gpuLoadedTextures.end())
-    {
-        __gpuLoadedTextures.erase(gpuTextureIter);
+        TextureCreateFromFile(missingTexture, "data/primitives/missing_texture.png");
     }
 
-    texture.textureId = 0;
-    texture.width = 0;
-    texture.height = 0;
-    texture.format = GL_NONE;
+    if(textureId == 0)
+    {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, missingTexture.textureId);
+    }
+    else
+    {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureId);
+    }
 }
 
-/** Loads texture from bitmap; generates a new texture object in GPU mem; store the id
-    of the new texture object into texture.texture_id; sets texture parameters; copies texture data
-    into the texture object in GPU mem; and generates mip maps automatically. 
-    filteringMode
-    GL_NEAREST : nearest neighbor
-    GL_LINEAR : bilinear filtering
-    GL_LINEAR_MIPMAP_LINEAR : trilinear filtering */
+INTERNAL bool TextureCreateFromFile(Texture& texture, const char* textureFilePath, GLenum filteringMode)
+{
+    if(texture.textureId != 0)
+    {
+        printf("WARNING: Trying to load a Texture when there is already a texture loaded! Clearing texture first...\n");
+        TextureDelete(texture); // TODO(Kevin): Remove probably because we don't want to delete if we load all textures at start and unload at end
+    }
+
+    auto textureAlreadyLoaded = __gpuLoadedTextures.find(std::string(textureFilePath));
+    if(textureAlreadyLoaded != __gpuLoadedTextures.end())
+    {
+        texture = textureAlreadyLoaded->second;
+        return true;
+    }
+
+    BitmapHandle textureHandle;
+    ReadImage(textureHandle, textureFilePath);
+    if (textureHandle.memory == NULL)
+    {
+        return false;
+    }
+    TextureCreateFromBitmap(texture, (unsigned char *) textureHandle.memory, textureHandle.width,
+                            textureHandle.height, GL_RGBA, (textureHandle.bitDepth == 3 ? GL_RGB : GL_RGBA), filteringMode);
+    FreeImage(textureHandle); // texture data has been copied to GPU memory, so we can free image from memory
+
+    texture.filePath = textureFilePath;
+    __gpuLoadedTextures[textureFilePath] = texture;
+
+    return true;
+}
+
 INTERNAL void TextureCreateFromBitmap(Texture&        texture,
                                       unsigned char*  bitmap,
                                       u32             bitmapWidth,
                                       u32             bitmapHeight,
                                       GLenum          targetFormat,
                                       GLenum          sourceFormat,
-                                      GLenum          filteringMode = GL_NEAREST) 
+                                      GLenum          filteringMode) 
 {
     if(texture.textureId != 0)
     {
@@ -66,65 +91,25 @@ INTERNAL void TextureCreateFromBitmap(Texture&        texture,
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-/** Loads texture at file_path; generates a new texture object in GPU mem; stores the id
-    of the new texture object into texture.texture_id; sets texture parameters; copies
-    texture data into the texture object in GPU mem; and generates mip maps automatically.
-    Returns false if something failed. */
-INTERNAL bool TextureCreateFromFile(Texture& texture, const char* textureFilePath, GLenum filteringMode = GL_NEAREST)
+INTERNAL void TextureDelete(Texture& texture)
 {
-    if(texture.textureId != 0)
+    if(texture.textureId == 0)
     {
-        printf("WARNING: Trying to load a Texture when there is already a texture loaded! Clearing texture first...\n");
-        TextureDelete(texture); // TODO(Kevin): Remove probably because we don't want to delete if we load all textures at start and unload at end
+        return;
+    }
+    glDeleteTextures(1, &texture.textureId);
+
+    auto gpuTextureIter = __gpuLoadedTextures.find(texture.filePath);
+    if(gpuTextureIter != __gpuLoadedTextures.end())
+    {
+        __gpuLoadedTextures.erase(gpuTextureIter);
     }
 
-    auto textureAlreadyLoaded = __gpuLoadedTextures.find(std::string(textureFilePath));
-    if(textureAlreadyLoaded != __gpuLoadedTextures.end())
-    {
-        texture = textureAlreadyLoaded->second;
-        return true;
-    }
-
-    BitmapHandle textureHandle;
-    ReadImage(textureHandle, textureFilePath);
-    if (textureHandle.memory == NULL)
-    {
-        return false;
-    }
-    TextureCreateFromBitmap(texture, (unsigned char *) textureHandle.memory, textureHandle.width,
-                            textureHandle.height, GL_RGBA, (textureHandle.bitDepth == 3 ? GL_RGB : GL_RGBA), filteringMode);
-    FreeImage(textureHandle); // texture data has been copied to GPU memory, so we can free image from memory
-
-    texture.filePath = textureFilePath;
-    __gpuLoadedTextures[textureFilePath] = texture;
-
-    return true;
+    texture.textureId = 0;
+    texture.width = 0;
+    texture.height = 0;
+    texture.format = GL_NONE;
 }
-
-void Texture::UseTexture() const
-{
-    LOCAL_PERSIST Texture missingTexture;
-    if(missingTexture.textureId == 0)
-    {
-        TextureCreateFromFile(missingTexture, "data/primitives/missing_texture.png");
-    }
-
-    if(textureId == 0)
-    {
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, missingTexture.textureId);
-    }
-    else
-    {
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, textureId);
-    }
-}
-
-
-
-
-
 
 void Mesh::RenderMesh(GLenum renderMode) const
 {
@@ -142,11 +127,8 @@ void Mesh::RenderMesh(GLenum renderMode) const
     glBindVertexArray(0);
 }
 
-void Mesh::RebindBufferObjects(float* vertices,
-                               u32* indices,
-                               u32 verticesArrayCount,
-                               u32 indicesArrayCount,
-                               GLenum drawUsage)
+void Mesh::RebindBufferObjects(float* vertices, u32* indices, 
+    u32 verticesArrayCount, u32 indicesArrayCount, GLenum drawUsage)
 {
     if(idVBO == 0 || idIBO == 0)
     {
@@ -163,20 +145,9 @@ void Mesh::RebindBufferObjects(float* vertices,
     glBindVertexArray(0);
 }
 
-/** Create a Mesh with the given vertices and indices.
-vertex_attrib_size: vertex coords size (e.g. 3 if x y z)
-texture_attrib_size: texture coords size (e.g. 2 if u v)
-draw_usage: affects optimization; GL_STATIC_DRAW buffer data
-only set once, GL_DYNAMIC_DRAW if buffer modified repeatedly */
-INTERNAL Mesh MeshCreate(Mesh& mesh,
-                         float* vertices,
-                         u32* indices,
-                         u32 verticesArrayCount,
-                         u32 indicesArrayCount,
-                         u8 positionAttribSize = 3,  // x y z
-                         u8 textureAttribSize = 2,   // u v
-                         u8 normalAttribSize = 3,    // x y z
-                         GLenum drawUsage = GL_STATIC_DRAW)
+INTERNAL Mesh MeshCreate(Mesh& mesh, float* vertices, u32* indices, 
+    u32 verticesArrayCount, u32 indicesArrayCount, 
+    u8 positionAttribSize, u8 textureAttribSize, u8 normalAttribSize, GLenum drawUsage)
 {
     u8 stride = 0;
     if(textureAttribSize)
@@ -223,8 +194,6 @@ INTERNAL Mesh MeshCreate(Mesh& mesh,
     return mesh;
 }
 
-/** Clearing GPU memory: glDeleteBuffers and glDeleteVertexArrays deletes the buffer
-    object and vertex array object off the GPU memory. */
 INTERNAL void MeshDelete(Mesh& mesh)
 {
     if (mesh.idIBO != 0)
@@ -245,11 +214,6 @@ INTERNAL void MeshDelete(Mesh& mesh)
 
     mesh.indicesCount = 0;
 }
-
-
-
-
-
 
 void MeshGroup::Render()
 {
@@ -315,10 +279,6 @@ INTERNAL Mesh __assimpLoadMeshHelper(aiMesh* meshNode)
     return mesh;
 }
 
-INTERNAL std::unordered_map<std::string, MeshGroup> __gpuLoadedModels;
-
-/** Load model from disk through Assimp
- * */
 INTERNAL MeshGroup* MeshGroupAssimpLoad(const char* fileName)
 {
     auto modelAlreadyLoaded = __gpuLoadedModels.find(fileName);
@@ -424,7 +384,6 @@ INTERNAL void MeshGroupDelete(MeshGroup* const modelToDelete)
 
 
 
-
 void GameObject::Update()
 {
     if(tiedClass)
@@ -432,7 +391,6 @@ void GameObject::Update()
         tiedClass->Update();
     }
 }
-
 void GameObject::Render(const Shader& shader)
 {
     if(tiedClass)
@@ -440,7 +398,6 @@ void GameObject::Render(const Shader& shader)
         tiedClass->Render(shader);
     }
 }
-
 void GameObject::OnCollision(CollisionEventArgs collisionInfo)
 {
     if(tiedClass)
@@ -448,7 +405,6 @@ void GameObject::OnCollision(CollisionEventArgs collisionInfo)
         tiedClass->OnCollision(collisionInfo);
     }
 }
-
 GAME_CLASS_CODE GameObject::GetGameClassCode() const
 {
     if(GetClass())
@@ -457,12 +413,10 @@ GAME_CLASS_CODE GameObject::GetGameClassCode() const
     }
     return CLASS_INVALID;
 }
-
 GameClass* GameObject::GetClass() const
 { 
     return tiedClass;
 }
-
 void GameObject::SetClass(GameClass* childClass) 
 {
     tiedClass = childClass;
@@ -471,7 +425,60 @@ void GameObject::SetClass(GameClass* childClass)
         tiedClass->SetTiedEntity(this);
     }
 }
+const mat4& GameObject::GetModelMatrix()
+{
+    if(isModelMatrixOutdated)
+    {
+        modelMatrix = mat4();
+        modelMatrix *= TranslationMatrix(position);
+        modelMatrix *= RotationMatrix(orientation);
+        modelMatrix *= ScaleMatrix(scale);
+        isModelMatrixOutdated = false;
+    }
 
+    return modelMatrix;
+}
+vec3 GameObject::GetPos() const
+{
+    return position;
+}
+void GameObject::SetPos(const vec3& newPos)
+{
+    position = newPos;
+    isModelMatrixOutdated = true;
+}
+void GameObject::Move(const vec3& moveAmount)
+{
+    position += moveAmount;
+    isModelMatrixOutdated = true;
+}
+quat GameObject::GetOrientation() const
+{
+    return orientation;
+}
+void GameObject::SetOrientation(const quat& newOrientation)
+{
+    orientation = newOrientation;
+    isModelMatrixOutdated = true;
+}
+void GameObject::Rotate(const vec3& eulerInDegrees)
+{
+    quat q = EulerToQuat(eulerInDegrees * SML_DEG2RAD);
+    Rotate(q);
+}
+void GameObject::Rotate(const quat& rotationAsQuat)
+{
+    SetOrientation(rotationAsQuat * GetOrientation());
+}
+vec3 GameObject::GetScale() const
+{
+    return scale;
+}
+void GameObject::SetScale(const vec3& newScale)
+{
+    scale = newScale;
+    isModelMatrixOutdated = true;
+}
 
 
 
@@ -565,7 +572,9 @@ void GameCamera::CameraCalculateViewMatrix()
 
 
 
+///////////////////////////////
 // GJK + EPA
+///////////////////////////////
 
 struct GJKSimplex
 {
@@ -1025,73 +1034,3 @@ INTERNAL void CollisionWorldUpdate()
         }
     }
 }
-
-
-
-
-
-struct Billboard
-{
-    GameCamera* target = NULL;
-    vec3 position;
-    vec3 scale;
-    bool cylindricalFlag = false; // cylindrical only rotates around Y axis
-
-    void InitQuadMesh(float width, float height, vec2 originOffset)
-    {
-        MeshCreate(quad, nullptr, nullptr, 0, 0, 3, 2, 0, GL_DYNAMIC_DRAW);
-        Resize(width, height, originOffset);
-    }
-
-    void DeleteQuadMesh()
-    {
-        MeshDelete(quad);
-    }
-
-    void Resize(float width, float height, vec2 originOffset)
-    {
-        quadVertices[1] = -originOffset.y;
-        quadVertices[2] = -originOffset.x;
-        quadVertices[6] = -originOffset.y;
-        quadVertices[7] = width - originOffset.x;
-        quadVertices[11] = height - originOffset.y;
-        quadVertices[12] = -originOffset.x;
-        quadVertices[16] = height - originOffset.y;
-        quadVertices[17] = width - originOffset.x;
-        u32 quadIndices[6] = {0,1,3,0,3,2};
-        quad.RebindBufferObjects(quadVertices, quadIndices, 20, 6);
-    }
-
-    void RotateAndRender(const Shader& billboardShader)
-    {
-        mat4 modelMatrix = TranslationMatrix(position);
-        if(target)
-        {
-            vec3 toTarget = target->position - position;
-            vec3 rot;
-            rot.y = atanf(-toTarget.z / toTarget.x);
-            if(!cylindricalFlag)
-            {
-                rot = QuatToEuler(DirectionToOrientation(toTarget));
-                rot.x = 0.f;
-            }
-            modelMatrix *= RotationMatrix(EulerToQuat(rot));
-        }
-        modelMatrix *= ScaleMatrix(scale);
-        billboardShader.GLBindMatrix4fv("modelMatrix", 1, modelMatrix.ptr());
-
-        // TODO(Kevin): use billboard texture
-
-        quad.RenderMesh();
-    }
-
-private:
-    Mesh quad;
-
-    float quadVertices[20] = {
-        0.f, -1.f, -1.f, 0.f, 0.f,
-        0.f, -1.f, 1.f, 1.f, 0.f,
-        0.f, 1.f, -1.f, 0.f, 1.f,
-        0.f, 1.f, 1.f, 1.f, 1.f
-    };
-};
