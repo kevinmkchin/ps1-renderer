@@ -1280,7 +1280,7 @@ INTERNAL void GameImportMap(const std::string& mapName,
                 auto _tempVolumeBrushForGenerateVBO = VolumeBrush();
                 _tempVolumeBrushForGenerateVBO.Deserialize(&importBuffer);
                 _tempGameObjectForGenerateVBO.SetClass(&_tempVolumeBrushForGenerateVBO);
-                std::vector<float>& _tempVolumeMeshVBO = _tempVolumeBrushForGenerateVBO.GenerateBufferObject();
+                std::vector<float> _tempVolumeMeshVBO = _tempVolumeBrushForGenerateVBO.GenerateBufferObject();
 
                 GameObject* addGameObj = &staticMapObjects.PushBackDefault();
                 auto createdLevelGeomPtr = new LevelGeometry();

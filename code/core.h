@@ -308,14 +308,14 @@ struct LevelGeometry : GameClass  // we could have subclasses of level geometry 
 {
     /* Stripped down version of VolumeBrush that can be used in game */
 
-    u32 idVAO;
-    u32 idVBO;
+    u32 idVAO = 0;
+    u32 idVBO = 0;
 
     struct {
         Texture texture;
         i32 numberOfIndices;
     } faces[8];
-    u32 facesCount;
+    u32 facesCount = 0;
 
     LevelGeometry()
     {

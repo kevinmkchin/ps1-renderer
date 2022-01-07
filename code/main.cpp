@@ -4,7 +4,6 @@
 TODO:
 Task for today:
     - organize fucking code
-    - GPU crash when load game while output resolution is diff aspect ratio from internal resolution
 
 Backlog:
     - BIG Get "game" working - player controller?
