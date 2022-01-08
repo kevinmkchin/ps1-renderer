@@ -96,8 +96,8 @@ BUILD MODES:
 
 /** Internal resolution : resolution the game is running at
     Back buffer resolution : resolution actually outputted to screen */
-GLOBAL_VAR u32 internalResolutionWidth = 320;
-GLOBAL_VAR u32 internalResolutionHeight = 240;
+GLOBAL_VAR u32 internalResolutionWidth = 800;//320;
+GLOBAL_VAR u32 internalResolutionHeight = 600;//240;
 GLOBAL_VAR i32 backbufferWidth = INDEX_NONE;
 GLOBAL_VAR i32 backbufferHeight = INDEX_NONE;
 /** FOV of the game camera */

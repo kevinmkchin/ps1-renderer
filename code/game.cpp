@@ -1,5 +1,5 @@
 
-INTERNAL GameCamera gameCamera;
+INTERNAL EditorCamera gameCamera;
 INTERNAL std::vector<GameObject*> gameObjectsA;
 INTERNAL MeshCollider colA;
 
@@ -8,15 +8,21 @@ INTERNAL PreAllocArray<MeshCollider> staticMapColliders;
 
 struct PlayerController : GameObject
 {
+    float yVel = 0.f;
+
     void Update() override
     {
-        float moveSpeed = 1.f;
-        float forwardMov = (float)(gCurrentKeyState[SDL_SCANCODE_W] - gCurrentKeyState[SDL_SCANCODE_S]) * moveSpeed * gDeltaTime;
-        vec3 forwardDir = vec3(gameCamera.calculatedDirection.x, 0.f, gameCamera.calculatedDirection.z);
+        float moveSpeed = 4.f;
+        float forwardMov = (float)(gCurrentKeyState[SDL_SCANCODE_UP] - gCurrentKeyState[SDL_SCANCODE_DOWN]) * moveSpeed * gDeltaTime;
+        vec3 forwardDir = SML_FORWARD_VECTOR;//vec3(gameCamera.calculatedDirection.x, 0.f, gameCamera.calculatedDirection.z);
         Move(forwardDir * forwardMov);
-        float rightMov = (float)(gCurrentKeyState[SDL_SCANCODE_D] - gCurrentKeyState[SDL_SCANCODE_A]) * moveSpeed * gDeltaTime;
-        vec3 rightDir = vec3(gameCamera.calculatedRight.x, 0.f, gameCamera.calculatedRight.z);
+        float rightMov = (float)(gCurrentKeyState[SDL_SCANCODE_RIGHT] - gCurrentKeyState[SDL_SCANCODE_LEFT]) * moveSpeed * gDeltaTime;
+        vec3 rightDir = SML_RIGHT_VECTOR;//vec3(gameCamera.calculatedRight.x, 0.f, gameCamera.calculatedRight.z);
         Move(rightDir * rightMov);
+
+        yVel -= 0.098f * gDeltaTime;
+        Move(vec3(0.f, yVel, 0.f));
+
 
         //gameCamera.position = position;
         gameCamera.CameraUpdate();
@@ -24,7 +30,16 @@ struct PlayerController : GameObject
 
     void OnCollision(CollisionEventArgs collisionInfo) override
     {
-        printf("colliding w/ %p\n", collisionInfo.other);
+
+        if(Dot(Normalize(-collisionInfo.normal), SML_UP_VECTOR) > 0.5f)
+        {
+            Move(SML_UP_VECTOR * collisionInfo.depth);
+            yVel = 0.f;
+        }
+        else
+        {
+            Move(-collisionInfo.normal * collisionInfo.depth);
+        }
     }
 };
 
@@ -32,7 +47,7 @@ INTERNAL void GameInitOnStartUp()
 {
     staticMapObjects.Allocate(MAX_EDITOR_ENTITIES_COUNT);
     staticMapColliders.Allocate(MAX_EDITOR_ENTITIES_COUNT);
-    GameImportMap("volumes.map", staticMapObjects, staticMapColliders);
+    GameImportMap("slopetest.map", staticMapObjects, staticMapColliders);
 
     gameCamera.CameraCalculatePerspectiveMatrix();
     gameCamera.position = {-3.048528f, 1.879444f, 2.618031f };
