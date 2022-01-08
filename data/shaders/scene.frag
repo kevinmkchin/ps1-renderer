@@ -1,6 +1,6 @@
 #version 330 core
 
-noperspective in vec2 uv;
+in vec2 uv;
 in vec3 LIGHT;
 
 layout(location = 0) out vec4 out_colour;
