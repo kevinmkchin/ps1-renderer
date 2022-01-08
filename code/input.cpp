@@ -32,7 +32,10 @@ INTERNAL void ProcessSDLKeyDownEvent(SDL_KeyboardEvent keyEvent)
 {
     SDL_Scancode key = keyEvent.keysym.scancode;
     gCurrentKeyState[key] = 1;
-    gJustPressedKeyState[key] = 1; 
+    if(!keyEvent.repeat)
+    {
+        gJustPressedKeyState[key] = 1;
+    }
 }
 
 INTERNAL void ProcessSDLKeyUpEvent(SDL_KeyboardEvent keyEvent)
