@@ -135,7 +135,7 @@ INTERNAL EntityId GetUniqueEntityId()
     return id++;
 }
 
-struct GameObject final
+struct GameObject
 {
     GameObject()
         : position({0.f, 0.f, 0.f })
@@ -386,10 +386,15 @@ struct GameCamera
     float turnSpeed             = 0.04f;
     bool  bMouseControl          = false;
 
-    void CameraUpdate();
+    virtual void CameraUpdate();
     void CameraCalculatePerspectiveMatrix();
     void CameraCalculatePerspectiveMatrix(float aspectRatio);
     void CameraCalculateViewMatrix();
+};
+
+struct EditorCamera : GameCamera
+{
+    void CameraUpdate() override;
 };
 
 // POINTER to a collider which is described in MODEL SPACE

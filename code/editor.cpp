@@ -301,7 +301,7 @@ INTERNAL GameObject* GetEditorObjectWithId(EntityId eid)
     }
     return nullptr;
 }
-INTERNAL GameCamera editorCamera;
+INTERNAL EditorCamera editorCamera;
 #define NumberOfReservedClickableVertexIds 32
 INTERNAL EntityId reservedClickableVertexIds[NumberOfReservedClickableVertexIds];
 INTERNAL std::vector<VolumeBrush::Vertex*> selectedClickableVertices;

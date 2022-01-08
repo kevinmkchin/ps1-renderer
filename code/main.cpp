@@ -1,9 +1,9 @@
-#define START_IN_EDITOR_MODE_ACTIVE
+//#define START_IN_EDITOR_MODE_ACTIVE
 /** PRIMEVIL
 
 TODO:
 Task for today:
-    - organize fucking code
+    - for TransformCollider for static level geometry, we don't need to waste modelmatrix multiplication bcs it'll prob always be identity
     - PreAllocArray doesn't guarantee order so referencing address from GameClass as tiedEntity is wrong.
 
 Backlog:
@@ -425,7 +425,6 @@ INTERNAL void SDLProcessEventsRealtime()
                 {
                     SDL_SetRelativeMouseMode(SDL_FALSE);
                     SDL_WarpMouseInWindow(window, backbufferWidth/2, backbufferHeight/2);
-                    gameCamera.bMouseControl = false;
                     editorCamera.bMouseControl = false;
                 }
             }break;
@@ -449,7 +448,6 @@ INTERNAL void SDLProcessEventsRealtime()
                 if(mouseDown.button == SDL_BUTTON_RIGHT && mouseDown.state == SDL_PRESSED)
                 {
                     SDL_SetRelativeMouseMode(SDL_TRUE);
-                    gameCamera.bMouseControl = true;
                     editorCamera.bMouseControl = true;
                 }
             }break;

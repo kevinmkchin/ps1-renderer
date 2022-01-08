@@ -513,6 +513,54 @@ void GameCamera::CameraUpdate()
     calculatedRight = Normalize(Cross(calculatedDirection, SML_UP_VECTOR));
     calculatedUp = Normalize(Cross(calculatedRight, calculatedDirection));
 
+    CameraCalculateViewMatrix();
+}
+
+void GameCamera::CameraCalculatePerspectiveMatrix()
+{
+    float aspect_ratio = (float)internalResolutionWidth / (float)internalResolutionHeight;
+    perspectiveMatrix = ProjectionMatrixPerspective((FOV / 2.f) * SML_DEG2RAD, aspect_ratio, nearClip, farClip);
+}
+
+void GameCamera::CameraCalculatePerspectiveMatrix(float aspectRatio)
+{
+    perspectiveMatrix = ProjectionMatrixPerspective((FOV / 2.f) * SML_DEG2RAD, aspectRatio, nearClip, farClip);
+}
+
+void GameCamera::CameraCalculateViewMatrix()
+{
+    viewMatrix = ViewMatrixLookAt(position, position + calculatedDirection, calculatedUp);
+}
+
+void EditorCamera::CameraUpdate()
+{
+    if(bMouseControl)
+    {
+        rotation.y /*yaw*/ -= ((float)gMouseDelta.x) * turnSpeed;
+        rotation.z /*pitch*/ -= ((float)gMouseDelta.y) * turnSpeed;
+    }
+
+    if(gGamepadStates[0].isConnected)
+    {
+        rotation.y -= gGamepadStates[0].rightThumbStickDir.x * turnSpeed * gDeltaTime * 1100.f;
+        rotation.z += gGamepadStates[0].rightThumbStickDir.y * turnSpeed * gDeltaTime * 1100.f;
+    }
+
+    if(rotation.z > 89.f)
+    {
+        rotation.z = 89.f;
+    }
+    if(rotation.z < -89.f)
+    {
+        rotation.z = -89.f;
+    }
+
+    // Calcuate direction, right, and up vectors
+    calculatedDirection = OrientationToDirection(EulerToQuat(rotation * SML_DEG2RAD));
+    calculatedDirection = Normalize(calculatedDirection);
+    calculatedRight = Normalize(Cross(calculatedDirection, SML_UP_VECTOR));
+    calculatedUp = Normalize(Cross(calculatedRight, calculatedDirection));
+
     if(gGamepadStates[0].isConnected)
     {
         position += calculatedDirection * gGamepadStates[0].leftThumbStickDir.y * 5.f * gDeltaTime;
@@ -552,22 +600,6 @@ void GameCamera::CameraUpdate()
     }
 
     CameraCalculateViewMatrix();
-}
-
-void GameCamera::CameraCalculatePerspectiveMatrix()
-{
-    float aspect_ratio = (float)internalResolutionWidth / (float)internalResolutionHeight;
-    perspectiveMatrix = ProjectionMatrixPerspective((FOV / 2.f) * SML_DEG2RAD, aspect_ratio, nearClip, farClip);
-}
-
-void GameCamera::CameraCalculatePerspectiveMatrix(float aspectRatio)
-{
-    perspectiveMatrix = ProjectionMatrixPerspective((FOV / 2.f) * SML_DEG2RAD, aspectRatio, nearClip, farClip);
-}
-
-void GameCamera::CameraCalculateViewMatrix()
-{
-    viewMatrix = ViewMatrixLookAt(position, position + calculatedDirection, calculatedUp);
 }
 
 

@@ -1,9 +1,32 @@
 
 INTERNAL GameCamera gameCamera;
 INTERNAL std::vector<GameObject*> gameObjectsA;
+INTERNAL MeshCollider colA;
 
 INTERNAL PreAllocArray<GameObject> staticMapObjects;
 INTERNAL PreAllocArray<MeshCollider> staticMapColliders;
+
+struct PlayerController : GameObject
+{
+    void Update() override
+    {
+        float moveSpeed = 1.f;
+        float forwardMov = (float)(gCurrentKeyState[SDL_SCANCODE_W] - gCurrentKeyState[SDL_SCANCODE_S]) * moveSpeed * gDeltaTime;
+        vec3 forwardDir = vec3(gameCamera.calculatedDirection.x, 0.f, gameCamera.calculatedDirection.z);
+        Move(forwardDir * forwardMov);
+        float rightMov = (float)(gCurrentKeyState[SDL_SCANCODE_D] - gCurrentKeyState[SDL_SCANCODE_A]) * moveSpeed * gDeltaTime;
+        vec3 rightDir = vec3(gameCamera.calculatedRight.x, 0.f, gameCamera.calculatedRight.z);
+        Move(rightDir * rightMov);
+
+        //gameCamera.position = position;
+        gameCamera.CameraUpdate();
+    }
+
+    void OnCollision(CollisionEventArgs collisionInfo) override
+    {
+        printf("colliding w/ %p\n", collisionInfo.other);
+    }
+};
 
 INTERNAL void GameInitOnStartUp()
 {
@@ -14,6 +37,30 @@ INTERNAL void GameInitOnStartUp()
     gameCamera.CameraCalculatePerspectiveMatrix();
     gameCamera.position = {-3.048528f, 1.879444f, 2.618031f };
     gameCamera.rotation = {0.0f, 31.56f, -21.f };
+    gameCamera.bMouseControl = true;
+
+    auto objA = new PlayerController();
+    gameObjectsA.push_back(objA);
+    auto psA = new PropStatic();
+    objA->SetClass(psA);
+    psA->SetModel(MeshGroupAssimpLoad("data/primitives/cube.obj"));
+
+    colA.owningGameObject = objA;
+    colA.verticesModelSpace = {
+            {-0.5f, 0.5f, -0.5f},
+            {-0.5f, 0.5f, 0.5f},
+            {0.5f, 0.5f, 0.5f},
+            {0.5f, 0.5f, -0.5f},
+            {-0.5f, -0.5f, -0.5f},
+            {-0.5f, -0.5f, 0.5f},
+            {0.5f, -0.5f, 0.5f},
+            {0.5f, -0.5f, -0.5f}
+    };
+    DynamicColliders.push_back(&colA);
+    for(u32 i = 0; i < staticMapColliders.Count(); ++i)
+    {
+        StaticColliders.push_back(&staticMapColliders[i]);
+    }
 
     // objA.SetModel(MeshGroupAssimpLoad("data/primitives/cube.obj"));
     // objA.SetScale(vec3(1.4f,1.4f,1.4f));
@@ -51,12 +98,10 @@ INTERNAL void GameUnload()
 
 INTERNAL void GameUpdate()
 {
-    gameCamera.CameraUpdate();
-
-    // for(auto& gameObj : gameObjectsA)
-    // {
-    //     gameObj->Update();
-    // }
+    for(auto& gameObj : gameObjectsA)
+    {
+        gameObj->Update();
+    }
 
     // gameObjectsA[0]->Move(
     //         {(gCurrentKeyState[SDL_SCANCODE_RIGHT] * 1.f + -gCurrentKeyState[SDL_SCANCODE_LEFT] * 1.f) * gDeltaTime,
