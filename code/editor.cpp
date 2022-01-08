@@ -1298,9 +1298,11 @@ INTERNAL void GameImportMap(const std::string& mapName,
                 MeshCollider meshCollider;
                 meshCollider.owningGameObject = addGameObj;
                 meshCollider.verticesModelSpace.resize(_tempVolumeBrushForGenerateVBO.vertices.size());
-                for(auto v : _tempVolumeBrushForGenerateVBO.vertices)
+                for(int i = 0; i < _tempVolumeBrushForGenerateVBO.vertices.size(); ++i)
                 {
-                    meshCollider.verticesModelSpace.push_back(v.pos);
+                    auto& v = _tempVolumeBrushForGenerateVBO.vertices[i];
+                    v.pos = (_tempGameObjectForGenerateVBO.GetModelMatrix() * vec4(v.pos, 1.f)).xyz;
+                    meshCollider.verticesModelSpace[i] = v.pos;
                 }
                 staticMapColliders.PushBack(meshCollider);
             }break;
