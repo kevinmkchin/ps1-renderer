@@ -20,7 +20,13 @@ struct PlayerController : GameObject
         vec3 rightDir = SML_RIGHT_VECTOR;//vec3(gameCamera.calculatedRight.x, 0.f, gameCamera.calculatedRight.z);
         Move(rightDir * rightMov);
 
+        if(gJustPressedKeyState[SDL_SCANCODE_SPACE])
+        {
+            yVel += 0.1f;
+        }
+
         yVel -= 0.098f * gDeltaTime;
+
         Move(vec3(0.f, yVel, 0.f));
 
 
