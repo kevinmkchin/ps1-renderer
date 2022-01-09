@@ -7,7 +7,6 @@ Task for today:
     - SMALL Face Texture properties: UV rotation, scale, other stuff
     - PreAllocArray doesn't guarantee order so referencing address from GameClass as tiedEntity is wrong.
     - SMALL Delete brushes or entities from level editor scene
-    - make gjk col MTV be relative to object we broadcasting to?
 
 Backlog:
     - BIG Classes for volume?

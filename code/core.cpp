@@ -1020,7 +1020,7 @@ INTERNAL GJKEPACollisionInfo GJK(Collider* colA, Collider* colB)
 INTERNAL void NotifyOwningObjectsAboutCollision(Collider* a, Collider* b, GJKEPACollisionInfo collisionInfo)
 {
     CollisionEventArgs dispatchInfo;
-    dispatchInfo.normal = collisionInfo.normal;
+    dispatchInfo.normal = -collisionInfo.normal;
     dispatchInfo.depth = collisionInfo.penetrationDepth;
     if(a->owningGameObject)
     {
@@ -1029,6 +1029,7 @@ INTERNAL void NotifyOwningObjectsAboutCollision(Collider* a, Collider* b, GJKEPA
     }
     if(b->owningGameObject)
     {
+        dispatchInfo.normal = collisionInfo.normal;
         dispatchInfo.other = a->owningGameObject;
         b->owningGameObject->OnCollision(dispatchInfo);
     }

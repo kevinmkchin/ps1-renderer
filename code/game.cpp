@@ -34,19 +34,19 @@ struct PlayerController : GameObject
     void OnCollision(CollisionEventArgs collisionInfo) override
     {
 
-        if(Dot(Normalize(-collisionInfo.normal), SML_UP_VECTOR) > 0.5f)
+        if(Dot(Normalize(collisionInfo.normal), SML_UP_VECTOR) > 0.5f)
         {
             Move(SML_UP_VECTOR * collisionInfo.depth);
             yVel = 0.f;
         }
-        else if(Dot(Normalize(-collisionInfo.normal), SML_UP_VECTOR) < -0.5f)
+        else if(Dot(Normalize(collisionInfo.normal), SML_UP_VECTOR) < -0.5f)
         {
             yVel = 0.f;
-            Move(-collisionInfo.normal * collisionInfo.depth);
+            Move(collisionInfo.normal * collisionInfo.depth);
         }
         else
         {
-            Move(-collisionInfo.normal * collisionInfo.depth);
+            Move(collisionInfo.normal * collisionInfo.depth);
         }
     }
 };
