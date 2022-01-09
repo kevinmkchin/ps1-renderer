@@ -58,6 +58,15 @@ INTERNAL void GameInitOnStartUp()
 {
     staticMapObjects.Allocate(MAX_EDITOR_ENTITIES_COUNT);
     staticMapColliders.Allocate(MAX_EDITOR_ENTITIES_COUNT);
+}
+
+INTERNAL void GameLoad()
+{
+    staticMapObjects.Clear();
+    staticMapColliders.Clear();
+    StaticColliders.clear();
+    DynamicColliders.clear();
+
     GameImportMap("slopetest.map", staticMapObjects, staticMapColliders);
     for(u32 i = 0; i < staticMapColliders.Count(); ++i)
     {
@@ -86,16 +95,15 @@ INTERNAL void GameInitOnStartUp()
             {0.5f, -0.5f, -0.5f}
     };
     DynamicColliders.push_back(&colA);
-}
 
-INTERNAL void GameLoad()
-{
     printf("game load\n");
 }
 
 INTERNAL void GameUnload()
 {
     printf("game unload\n");
+
+    delete(playerController.GetClass());
 }
 
 INTERNAL void GameUpdate()
