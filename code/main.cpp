@@ -1,9 +1,8 @@
-//#define START_IN_EDITOR_MODE_ACTIVE
+// #define START_IN_EDITOR_MODE_ACTIVE
 /** PRIMEVIL
 
 TODO:
 Task for today:
-    - SMALL GAME_CLASS_CODE: instead of using bits, just use integer number
     - SMALL Face Texture properties: UV rotation, scale, other stuff
     - PreAllocArray doesn't guarantee order so referencing address from GameClass as tiedEntity is wrong.
     - SMALL Delete brushes or entities from level editor scene

@@ -116,16 +116,13 @@ struct CollisionEventArgs
 
 enum GAME_CLASS_CODE : u32
 {
-    CLASS_INVALID = 0x0000,
+    CLASS_INVALID,
 
-    OBJECT_VISIBLE = 0x0001,
-    OBJECT_COLLIDABLE = 0x0002,
+    BRUSH_VOLUME, // brushes are editor only classes
 
-    BRUSH_VOLUME = 0x0010, // brushes are editor only classes
-
-    CLASS_LEVELGEOM = 0x0020,
-    CLASS_PROPSTATIC = 0x0040,
-    CLASS_PROPDYNAMIC = 0x0080
+    CLASS_LEVELGEOM,
+    CLASS_PROPSTATIC,
+    CLASS_PROPDYNAMIC
 };
 
 INTERNAL EntityId GetUniqueEntityId()

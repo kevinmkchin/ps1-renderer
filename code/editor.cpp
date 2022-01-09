@@ -1179,9 +1179,7 @@ INTERNAL void EditorExportMap(const std::string& mapName)
     ByteBuffer exportBuffer = ByteBufferNew();
     for(u32 i = 0; i < editorEntities.Count(); ++i)
     {
-        u32 code = editorEntities[i].GetGameClassCode()
-                | (editorEntities[i].GetClass()->isVisible ? OBJECT_VISIBLE : CLASS_INVALID)
-                | (editorEntities[i].GetClass()->hasCollision ? OBJECT_COLLIDABLE : CLASS_INVALID);
+        u32 code = editorEntities[i].GetGameClassCode();
         ByteBufferWrite(&exportBuffer, u32, code);
         ByteBufferWrite(&exportBuffer, vec3, editorEntities[i].GetPos());
         ByteBufferWrite(&exportBuffer, quat, editorEntities[i].GetOrientation());
@@ -1222,7 +1220,7 @@ INTERNAL void EditorImportMap(const std::string& mapName)
         newEntity->SetScale(sca);
 
         GameClass* gcptr = NULL;
-        switch (code & 0xFFFFFFFFC)
+        switch (code)
         {
             case BRUSH_VOLUME: {
                 auto vbptr = new VolumeBrush();
@@ -1266,7 +1264,7 @@ INTERNAL void GameImportMap(const std::string& mapName,
         u32 code = CLASS_INVALID;
         ByteBufferRead(&importBuffer, u32, &code);
 
-        switch (code & 0xFFFFFFFFC)
+        switch (code)
         {
             case BRUSH_VOLUME: {
                 /* if brush volume, the class we create depends on the class of the volume
