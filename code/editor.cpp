@@ -873,15 +873,22 @@ INTERNAL void UpdateEditorImGui()
                     case BRUSH_VOLUME:{
                         VolumeBrush* lgb = (VolumeBrush*) selectedEditObj->GetClass();
 
-                        //ImGui::TextUnformatted("Vertices");
-                        // for(int i = 0; i < lgb->vertices.size(); ++i)
-                        // {
-                        //     vec3& v = lgb->vertices[i].pos;
-                        //     ImGui::PushID(i);
-                        //     ImGui::DragFloat3("v", &v.x, 0.01f);
-                        //     ImGui::PopID();
-                        // }
-                        //ImGui::Separator();
+                        ImGui::TextUnformatted("Vertices");
+                        for(int i = 0; i < lgb->vertices.size(); ++i)
+                        {
+                            mat4 _selectedEditObjModelMatrix = selectedEditObj->GetModelMatrix();
+                            vec3 v = lgb->vertices[i].pos;
+                            v = (_selectedEditObjModelMatrix * vec4(v, 1.f)).xyz;
+                            ImGui::PushID(i);
+                            ImGui::DragFloat3("v", &v.x, 0.01f);
+                            if(ImGui::IsItemEdited())
+                            {
+                                lgb->vertices[i].pos = (_selectedEditObjModelMatrix.GetInverse() * vec4(v, 1.f)).xyz;
+                            }
+                            ImGui::PopID();
+
+                        }
+                        ImGui::Separator();
 
                         ImGui::TextUnformatted("Faces");
                         ImGui::Text("%zd faces selected.", selectedClickableFaces.size());

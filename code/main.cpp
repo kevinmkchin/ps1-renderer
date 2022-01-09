@@ -3,18 +3,17 @@
 
 TODO:
 Task for today:
-    - for TransformCollider for static level geometry, we don't need to waste modelmatrix multiplication bcs it'll prob always be identity
+    - SMALL GAME_CLASS_CODE: instead of using bits, just use integer number
+    - SMALL Face Texture properties: UV rotation, scale, other stuff
     - PreAllocArray doesn't guarantee order so referencing address from GameClass as tiedEntity is wrong.
+    - SMALL Delete brushes or entities from level editor scene
+    - make gjk col MTV be relative to object we broadcasting to?
 
 Backlog:
     - BIG Classes for volume?
-    - SMALL Face Texture properties: UV rotation, scale, other stuff
     - SMALL/MED toggle snap to grid in level editor -> could even make vertices snap to vertex pos on other geom
     - MEDIUM Add/Remove edges
-    - SMALL Delete brushes or entities from level editor scene
-    - SMALL if i'm going to display vertex positions in imgui, then use the transformed vertex pos
     - SMALL/MED Create mode, show preview of brush that can be moved around and shit
-    - SMALL GAME_CLASS_CODE: instead of using bits, just use integer number
     - GameClass reflection + expose subclasses and properties to editor?
     - Dropdown to select brush type
     - Maybe DOUBLE CLICK to place an entity
@@ -22,12 +21,12 @@ Backlog:
     - shaded toggleable - brush can be shaded or not shaded
     - decals
     - fog
-    - make gjk col MTV be relative to object we broadcasting to?
     - Text rendering with kc_truetypeassembler.h
     - Drop-down console port from XNGINE (tilde)
     - Animation
     - Audio
     - NavMesh
+    - Mini skybox scene like source engine
     - Face texture tint - can create shading effect
         - any floor/wall/slope/sprite can be individually shaded or palette swapped to create numerous variations and make objects really pop out
 
