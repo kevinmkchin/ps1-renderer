@@ -7,7 +7,6 @@ Task for today:
     - PreAllocArray doesn't guarantee order so referencing address from GameClass as tiedEntity is wrong.
 
 Backlog:
-    - BIG Get "game" working - player controller?
     - BIG Classes for volume?
     - SMALL Face Texture properties: UV rotation, scale, other stuff
     - SMALL/MED toggle snap to grid in level editor -> could even make vertices snap to vertex pos on other geom
