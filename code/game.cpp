@@ -62,6 +62,8 @@ INTERNAL void GameInitOnStartUp()
 
 INTERNAL void GameLoad()
 {
+    SDL_SetRelativeMouseMode(SDL_TRUE);
+
     staticMapObjects.Clear();
     staticMapColliders.Clear();
     StaticColliders.clear();
@@ -102,9 +104,9 @@ INTERNAL void GameLoad()
 
 INTERNAL void GameUnload()
 {
-    printf("game unload\n");
-
     delete(playerController.GetClass());
+    
+    printf("game unload\n");
 }
 
 INTERNAL void GameUpdate()

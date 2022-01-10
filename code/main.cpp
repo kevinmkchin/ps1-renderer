@@ -5,9 +5,9 @@ TODO:
 Task for today:
     - PreAllocArray doesn't guarantee order so referencing address from GameClass as tiedEntity is wrong.
     - SMALL Delete brushes or entities from level editor scene
+    - BIG Classes for volume?
 
 Backlog:
-    - BIG Classes for volume?
     - SMALL/MED toggle snap to grid in level editor -> could even make vertices snap to vertex pos on other geom
     - MEDIUM Add/Remove edges
     - SMALL/MED Create mode, show preview of brush that can be moved around and shit
@@ -417,9 +417,12 @@ INTERNAL void SDLProcessEventsRealtime()
                 }
                 if(mouseUp.button == SDL_BUTTON_RIGHT && mouseUp.state == SDL_RELEASED)
                 {
-                    SDL_SetRelativeMouseMode(SDL_FALSE);
-                    SDL_WarpMouseInWindow(window, backbufferWidth/2, backbufferHeight/2);
-                    editorCamera.bMouseControl = false;
+                    if(editorModeActiveFlag)
+                    {
+                        SDL_SetRelativeMouseMode(SDL_FALSE);
+                        SDL_WarpMouseInWindow(window, backbufferWidth/2, backbufferHeight/2);
+                        editorCamera.bMouseControl = false;
+                    }
                 }
             }break;
 
@@ -441,8 +444,11 @@ INTERNAL void SDLProcessEventsRealtime()
                 }
                 if(mouseDown.button == SDL_BUTTON_RIGHT && mouseDown.state == SDL_PRESSED)
                 {
-                    SDL_SetRelativeMouseMode(SDL_TRUE);
-                    editorCamera.bMouseControl = true;
+                    if(editorModeActiveFlag)
+                    {
+                        SDL_SetRelativeMouseMode(SDL_TRUE);
+                        editorCamera.bMouseControl = true;
+                    }
                 }
             }break;
 

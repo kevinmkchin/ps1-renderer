@@ -515,7 +515,6 @@ INTERNAL TranslationGizmo transGizmo;
 INTERNAL std::string loadedMapPath = "no map loaded...";
 INTERNAL MeshGroup* defaultEntityModel = nullptr;
 INTERNAL EntityId selectedEditObjId = 0;
-INTERNAL Texture devUnitTexture;
 
 INTERNAL void SetSelectedEditObjId(EntityId eid)
 {
@@ -550,7 +549,7 @@ INTERNAL void EditorExportMap(const std::string& mapName);
 INTERNAL void EditorImportMap(const std::string& mapName);
 INTERNAL void EditorLoad(const std::string& mapName)
 {
-    printf("editor load\n");
+    SDL_SetRelativeMouseMode(SDL_FALSE);
 
     // Load map
     if(!mapName.empty())
@@ -561,14 +560,11 @@ INTERNAL void EditorLoad(const std::string& mapName)
     vertexClickableBillboard.target = &editorCamera;
     vertexClickableBillboard.InitQuadMesh(0.1f, 0.1f, vec2(0.05f, 0.05f));
 
-    // Load textures
-    TextureCreateFromFile(devUnitTexture, "data/primitives/dev_unitwall11.png", GL_LINEAR_MIPMAP_LINEAR);
+    printf("editor load\n");
 }
 
 INTERNAL void EditorUnload()
 {
-    printf("editor unload\n");
-
 // TODO(Kevin): make these editor brush objects not dynamically allocated. Or is it okay because its only for editor?
     for(u32 i = 0; i < editorEntities.Count(); ++i)
     {
@@ -581,8 +577,7 @@ INTERNAL void EditorUnload()
 
     vertexClickableBillboard.DeleteQuadMesh();
 
-    // Unload all textures
-    TextureDelete(devUnitTexture);
+    printf("editor unload\n");
 }
 
 INTERNAL void EditorSwitchMap(const std::string& mapName)
@@ -711,11 +706,13 @@ INTERNAL void UpdateEditorImGui()
                 {
                     { L"Map files", L"*.map" },
                 };
-                EditorSwitchMap(OpenFilePrompt(ARRAYSIZE(fileTypes), fileTypes));
+                const std::string& mapOpenPath = OpenFilePrompt(ARRAYSIZE(fileTypes), fileTypes);
+                if(!mapOpenPath.empty()) EditorSwitchMap(mapOpenPath);
             }
             if (ImGui::MenuItem("Save", "Ctrl+S"))
             {
-                EditorExportMap(SaveFilePrompt());
+                const std::string& mapSavePath = SaveFilePrompt();
+                if(!mapSavePath.empty()) EditorExportMap(mapSavePath);
             }
             if (ImGui::MenuItem("Help"))
             {
@@ -1219,6 +1216,12 @@ INTERNAL void EditorExportMap(const std::string& mapName)
     if(!editorModeActiveFlag)
     {
         printf("WARNING: Editor mode is not active...\n");
+        return;
+    }
+
+    if(mapName.empty())
+    {
+        printf("WARNING: Gave an empty map path to export to...");
         return;
     }
 
