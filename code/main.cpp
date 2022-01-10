@@ -8,13 +8,17 @@ Task for today:
     - BIG Classes for volume?
 
 Backlog:
+    - BIG Change unit size so each unit is 32 units
+    - MEDIUM Billboard static map decorations
+    - MEDIUM Billboard enemies
+    - WEAPON GUI
     - SMALL/MED toggle snap to grid in level editor -> could even make vertices snap to vertex pos on other geom
     - MEDIUM Add/Remove edges
-    - SMALL/MED Create mode, show preview of brush that can be moved around and shit
     - GameClass reflection + expose subclasses and properties to editor?
     - Dropdown to select brush type
-    - Maybe DOUBLE CLICK to place an entity
     - LOAD ALL REQUIRED TEXTURES AT THE START OF THE GAME -> UNLOAD ALL END OF GAME instead of reference counting
+    - Maybe DOUBLE CLICK to place an entity
+    - SMALL/MED Create mode, show preview of brush that can be moved around and shit
     - Decals
     - Fog
     - Text rendering with kc_truetypeassembler.h
