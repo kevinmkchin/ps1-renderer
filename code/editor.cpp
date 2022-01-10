@@ -39,6 +39,7 @@ struct VolumeBrush : GameClass
     };
     struct Triangle
     {
+        // indices of array of vertices
         u8 in0;
         u8 in1;
         u8 in2;
@@ -407,28 +408,36 @@ struct TranslationGizmo
 
             if(editorMode == EDITOR_MODE_EDIT)
             {
+                vec3 vertexTranslationDelta;
+                switch(activeAxis)
+                {
+                    case GIZMO_TRANSLATION_ACTIVE_X:{
+                        vertexTranslationDelta = vec3(Dot(SML_FORWARD_VECTOR, rayWCS), 0.f, 0.f);
+                    }break;
+                    case GIZMO_TRANSLATION_ACTIVE_Y:{
+                        vertexTranslationDelta = vec3(0.f, Dot(SML_UP_VECTOR, rayWCS), 0.f);
+                    }break;
+                    case GIZMO_TRANSLATION_ACTIVE_Z:{
+                        vertexTranslationDelta = vec3(0.f, 0.f, Dot(SML_RIGHT_VECTOR, rayWCS));
+                    }break;
+                    default:{}
+                }
+                mat4 attachedObjModelMatrix = attachedObj->GetModelMatrix();
+
+                std::vector<VolumeBrush::Vertex*> _verticesToMove;
                 if(!selectedClickableVertices.empty())
                 {
-                    for(auto vptr : selectedClickableVertices)
-                    {
-                        vec3 vertexTranslationDelta;
-                        switch(activeAxis)
-                        {
-                            case GIZMO_TRANSLATION_ACTIVE_X:{
-                                vertexTranslationDelta = vec3(Dot(SML_FORWARD_VECTOR, rayWCS), 0.f, 0.f);
-                            }break;
-                            case GIZMO_TRANSLATION_ACTIVE_Y:{
-                                vertexTranslationDelta = vec3(0.f, Dot(SML_UP_VECTOR, rayWCS), 0.f);
-                            }break;
-                            case GIZMO_TRANSLATION_ACTIVE_Z:{
-                                vertexTranslationDelta = vec3(0.f, 0.f, Dot(SML_RIGHT_VECTOR, rayWCS));
-                            }break;
-                            default:{}
-                        }
-                        mat4 attachedObjModelMatrix = attachedObj->GetModelMatrix();
-                        vptr->pos += (attachedObjModelMatrix.GetInverse() * vec4(vertexTranslationDelta, 0.f)).xyz;
-                    }
+                    _verticesToMove = selectedClickableVertices;
                 }
+                else if(!selectedClickableFaces.empty() && attachedObj->GetGameClassCode() == BRUSH_VOLUME)
+                {
+                    _verticesToMove = GetVerticesOfSelectedFaces(attachedObj);
+                }
+                for(auto vptr : _verticesToMove)
+                {
+                    vptr->pos += (attachedObjModelMatrix.GetInverse() * vec4(vertexTranslationDelta, 0.f)).xyz;
+                }
+
                 return;
             }
             else
@@ -458,14 +467,23 @@ struct TranslationGizmo
             vec3 attachedPos = attachedObj->GetPos();
             if(editorMode == EDITOR_MODE_EDIT)
             {
-                if(!selectedClickableVertices.empty())
+                if(!selectedClickableVertices.empty() || !selectedClickableFaces.empty())
                 {
+                    std::vector<VolumeBrush::Vertex*> _verticesToRenderGizmoFor;
+                    if(!selectedClickableVertices.empty())
+                    {
+                        _verticesToRenderGizmoFor = selectedClickableVertices;
+                    }
+                    else
+                    {
+                        _verticesToRenderGizmoFor = GetVerticesOfSelectedFaces(attachedObj);
+                    }
                     vec3 avgSelectedVerticesPos;
-                    for(auto vptr : selectedClickableVertices)
+                    for(auto vptr : _verticesToRenderGizmoFor)
                     {
                         avgSelectedVerticesPos += (attachedObj->GetModelMatrix() * vec4(vptr->pos, 1.f)).xyz;
                     }
-                    avgSelectedVerticesPos /= (float) selectedClickableVertices.size();
+                    avgSelectedVerticesPos /= (float) _verticesToRenderGizmoFor.size();
                     attachedPos = avgSelectedVerticesPos;
                 }
                 else
@@ -508,6 +526,37 @@ struct TranslationGizmo
 
             shader.GLBind1i("dontShade", 0);
         }
+    }
+
+private:
+    std::vector<VolumeBrush::Vertex*> GetVerticesOfSelectedFaces(GameObject* attachedObj)
+    {
+        std::vector<u32> vertIdxOfFaces;
+        for(auto fptr : selectedClickableFaces)
+        {
+            for(const auto& _tri : fptr->tris)
+            {
+                if(std::find(vertIdxOfFaces.begin(), vertIdxOfFaces.end(), _tri.in0) == vertIdxOfFaces.end()) {
+                    vertIdxOfFaces.push_back(_tri.in0);
+                }
+                if(std::find(vertIdxOfFaces.begin(), vertIdxOfFaces.end(), _tri.in1) == vertIdxOfFaces.end()) {
+                    vertIdxOfFaces.push_back(_tri.in1);
+                }
+                if(std::find(vertIdxOfFaces.begin(), vertIdxOfFaces.end(), _tri.in2) == vertIdxOfFaces.end()) {
+                    vertIdxOfFaces.push_back(_tri.in2);
+                }
+            }
+        }
+        std::vector<VolumeBrush::Vertex*> verticesOfSelectedFaces;
+        VolumeBrush* _vb_ = (VolumeBrush*)attachedObj->GetClass();
+        if(_vb_)
+        {
+            for(auto _i : vertIdxOfFaces)
+            {
+                verticesOfSelectedFaces.push_back(&_vb_->vertices[_i]);
+            }
+        }
+        return verticesOfSelectedFaces;
     }
 };
 
@@ -754,6 +803,7 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
             && pickedId >= reservedClickableVertexIds[0]
             && pickedId <= reservedClickableVertexIds[NumberOfReservedClickableVertexIds-1])
         {
+            selectedClickableFaces.clear();
             if(!gCurrentKeyState[SDL_SCANCODE_LCTRL])
             {
                 selectedClickableVertices.clear();
@@ -777,6 +827,7 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
             && pickedId >= reservedClickableFaceIds[0]
             && pickedId <= reservedClickableFaceIds[NumberOfReservedClickableFaceIds-1])
         {
+            selectedClickableVertices.clear();
             if(!gCurrentKeyState[SDL_SCANCODE_LCTRL])
             {
                 selectedClickableFaces.clear();
