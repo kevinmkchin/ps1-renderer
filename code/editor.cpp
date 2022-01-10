@@ -881,6 +881,10 @@ INTERNAL void EditorMousePick(i32 screenPixelX, i32 screenPixelY)
             SetSelectedEditObjId(pickedId);
         }
     }
+    else
+    {
+        SetSelectedEditObjId(0);
+    }
 }
 
 INTERNAL void EditorExportMap(const std::string& mapName)
