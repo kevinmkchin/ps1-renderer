@@ -3,12 +3,12 @@
 
 TODO:
 Task for today:
-    - PreAllocArray doesn't guarantee order so referencing address from GameClass as tiedEntity is wrong.
-    - SMALL Delete brushes or entities from level editor scene
-    - BIG Classes for volume?
+    - Reconsider GameObject + GameClass model
+        - PreAllocArray doesn't guarantee order so referencing address from GameClass as tiedEntity is wrong.
+        - SMALL Delete brushes or entities from level editor scene
+        - BIG Classes for volume?
 
 Backlog:
-    - BIG Change unit size so each unit is 32 units
     - MEDIUM Billboard static map decorations
     - MEDIUM Billboard enemies
     - WEAPON GUI
