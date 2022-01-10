@@ -569,7 +569,22 @@ INTERNAL void SetSelectedEditObjId(EntityId eid)
 {
     selectedEditObjId = eid;
     transGizmo.attachedObjId = eid;
+
     selectedClickableVertices.clear();
+    selectedClickableFaces.clear();
+
+    GameObject* eobj = GetEditorObjectWithId(eid);
+    if(eobj && eobj->GetGameClassCode() == BRUSH_VOLUME)
+    {
+        VolumeBrush* _vb = (VolumeBrush*) eobj->GetClass();
+        if(_vb)
+        {
+            for(auto& _f : _vb->faces)
+            {
+                selectedClickableFaces.push_back(&_f);
+            }
+        }
+    }
 }
 
 INTERNAL void EditorInitOnStartUp()
@@ -1053,21 +1068,24 @@ void VolumeBrush::EditorModeRender(const Shader& shader, bool mousePicking)
     {
         Face& face = faces[i];
         
-        if(GetTiedEntity()->GetId() == selectedEditObjId)
+        if(editorMode == EDITOR_MODE_EDIT)
         {
-            if(mousePicking)
+            if(GetTiedEntity()->GetId() == selectedEditObjId)
             {
-                vec3 rgbId = EntityIdToRGB(reservedClickableFaceIds[i]);
-                shader.GLBind3f("entityIdColor", rgbId.x, rgbId.y, rgbId.z);
-            }
-            else if(editorMode == EDITOR_MODE_EDIT)
-            {
-                for(int i = 0; i < selectedClickableFaces.size(); ++i)
+                if(mousePicking)
                 {
-                    if(selectedClickableFaces[i] == &face)
+                    vec3 rgbId = EntityIdToRGB(reservedClickableFaceIds[i]);
+                    shader.GLBind3f("entityIdColor", rgbId.x, rgbId.y, rgbId.z);
+                }
+                else
+                {
+                    for(int i = 0; i < selectedClickableFaces.size(); ++i)
                     {
-                        shader.GLBind3f("tint", 1.f, 0.9f, 0.7f);
-                    } 
+                        if(selectedClickableFaces[i] == &face)
+                        {
+                            shader.GLBind3f("tint", 1.f, 0.9f, 0.7f);
+                        } 
+                    }
                 }
             }
         }
