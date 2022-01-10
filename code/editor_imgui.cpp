@@ -93,11 +93,14 @@ INTERNAL std::string SaveFilePrompt()
 
 INTERNAL void UpdateEditorImGui()
 {
-    ImGui::Begin("Editor", nullptr, ImGuiWindowFlags_MenuBar);
-    if (ImGui::BeginMenuBar())
+    if (ImGui::BeginMainMenuBar())
     {
         if (ImGui::BeginMenu("File"))
         {
+            if (ImGui::MenuItem("New map"))
+            {
+                EditorSwitchMap("");
+            }
             if (ImGui::MenuItem("Open..", "Ctrl+O"))
             {
                 COMDLG_FILTERSPEC fileTypes[] =
@@ -112,19 +115,54 @@ INTERNAL void UpdateEditorImGui()
                 const std::string& mapSavePath = SaveFilePrompt();
                 if(!mapSavePath.empty()) EditorExportMap(mapSavePath);
             }
-            if (ImGui::MenuItem("Help"))
-            {
-                // TODO(Kevin): show some info about hotkeys controls etc
-            }
             if (ImGui::MenuItem("Shut down"))  { gIsRunning = false; }
             ImGui::EndMenu();
         }
-        ImGui::EndMenuBar();
+
+        if(ImGui::BeginMenu("Help"))
+        {
+            if(ImGui::MenuItem("Help Topics"))
+            {
+
+            }
+
+            if(ImGui::MenuItem("About"))
+            {
+
+            }
+
+            ImGui::EndMenu();
+        }
+
+        ImGui::Spacing();
+        const char* gridDropdownItems[] = { "Grid 1", "Grid 2", "Grid 4", "Grid 8", "Grid 16", "Grid 32", "Grid 64", "Grid 128", "Grid 256" };
+        LOCAL_PERSIST const char* currentGridDropDownItem = NULL;
+        ImGui::PushItemWidth(100);
+        if (ImGui::BeginCombo("##custom combo", currentGridDropDownItem))
+        {
+            for (int n = 0; n < IM_ARRAYSIZE(gridDropdownItems); ++n)
+            {
+                bool _gridDropDownItemIsSelected = (currentGridDropDownItem == gridDropdownItems[n]);
+                if (ImGui::Selectable(gridDropdownItems[n], _gridDropDownItemIsSelected))
+                    currentGridDropDownItem = gridDropdownItems[n];
+                if (_gridDropDownItemIsSelected)
+                    ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::PopItemWidth();
+
+        ImGui::EndMainMenuBar();
     }
 
-    ImGui::TextUnformatted(loadedMapPath.c_str());
+    ImGuiViewport* _mainImGuiViewport = (ImGuiViewport*)(void*)ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(ImVec2(_mainImGuiViewport->WorkPos.x+_mainImGuiViewport->WorkSize.x-300, _mainImGuiViewport->WorkPos.y));
+    ImGui::SetNextWindowSize(ImVec2(300, _mainImGuiViewport->WorkSize.y));
+    ImGui::Begin("Editor", nullptr, ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize);
 
+    ImGui::TextUnformatted(loadedMapPath.c_str());
     ImGui::Separator();
+
     ImGui::BeginGroup();
     if(ImGui::Button("Select"))
     {
@@ -152,7 +190,7 @@ INTERNAL void UpdateEditorImGui()
             if(selectedEditObj)
             {
                 vec3 selectedPos = selectedEditObj->GetPos();
-                ImGui::DragFloat3("Pos", &selectedPos.x,0.01f);
+                ImGui::DragFloat3("Pos", &selectedPos.x,0.32f);
                 selectedEditObj->SetPos(selectedPos);
                 vec3 selectedRot = QuatToEuler(selectedEditObj->GetOrientation()) * SML_RAD2DEG;
                 ImGui::DragFloat3("Rot", &selectedRot.x,0.2f);
@@ -229,7 +267,7 @@ INTERNAL void UpdateEditorImGui()
 
                     // TODO(Kevin): Add dropdown to choose brush type
 
-                    ImGui::DragFloat3("Pos", &createPosition.x, 0.01f);
+                    ImGui::DragFloat3("Pos", &createPosition.x, 0.32f);
                     vec3 selectedRot = QuatToEuler(createOrientation) * SML_RAD2DEG;
                     ImGui::DragFloat3("Rot", &selectedRot.x, 0.2f);
                     createOrientation = EulerToQuat(selectedRot * SML_DEG2RAD);
@@ -290,22 +328,22 @@ INTERNAL void UpdateEditorImGui()
                     case BRUSH_VOLUME:{
                         VolumeBrush* lgb = (VolumeBrush*) selectedEditObj->GetClass();
 
-                        // ImGui::TextUnformatted("Vertices");
-                        // for(int i = 0; i < lgb->vertices.size(); ++i)
-                        // {
-                        //     mat4 _selectedEditObjModelMatrix = selectedEditObj->GetModelMatrix();
-                        //     vec3 v = lgb->vertices[i].pos;
-                        //     v = (_selectedEditObjModelMatrix * vec4(v, 1.f)).xyz;
-                        //     ImGui::PushID(i);
-                        //     ImGui::DragFloat3("v", &v.x, 0.01f);
-                        //     if(ImGui::IsItemEdited())
-                        //     {
-                        //         lgb->vertices[i].pos = (_selectedEditObjModelMatrix.GetInverse() * vec4(v, 1.f)).xyz;
-                        //     }
-                        //     ImGui::PopID();
+                        ImGui::TextUnformatted("Vertices");
+                        for(int i = 0; i < selectedClickableVertices.size(); ++i)
+                        {
+                            mat4 _selectedEditObjModelMatrix = selectedEditObj->GetModelMatrix();
+                            vec3 v = selectedClickableVertices[i]->pos;
+                            v = (_selectedEditObjModelMatrix * vec4(v, 1.f)).xyz;
+                            ImGui::PushID(i);
+                            ImGui::DragFloat3("v", &v.x, 0.32f);
+                            if(ImGui::IsItemEdited())
+                            {
+                                selectedClickableVertices[i]->pos = (_selectedEditObjModelMatrix.GetInverse() * vec4(v, 1.f)).xyz;
+                            }
+                            ImGui::PopID();
 
-                        // }
-                        // ImGui::Separator();
+                        }
+                        ImGui::Separator();
 
                         ImGui::TextUnformatted("Faces");
                         ImGui::Text("%zd faces selected.", selectedClickableFaces.size());
