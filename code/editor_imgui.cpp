@@ -1,5 +1,3 @@
-#pragma region EditorImGuiImGuiStuff
-
 INTERNAL std::string OpenFilePrompt(u32 fileTypesCount, COMDLG_FILTERSPEC fileTypes[])
 {
     std::string filePathString;
@@ -91,6 +89,9 @@ INTERNAL std::string SaveFilePrompt()
     return filePathString;
 }
 
+
+#pragma region EditorImGuiImGuiStuff
+
 INTERNAL void UpdateEditorImGui()
 {
     if (ImGui::BeginMainMenuBar())
@@ -135,6 +136,13 @@ INTERNAL void UpdateEditorImGui()
         }
 
         ImGui::Spacing();
+
+        bool _bTextureLock = false; // TODO(Kevin): Implement texture lock
+        ImGui::Checkbox("Texture lock", &_bTextureLock);
+
+        ImGui::Spacing();
+
+        // TODO(Kevin): Implement snap to grid based on selected dropdown item
         const char* gridDropdownItems[] = { "Grid 1", "Grid 2", "Grid 4", "Grid 8", "Grid 16", "Grid 32", "Grid 64", "Grid 128", "Grid 256" };
         LOCAL_PERSIST const char* currentGridDropDownItem = NULL;
         ImGui::PushItemWidth(100);
