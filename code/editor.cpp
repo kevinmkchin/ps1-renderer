@@ -263,6 +263,8 @@ struct VolumeBrush : GameClass
             ByteBufferWrite(writeBuffer, u64, _faceTexturePathSize);
             ByteBufferWriteBulk(writeBuffer, (void*)_faceTexturePath.c_str(), _faceTexturePathSize); 
             ByteBufferWrite(writeBuffer, vec2, _face.textureShift);
+            ByteBufferWrite(writeBuffer, vec2, _face.textureScale);
+            ByteBufferWrite(writeBuffer, float, _face.textureRotation);
         }
     }
 
@@ -299,6 +301,8 @@ struct VolumeBrush : GameClass
                 TextureCreateFromFile(_face.texture, _tempTexturePathBuffer);
             }
             ByteBufferRead(readBuffer, vec2, &_face.textureShift);
+            ByteBufferRead(readBuffer, vec2, &_face.textureScale);
+            ByteBufferRead(readBuffer, float, &_face.textureRotation);
         }
     }
 };

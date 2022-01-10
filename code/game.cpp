@@ -79,6 +79,7 @@ INTERNAL void GameLoad()
     gameCamera.bMouseControl = true;
 
     playerController = PlayerController();
+    playerController.SetPos(vec3(0.f,1.f,0.f));
     auto psA = new PropStatic();
     playerController.SetClass(psA);
     psA->SetModel(MeshGroupAssimpLoad("data/primitives/cube.obj"));

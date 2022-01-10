@@ -3,7 +3,6 @@
 
 TODO:
 Task for today:
-    - SMALL Face Texture properties: UV rotation, scale, other stuff
     - PreAllocArray doesn't guarantee order so referencing address from GameClass as tiedEntity is wrong.
     - SMALL Delete brushes or entities from level editor scene
 
@@ -453,11 +452,6 @@ INTERNAL void SDLProcessEventsRealtime()
 
             case SDL_KEYDOWN:{
                 ProcessSDLKeyDownEvent(event.key);
-
-                if (event.key.keysym.sym == SDLK_ESCAPE)
-                {
-                    gIsRunning = false;
-                }
             }break;
             case SDL_KEYUP:{
                 ProcessSDLKeyUpEvent(event.key);
