@@ -1,4 +1,4 @@
-// #define START_IN_EDITOR_MODE_ACTIVE
+#define START_IN_EDITOR_MODE_ACTIVE
 /** PRIMEVIL
 
 TODO:
@@ -532,7 +532,6 @@ INTERNAL void BindConsoleCommandsAndVariables()
     console.bind_cmd("camstats", [](std::istream& is, std::ostream& os){
         printf("playerCamera position x: %f, y: %f, z: %f \n", playerController.playerCamera.position.x, playerController.playerCamera.position.y, playerController.playerCamera.position.z);
         printf("playerCamera rotation roll: %f, yaw: %f, pitch: %f \n", playerController.playerCamera.rotation.x, playerController.playerCamera.rotation.y, playerController.playerCamera.rotation.z);
-        printf("playerCamera speed: %f\n", playerController.playerCamera.moveSpeed);
         printf("playerCamera sensitivity: %f\n", playerController.playerCamera.turnSpeed);
     });
 }

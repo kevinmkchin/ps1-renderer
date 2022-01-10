@@ -57,6 +57,8 @@ INTERNAL float refQuadVertices[16] = {
 /** GAME **/
 #define TARGET_FPS 60
 #define GAME_MAPS_DIRECTORY "data/maps/"
+#define WORLD_UNIT_TO_UV_UNIT_RATIO 32
+#define TEXTURE_PIXEL_TO_WORLD_UNIT_RATIO 4 //this means a WORLDUNITTOTEXTUREPIXELRATIOxWORLDUNITTOTEXTUREPIXELRATIO texture should be 1x1 units in world
 
 /** Custom Data Structures **/
 template<typename T> struct PreAllocArray

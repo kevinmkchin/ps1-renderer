@@ -12,32 +12,28 @@ struct PlayerController : GameObject
 
     void InitializePlayerController()
     {
-        auto psA = new PropStatic();
-        SetClass(psA);
-        psA->SetModel(MeshGroupAssimpLoad("data/primitives/cube.obj"));
-
         playerCollider.owningGameObject = this;
         playerCollider.verticesModelSpace = {
-                {-0.5f, 0.5f, -0.5f},
-                {-0.5f, 0.5f, 0.5f},
-                {0.5f, 0.5f, 0.5f},
-                {0.5f, 0.5f, -0.5f},
-                {-0.5f, -0.5f, -0.5f},
-                {-0.5f, -0.5f, 0.5f},
-                {0.5f, -0.5f, 0.5f},
-                {0.5f, -0.5f, -0.5f}
+                {-16.f, 16.f, -16.f},
+                {-16.f, 16.f, 16.f},
+                {16.f, 16.f, 16.f},
+                {16.f, 16.f, -16.f},
+                {-16.f, -16.f, -16.f},
+                {-16.f, -16.f, 16.f},
+                {16.f, -16.f, 16.f},
+                {16.f, -16.f, -16.f}
         };
         DynamicColliders.push_back(&playerCollider);
     }
 
     void CleanUpPlayerController()
     {
-        delete(GetClass());
+
     }
 
     void Update() override
     {
-        float moveSpeed = 4.f;
+        float moveSpeed = 128.f;
         float forwardMov = (float)(gCurrentKeyState[SDL_SCANCODE_W] - gCurrentKeyState[SDL_SCANCODE_S]) * moveSpeed * gDeltaTime;
         vec3 forwardDir = vec3(playerCamera.calculatedDirection.x, 0.f, playerCamera.calculatedDirection.z);
         Move(forwardDir * forwardMov);
@@ -47,10 +43,10 @@ struct PlayerController : GameObject
 
         if(gJustPressedKeyState[SDL_SCANCODE_SPACE])
         {
-            yVel += 0.1f;
+            yVel += 3.f;
         }
 
-        yVel -= 0.325f * gDeltaTime;
+        yVel -= 9.81f * gDeltaTime;
 
         Move(vec3(0.f, yVel, 0.f));
 
@@ -105,7 +101,7 @@ INTERNAL void GameLoad()
     }
 
     playerController = PlayerController();
-    playerController.SetPos(vec3(0.f,1.f,0.f));
+    playerController.SetPos(vec3(0.f,32.f,0.f));
     playerController.InitializePlayerController();
 
     printf("game load\n");
@@ -114,7 +110,7 @@ INTERNAL void GameLoad()
 INTERNAL void GameUnload()
 {
     playerController.CleanUpPlayerController();
-    
+
     printf("game unload\n");
 }
 

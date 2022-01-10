@@ -49,7 +49,7 @@ struct VolumeBrush : GameClass
 
         Texture texture;
         vec2 textureShift = vec2(); //(TODO(Kevin) initial offset can be related to world position)
-        vec2 textureScale = vec2(1.f, 1.f);
+        vec2 textureScale = vec2(WORLD_UNIT_TO_UV_UNIT_RATIO, WORLD_UNIT_TO_UV_UNIT_RATIO);
         float textureRotation = 0.f;
         // texture alignment?
 
@@ -71,13 +71,13 @@ struct VolumeBrush : GameClass
 
         vertices = {
             { { 0.f, 0.f, 0.f } },
-            { { 0.f, 0.f, 1.f } },
-            { { 0.f, 1.f, 0.f } },
-            { { 1.f, 0.f, 0.f } },
-            { { 1.f, 1.f, 0.f } },
-            { { 0.f, 1.f, 1.f } },
-            { { 1.f, 0.f, 1.f } },
-            { { 1.f, 1.f, 1.f } },
+            { { 0.f, 0.f, 32.f } },
+            { { 0.f, 32.f, 0.f } },
+            { { 32.f, 0.f, 0.f } },
+            { { 32.f, 32.f, 0.f } },
+            { { 0.f, 32.f, 32.f } },
+            { { 32.f, 0.f, 32.f } },
+            { { 32.f, 32.f, 32.f } },
         };
 
         faces = {
@@ -528,7 +528,7 @@ INTERNAL void EditorInitOnStartUp()
     editorEntities.Allocate(MAX_EDITOR_ENTITIES_COUNT);
 
     editorCamera.CameraCalculatePerspectiveMatrix();
-    editorCamera.position = {-3.048528f, 1.879444f, 2.618031f };
+    editorCamera.position = {-96.f, 64.f, 80.f };
     editorCamera.rotation = {0.0f, 31.56f, -21.f };
 
     defaultEntityModel = MeshGroupAssimpLoad("data/primitives/sphere.obj");
@@ -596,7 +596,7 @@ void MoveCameraToSelectedEditorObject()
     auto selectedObj = GetEditorObjectWithId(selectedEditObjId);
     if(selectedObj)
     {
-        editorCamera.position = selectedObj->GetPos() - editorCamera.calculatedDirection * 13.f;
+        editorCamera.position = selectedObj->GetPos() - editorCamera.calculatedDirection * 416.f;
     }
 }
 
@@ -892,22 +892,22 @@ INTERNAL void UpdateEditorImGui()
                     case BRUSH_VOLUME:{
                         VolumeBrush* lgb = (VolumeBrush*) selectedEditObj->GetClass();
 
-                        ImGui::TextUnformatted("Vertices");
-                        for(int i = 0; i < lgb->vertices.size(); ++i)
-                        {
-                            mat4 _selectedEditObjModelMatrix = selectedEditObj->GetModelMatrix();
-                            vec3 v = lgb->vertices[i].pos;
-                            v = (_selectedEditObjModelMatrix * vec4(v, 1.f)).xyz;
-                            ImGui::PushID(i);
-                            ImGui::DragFloat3("v", &v.x, 0.01f);
-                            if(ImGui::IsItemEdited())
-                            {
-                                lgb->vertices[i].pos = (_selectedEditObjModelMatrix.GetInverse() * vec4(v, 1.f)).xyz;
-                            }
-                            ImGui::PopID();
+                        // ImGui::TextUnformatted("Vertices");
+                        // for(int i = 0; i < lgb->vertices.size(); ++i)
+                        // {
+                        //     mat4 _selectedEditObjModelMatrix = selectedEditObj->GetModelMatrix();
+                        //     vec3 v = lgb->vertices[i].pos;
+                        //     v = (_selectedEditObjModelMatrix * vec4(v, 1.f)).xyz;
+                        //     ImGui::PushID(i);
+                        //     ImGui::DragFloat3("v", &v.x, 0.01f);
+                        //     if(ImGui::IsItemEdited())
+                        //     {
+                        //         lgb->vertices[i].pos = (_selectedEditObjModelMatrix.GetInverse() * vec4(v, 1.f)).xyz;
+                        //     }
+                        //     ImGui::PopID();
 
-                        }
-                        ImGui::Separator();
+                        // }
+                        // ImGui::Separator();
 
                         ImGui::TextUnformatted("Faces");
                         ImGui::Text("%zd faces selected.", selectedClickableFaces.size());

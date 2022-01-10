@@ -378,10 +378,9 @@ struct GameCamera
     mat4  perspectiveMatrix;    // Perspective projection matrix
     mat4  viewMatrix;           // Last calculated view matrix
     float nearClip              = 0.1f;
-    float farClip               = 2000.f;
-    float moveSpeed             = 6.f;
+    float farClip               = 64000.f;
     float turnSpeed             = 0.04f;
-    bool  bMouseControl          = false;
+    bool  bMouseControl         = false;
 
     virtual void CameraUpdate();
     void CameraCalculatePerspectiveMatrix();
@@ -391,6 +390,8 @@ struct GameCamera
 
 struct EditorCamera : GameCamera
 {
+    float moveSpeed = 200.f;
+
     void CameraUpdate() override;
 };
 
