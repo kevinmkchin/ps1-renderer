@@ -927,6 +927,7 @@ INTERNAL void UpdateEditorImGui()
 
                             if(!sameFilePaths) { ImGui::BeginDisabled(); }
                             ImGui::Text("Face texture: %s", (sameFilePaths ? selectedClickableFaces[0]->texture.filePath.c_str() : "multiple"));
+                            ImGui::Text("%dx%d", selectedClickableFaces[0]->texture.width, selectedClickableFaces[0]->texture.height);
                             if(!sameFilePaths) { ImGui::EndDisabled(); }
 
                             vec2 _textureShiftImgui = sameTextureShift ? selectedClickableFaces[0]->textureShift : vec2();
@@ -959,6 +960,12 @@ INTERNAL void UpdateEditorImGui()
                                 }
                             }
 
+                            LOCAL_PERSIST bool _bSetUVScaleBasedOnTextureSize = true;
+                            ImGui::Spacing();
+                            ImGui::Spacing();
+                            ImGui::Spacing();
+                            ImGui::Checkbox("Set uv scale based on texture size", &_bSetUVScaleBasedOnTextureSize);
+
                             if(ImGui::Button("Choose texture"))
                             {
                                 COMDLG_FILTERSPEC fileTypes[] =
@@ -975,8 +982,12 @@ INTERNAL void UpdateEditorImGui()
                                         for (auto facePtr : selectedClickableFaces)
                                         {
                                             facePtr->texture = _t;
+                                            if(_bSetUVScaleBasedOnTextureSize)
+                                            {
+                                                facePtr->textureScale.x = (float)_t.width / (float)TEXTURE_PIXEL_TO_WORLD_UNIT_RATIO;
+                                                facePtr->textureScale.y = (float)_t.height / (float)TEXTURE_PIXEL_TO_WORLD_UNIT_RATIO;
+                                            }
                                         }
-                                        // TODO(Kevin): Need to unload old textures or something
                                     }
                                 }
                             }
