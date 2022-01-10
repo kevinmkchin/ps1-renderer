@@ -397,7 +397,7 @@ INTERNAL void ChangeInternalResolution(u32 width, u32 height)
     internalResolutionWidth = width;
     internalResolutionHeight = height;
     UpdateInternalFramebufferSize();
-    gameCamera.CameraCalculatePerspectiveMatrix();
+    playerController.playerCamera.CameraCalculatePerspectiveMatrix();
 }
 
 INTERNAL void SDLProcessEventsRealtime()
@@ -526,10 +526,10 @@ INTERNAL void BindConsoleCommandsAndVariables()
     console.bind_cmd("import", EditorSwitchMap);
 
     console.bind_cmd("camstats", [](std::istream& is, std::ostream& os){
-        printf("gameCamera position x: %f, y: %f, z: %f \n", gameCamera.position.x, gameCamera.position.y, gameCamera.position.z);
-        printf("gameCamera rotation roll: %f, yaw: %f, pitch: %f \n", gameCamera.rotation.x, gameCamera.rotation.y, gameCamera.rotation.z);
-        printf("gameCamera speed: %f\n", gameCamera.moveSpeed);
-        printf("gameCamera sensitivity: %f\n", gameCamera.turnSpeed);
+        printf("playerCamera position x: %f, y: %f, z: %f \n", playerController.playerCamera.position.x, playerController.playerCamera.position.y, playerController.playerCamera.position.z);
+        printf("playerCamera rotation roll: %f, yaw: %f, pitch: %f \n", playerController.playerCamera.rotation.x, playerController.playerCamera.rotation.y, playerController.playerCamera.rotation.z);
+        printf("playerCamera speed: %f\n", playerController.playerCamera.moveSpeed);
+        printf("playerCamera sensitivity: %f\n", playerController.playerCamera.turnSpeed);
     });
 }
 

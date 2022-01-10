@@ -1,21 +1,48 @@
-INTERNAL GameCamera gameCamera;
-INTERNAL std::vector<GameObject*> gameObjectsA;
-
-INTERNAL PreAllocArray<GameObject> staticMapObjects;
-INTERNAL PreAllocArray<MeshCollider> staticMapColliders;
-
 struct PlayerController : GameObject
 {
     float yVel = 0.f;
+    GameCamera playerCamera;
+    MeshCollider playerCollider;
+
+    PlayerController()
+    {
+        playerCamera.CameraCalculatePerspectiveMatrix();
+        playerCamera.bMouseControl = true;
+    }
+
+    void InitializePlayerController()
+    {
+        auto psA = new PropStatic();
+        SetClass(psA);
+        psA->SetModel(MeshGroupAssimpLoad("data/primitives/cube.obj"));
+
+        playerCollider.owningGameObject = this;
+        playerCollider.verticesModelSpace = {
+                {-0.5f, 0.5f, -0.5f},
+                {-0.5f, 0.5f, 0.5f},
+                {0.5f, 0.5f, 0.5f},
+                {0.5f, 0.5f, -0.5f},
+                {-0.5f, -0.5f, -0.5f},
+                {-0.5f, -0.5f, 0.5f},
+                {0.5f, -0.5f, 0.5f},
+                {0.5f, -0.5f, -0.5f}
+        };
+        DynamicColliders.push_back(&playerCollider);
+    }
+
+    void CleanUpPlayerController()
+    {
+        delete(GetClass());
+    }
 
     void Update() override
     {
         float moveSpeed = 4.f;
         float forwardMov = (float)(gCurrentKeyState[SDL_SCANCODE_W] - gCurrentKeyState[SDL_SCANCODE_S]) * moveSpeed * gDeltaTime;
-        vec3 forwardDir = vec3(gameCamera.calculatedDirection.x, 0.f, gameCamera.calculatedDirection.z);
+        vec3 forwardDir = vec3(playerCamera.calculatedDirection.x, 0.f, playerCamera.calculatedDirection.z);
         Move(forwardDir * forwardMov);
         float rightMov = (float)(gCurrentKeyState[SDL_SCANCODE_D] - gCurrentKeyState[SDL_SCANCODE_A]) * moveSpeed * gDeltaTime;
-        vec3 rightDir = vec3(gameCamera.calculatedRight.x, 0.f, gameCamera.calculatedRight.z);
+        vec3 rightDir = vec3(playerCamera.calculatedRight.x, 0.f, playerCamera.calculatedRight.z);
         Move(rightDir * rightMov);
 
         if(gJustPressedKeyState[SDL_SCANCODE_SPACE])
@@ -27,8 +54,8 @@ struct PlayerController : GameObject
 
         Move(vec3(0.f, yVel, 0.f));
 
-        gameCamera.position = position;
-        gameCamera.CameraUpdate();
+        playerCamera.position = position;
+        playerCamera.CameraUpdate();
     }
 
     void OnCollision(CollisionEventArgs collisionInfo) override
@@ -52,7 +79,9 @@ struct PlayerController : GameObject
 };
 
 INTERNAL PlayerController playerController;
-INTERNAL MeshCollider colA;
+INTERNAL std::vector<GameObject*> gameObjectsA;
+INTERNAL PreAllocArray<GameObject> staticMapObjects;
+INTERNAL PreAllocArray<MeshCollider> staticMapColliders;
 
 INTERNAL void GameInitOnStartUp()
 {
@@ -75,36 +104,16 @@ INTERNAL void GameLoad()
         StaticColliders.push_back(&staticMapColliders[i]);
     }
 
-    gameCamera.CameraCalculatePerspectiveMatrix();
-    gameCamera.position = {-3.048528f, 1.879444f, 2.618031f };
-    gameCamera.rotation = {0.0f, 31.56f, -21.f };
-    gameCamera.bMouseControl = true;
-
     playerController = PlayerController();
     playerController.SetPos(vec3(0.f,1.f,0.f));
-    auto psA = new PropStatic();
-    playerController.SetClass(psA);
-    psA->SetModel(MeshGroupAssimpLoad("data/primitives/cube.obj"));
-
-    colA.owningGameObject = &playerController;
-    colA.verticesModelSpace = {
-            {-0.5f, 0.5f, -0.5f},
-            {-0.5f, 0.5f, 0.5f},
-            {0.5f, 0.5f, 0.5f},
-            {0.5f, 0.5f, -0.5f},
-            {-0.5f, -0.5f, -0.5f},
-            {-0.5f, -0.5f, 0.5f},
-            {0.5f, -0.5f, 0.5f},
-            {0.5f, -0.5f, -0.5f}
-    };
-    DynamicColliders.push_back(&colA);
+    playerController.InitializePlayerController();
 
     printf("game load\n");
 }
 
 INTERNAL void GameUnload()
 {
-    delete(playerController.GetClass());
+    playerController.CleanUpPlayerController();
     
     printf("game unload\n");
 }
@@ -129,8 +138,8 @@ INTERNAL void GameRender()
     glEnable(GL_DEPTH_TEST);
 
     sceneShader.UseShader();
-        sceneShader.GLBindMatrix4fv("viewMatrix", 1, gameCamera.viewMatrix.ptr());
-        sceneShader.GLBindMatrix4fv("projMatrix", 1, gameCamera.perspectiveMatrix.ptr());
+        sceneShader.GLBindMatrix4fv("viewMatrix", 1, playerController.playerCamera.viewMatrix.ptr());
+        sceneShader.GLBindMatrix4fv("projMatrix", 1, playerController.playerCamera.perspectiveMatrix.ptr());
         sceneShader.GLBind1i("internalResolutionWidth", internalResolutionWidth);
         sceneShader.GLBind1i("internalResolutionHeight", internalResolutionHeight);
         sceneShader.GLBind3f("modelColor", _RGB(0, 0, 0));
