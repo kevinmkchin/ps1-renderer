@@ -281,6 +281,32 @@ INTERNAL void UpdateEditorImGui()
                     createOrientation = EulerToQuat(selectedRot * SML_DEG2RAD);
                     ImGui::DragFloat3("Scale", &createScale.x, 0.01f);
 
+                    LOCAL_PERSIST Texture brushCreateWithTexture;
+                    if(brushCreateWithTexture.textureId == 0)
+                    {
+                        TextureCreateFromFile(brushCreateWithTexture, "data/primitives/default.png");
+                    }
+
+                    ImGui::Text("Selected texture:");
+                    ImGui::Text("%s", brushCreateWithTexture.filePath.c_str());
+
+                    if(ImGui::Button("Choose texture"))
+                    {
+                        COMDLG_FILTERSPEC fileTypes[] =
+                        {
+                            { L"Supported images", L"*.png;*.jpg;*.jpeg;*.bmp" },
+                        };
+                        std::string texturePath = OpenFilePromptGetRelativePath(ARRAYSIZE(fileTypes), fileTypes);
+                        if(!texturePath.empty())
+                        {
+                            Texture _t;
+                            if (TextureCreateFromFile(_t, texturePath.c_str()))
+                            {
+                                brushCreateWithTexture = _t;
+                            }
+                        }
+                    }
+
                     if(ImGui::Button("Create Brush"))
                     {
                         GameObject* newEntity = &editorEntities.PushBackDefault();
@@ -289,6 +315,12 @@ INTERNAL void UpdateEditorImGui()
                         newEntity->SetScale(createScale);
 
                         auto createdlevelgeombrush = new VolumeBrush();
+                        for(auto& _f : createdlevelgeombrush->faces)
+                        {
+                            _f.textureScale.x = (float)brushCreateWithTexture.width / (float)TEXTURE_PIXEL_TO_WORLD_UNIT_RATIO;
+                            _f.textureScale.y = (float)brushCreateWithTexture.height / (float)TEXTURE_PIXEL_TO_WORLD_UNIT_RATIO;
+                            _f.texture = brushCreateWithTexture;
+                        }
                         createdlevelgeombrush->MakeVolumeMeshOnGPU();
                         newEntity->SetClass(createdlevelgeombrush);
 
