@@ -678,7 +678,7 @@ INTERNAL void EditorUpdate()
 INTERNAL void EditorRender()
 {
     glViewport(0, 0, backbufferWidth, backbufferHeight);
-    glClearColor(_RGB(46, 88, 120), 1.f);
+    glClearColor(_RGB(18, 23, 17), 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
 

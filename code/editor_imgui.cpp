@@ -289,8 +289,7 @@ INTERNAL void UpdateEditorImGui()
 
                     ImGui::Text("Selected texture:");
                     ImGui::Text("%s", brushCreateWithTexture.filePath.c_str());
-                    ImGui::Image((void*)(intptr_t)brushCreateWithTexture.textureId, 
-                        ImVec2((float)brushCreateWithTexture.width, (float)brushCreateWithTexture.height));
+                    ImGui::Image((void*)(intptr_t)brushCreateWithTexture.textureId, ImVec2(128.f, 128.f));
                     ImGui::SameLine();
                     if(ImGui::Button("Choose texture"))
                     {
@@ -409,11 +408,13 @@ INTERNAL void UpdateEditorImGui()
                             const auto& _selectedFaceT0 = selectedClickableFaces[0]->texture;
                             ImGui::Text("Face texture: %s", (sameFilePaths ? _selectedFaceT0.filePath.c_str() : "multiple"));
                             ImGui::Text("%dx%d", _selectedFaceT0.width, _selectedFaceT0.height);
-                            ImGui::Image((void*)(intptr_t)_selectedFaceT0.textureId, ImVec2((float)_selectedFaceT0.width,(float)_selectedFaceT0.height));
+                            ImGui::PushItemWidth(128);
+                            ImGui::Image((void*)(intptr_t)_selectedFaceT0.textureId, ImVec2(128.f, 128.f));
+                            ImGui::PopItemWidth();
                             if(!sameFilePaths) { ImGui::EndDisabled(); }
 
                             vec2 _textureShiftImgui = sameTextureShift ? selectedClickableFaces[0]->textureShift : vec2();
-                            ImGui::DragFloat2("uv shift", &_textureShiftImgui.x, 0.001f);
+                            ImGui::DragFloat2("uv shift", &_textureShiftImgui.x, 0.032f);
                             if(ImGui::IsItemActive())
                             {
                                 for(auto facePtr : selectedClickableFaces)
@@ -422,7 +423,7 @@ INTERNAL void UpdateEditorImGui()
                                 }
                             }
                             vec2 _textureScaleImgui = sameTextureScale ? selectedClickableFaces[0]->textureScale : vec2();
-                            ImGui::DragFloat2("uv scale", &_textureScaleImgui.x, 0.001f);
+                            ImGui::DragFloat2("uv scale", &_textureScaleImgui.x, 0.032f);
                             if(ImGui::IsItemActive())
                             {
                                 for(auto facePtr : selectedClickableFaces)

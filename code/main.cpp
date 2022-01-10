@@ -9,6 +9,7 @@ Task for today:
         - BIG Classes for volume?
 
 Backlog:
+    - Sprite class
     - MEDIUM Billboard static map decorations
     - MEDIUM Billboard enemies
     - WEAPON GUI
