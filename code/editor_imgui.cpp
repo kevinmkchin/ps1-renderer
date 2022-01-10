@@ -158,7 +158,7 @@ INTERNAL void UpdateEditorImGui()
     ImGuiViewport* _mainImGuiViewport = (ImGuiViewport*)(void*)ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(ImVec2(_mainImGuiViewport->WorkPos.x+_mainImGuiViewport->WorkSize.x-300, _mainImGuiViewport->WorkPos.y));
     ImGui::SetNextWindowSize(ImVec2(300, _mainImGuiViewport->WorkSize.y));
-    ImGui::Begin("Editor", nullptr, ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize);
+    ImGui::Begin("Editor", nullptr, ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoResize|ImGuiWindowFlags_NoSavedSettings);
 
     ImGui::TextUnformatted(loadedMapPath.c_str());
     ImGui::Separator();
