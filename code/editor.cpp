@@ -48,9 +48,10 @@ struct VolumeBrush : GameClass
         std::vector<Triangle> tris;
 
         Texture texture;
-        vec2 textureShift; //(TODO(Kevin) initial offset can be related to world position)
-        // texture scale
-        // texture alignment, etc.
+        vec2 textureShift = vec2(); //(TODO(Kevin) initial offset can be related to world position)
+        vec2 textureScale = vec2(1.f, 1.f);
+        float textureRotation = 0.f;
+        // texture alignment?
 
         i32 NumberOfIndices()
         {
@@ -187,11 +188,18 @@ struct VolumeBrush : GameClass
                 u8 in2 = face.tris[t].in2;
                 vec3 normal = Normalize(Cross(verticesTransformed[in1].pos - verticesTransformed[in0].pos, verticesTransformed[in2].pos - verticesTransformed[in0].pos));
 
+                mat3 _uvRotMat = RotationMatrix2D(face.textureRotation);
+
                 vbo.push_back(verticesTransformed[in0].pos.x);
                 vbo.push_back(verticesTransformed[in0].pos.y);
                 vbo.push_back(verticesTransformed[in0].pos.z);
-                vbo.push_back(0.f + face.textureShift.x);
-                vbo.push_back(0.f + face.textureShift.y);
+                float _u = 0.f + face.textureShift.x;
+                float _v = 0.f + face.textureShift.y;
+                _u /= face.textureScale.x ? face.textureScale.x : 1.f;
+                _v /= face.textureScale.y ? face.textureScale.y : 1.f;
+                vec3 _uvRotResult = _uvRotMat * vec3(_u, _v, 1.f);
+                vbo.push_back(_uvRotResult.x);
+                vbo.push_back(_uvRotResult.y);
                 vbo.push_back(normal.x);
                 vbo.push_back(normal.y);
                 vbo.push_back(normal.z);
@@ -199,8 +207,13 @@ struct VolumeBrush : GameClass
                 vbo.push_back(verticesTransformed[in1].pos.x);
                 vbo.push_back(verticesTransformed[in1].pos.y);
                 vbo.push_back(verticesTransformed[in1].pos.z);
-                vbo.push_back(Dot(verticesTransformed[in1].pos-verticesTransformed[in0].pos, uAxis) + face.textureShift.x);
-                vbo.push_back(Dot(verticesTransformed[in1].pos-verticesTransformed[in0].pos, vAxis) + face.textureShift.y);
+                _u = Dot(verticesTransformed[in1].pos-verticesTransformed[in0].pos, uAxis) + face.textureShift.x;
+                _v = Dot(verticesTransformed[in1].pos-verticesTransformed[in0].pos, vAxis) + face.textureShift.y;
+                _u /= face.textureScale.x ? face.textureScale.x : 1.f;
+                _v /= face.textureScale.y ? face.textureScale.y : 1.f;
+                _uvRotResult = _uvRotMat * vec3(_u, _v, 1.f);
+                vbo.push_back(_uvRotResult.x);
+                vbo.push_back(_uvRotResult.y);
                 vbo.push_back(normal.x);
                 vbo.push_back(normal.y);
                 vbo.push_back(normal.z);
@@ -208,8 +221,13 @@ struct VolumeBrush : GameClass
                 vbo.push_back(verticesTransformed[in2].pos.x);
                 vbo.push_back(verticesTransformed[in2].pos.y);
                 vbo.push_back(verticesTransformed[in2].pos.z);
-                vbo.push_back(Dot(verticesTransformed[in2].pos-verticesTransformed[in0].pos, uAxis) + face.textureShift.x);
-                vbo.push_back(Dot(verticesTransformed[in2].pos-verticesTransformed[in0].pos, vAxis) + face.textureShift.y);
+                _u = Dot(verticesTransformed[in2].pos-verticesTransformed[in0].pos, uAxis) + face.textureShift.x;
+                _v = Dot(verticesTransformed[in2].pos-verticesTransformed[in0].pos, vAxis) + face.textureShift.y;
+                _u /= face.textureScale.x ? face.textureScale.x : 1.f;
+                _v /= face.textureScale.y ? face.textureScale.y : 1.f;
+                _uvRotResult = _uvRotMat * vec3(_u, _v, 1.f);
+                vbo.push_back(_uvRotResult.x);
+                vbo.push_back(_uvRotResult.y);
                 vbo.push_back(normal.x);
                 vbo.push_back(normal.y);
                 vbo.push_back(normal.z);
@@ -896,10 +914,14 @@ INTERNAL void UpdateEditorImGui()
                         {
                             bool sameFilePaths = true;
                             bool sameTextureShift = true;
+                            bool sameTextureScale = true;
+                            bool sameTextureRotation = true;
                             for(auto facePtr : selectedClickableFaces)
                             {
                                 sameFilePaths &= selectedClickableFaces[0]->texture.filePath == facePtr->texture.filePath;
                                 sameTextureShift &= selectedClickableFaces[0]->textureShift == facePtr->textureShift;
+                                sameTextureScale &= selectedClickableFaces[0]->textureScale == facePtr->textureScale;
+                                sameTextureRotation &= selectedClickableFaces[0]->textureRotation == facePtr->textureRotation;
                             }
 
                             if(!sameFilePaths) { ImGui::BeginDisabled(); }
@@ -907,12 +929,32 @@ INTERNAL void UpdateEditorImGui()
                             if(!sameFilePaths) { ImGui::EndDisabled(); }
 
                             vec2 _textureShiftImgui = sameTextureShift ? selectedClickableFaces[0]->textureShift : vec2();
-                            ImGui::DragFloat2("Texture shift", &_textureShiftImgui.x, 0.001f);
+                            ImGui::DragFloat2("uv shift", &_textureShiftImgui.x, 0.001f);
                             if(ImGui::IsItemActive())
                             {
                                 for(auto facePtr : selectedClickableFaces)
                                 {
                                     facePtr->textureShift = _textureShiftImgui;
+                                }
+                            }
+                            vec2 _textureScaleImgui = sameTextureScale ? selectedClickableFaces[0]->textureScale : vec2();
+                            ImGui::DragFloat2("uv scale", &_textureScaleImgui.x, 0.001f);
+                            if(ImGui::IsItemActive())
+                            {
+                                for(auto facePtr : selectedClickableFaces)
+                                {
+                                    facePtr->textureScale = _textureScaleImgui;
+                                }
+                            }
+                            float _textureRotationImgui = sameTextureRotation ? selectedClickableFaces[0]->textureRotation : 0.f;
+                            _textureRotationImgui *= SML_RAD2DEG;
+                            ImGui::DragFloat("uv rotation", &_textureRotationImgui, 0.1f);
+                            if(ImGui::IsItemActive())
+                            {
+                                _textureRotationImgui *= SML_DEG2RAD;
+                                for(auto facePtr : selectedClickableFaces)
+                                {
+                                    facePtr->textureRotation = _textureRotationImgui;
                                 }
                             }
 

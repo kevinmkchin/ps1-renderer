@@ -16,9 +16,8 @@ Backlog:
     - Dropdown to select brush type
     - Maybe DOUBLE CLICK to place an entity
     - LOAD ALL REQUIRED TEXTURES AT THE START OF THE GAME -> UNLOAD ALL END OF GAME instead of reference counting
-    - shaded toggleable - brush can be shaded or not shaded
-    - decals
-    - fog
+    - Decals
+    - Fog
     - Text rendering with kc_truetypeassembler.h
     - Drop-down console port from XNGINE (tilde)
     - Animation
