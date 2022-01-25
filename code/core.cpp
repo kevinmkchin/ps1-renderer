@@ -348,7 +348,7 @@ INTERNAL MeshGroup* MeshGroupAssimpLoad(const char* fileName)
                 int idx = (int)std::string(path.data).find_last_of("\\");
                 std::string texture_file_name = std::string(path.data).substr(idx+1);
                 std::string model_file_directory = std::string(fileName);
-                idx = SML_max((int)model_file_directory.find_last_of("/"), (int)model_file_directory.find_last_of("\\"));
+                idx = GM_max((int)model_file_directory.find_last_of("/"), (int)model_file_directory.find_last_of("\\"));
                 model_file_directory = model_file_directory.substr(0, idx + 1);
 
                 std::string tex_path = model_file_directory + texture_file_name;
@@ -463,7 +463,7 @@ void GameObject::SetOrientation(const quat& newOrientation)
 }
 void GameObject::Rotate(const vec3& eulerInDegrees)
 {
-    quat q = EulerToQuat(eulerInDegrees * SML_DEG2RAD);
+    quat q = EulerToQuat(eulerInDegrees * GM_DEG2RAD);
     Rotate(q);
 }
 void GameObject::Rotate(const quat& rotationAsQuat)
@@ -508,9 +508,9 @@ void GameCamera::CameraUpdate()
     }
 
     // Calcuate direction, right, and up vectors
-    calculatedDirection = OrientationToDirection(EulerToQuat(rotation * SML_DEG2RAD));
+    calculatedDirection = OrientationToDirection(EulerToQuat(rotation * GM_DEG2RAD));
     calculatedDirection = Normalize(calculatedDirection);
-    calculatedRight = Normalize(Cross(calculatedDirection, SML_UP_VECTOR));
+    calculatedRight = Normalize(Cross(calculatedDirection, GM_UP_VECTOR));
     calculatedUp = Normalize(Cross(calculatedRight, calculatedDirection));
 
     CameraCalculateViewMatrix();
@@ -519,12 +519,12 @@ void GameCamera::CameraUpdate()
 void GameCamera::CameraCalculatePerspectiveMatrix()
 {
     float aspect_ratio = (float)internalResolutionWidth / (float)internalResolutionHeight;
-    perspectiveMatrix = ProjectionMatrixPerspective((FOV / 2.f) * SML_DEG2RAD, aspect_ratio, nearClip, farClip);
+    perspectiveMatrix = ProjectionMatrixPerspective((FOV / 2.f) * GM_DEG2RAD, aspect_ratio, nearClip, farClip);
 }
 
 void GameCamera::CameraCalculatePerspectiveMatrix(float aspectRatio)
 {
-    perspectiveMatrix = ProjectionMatrixPerspective((FOV / 2.f) * SML_DEG2RAD, aspectRatio, nearClip, farClip);
+    perspectiveMatrix = ProjectionMatrixPerspective((FOV / 2.f) * GM_DEG2RAD, aspectRatio, nearClip, farClip);
 }
 
 void GameCamera::CameraCalculateViewMatrix()
@@ -556,9 +556,9 @@ void EditorCamera::CameraUpdate()
     }
 
     // Calcuate direction, right, and up vectors
-    calculatedDirection = OrientationToDirection(EulerToQuat(rotation * SML_DEG2RAD));
+    calculatedDirection = OrientationToDirection(EulerToQuat(rotation * GM_DEG2RAD));
     calculatedDirection = Normalize(calculatedDirection);
-    calculatedRight = Normalize(Cross(calculatedDirection, SML_UP_VECTOR));
+    calculatedRight = Normalize(Cross(calculatedDirection, GM_UP_VECTOR));
     calculatedUp = Normalize(Cross(calculatedRight, calculatedDirection));
 
     if(gGamepadStates[0].isConnected)
@@ -634,7 +634,7 @@ public:
     void pushFront(vec3 point)
     {
         points = { point, points[0], points[1], points[2] };
-        count = SML_min(count + 1, 4u);
+        count = GM_min(count + 1, 4u);
     }
 
     u8 size() const
@@ -889,7 +889,7 @@ INTERNAL GJKEPACollisionInfo EPA(GJKSimplex& simplex, const Collider* colA, cons
         vec3 support = GJKSupport(colA, colB, minNormal); // i.e. is there a point to be added in this direction?
         float sDistance = Dot(minNormal, support);
 
-        if(SML_abs(sDistance - minDistance) > 0.001f)
+        if(GM_abs(sDistance - minDistance) > 0.001f)
         {
             // then we must expand the polytope
             std::vector<std::pair<int, int>> uniqueEdges;

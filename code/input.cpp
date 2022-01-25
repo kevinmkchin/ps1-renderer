@@ -19,7 +19,7 @@ GLOBAL_VAR GamepadStatesWrapper gGamepadStates;
 
 INTERNAL void ProcessSDLMouseMotionEvent(SDL_MouseMotionEvent mouseMotionEvent)
 {
-    if(SML_abs(mouseMotionEvent.xrel) < 50 && SML_abs(mouseMotionEvent.yrel) < 50)
+    if(GM_abs(mouseMotionEvent.xrel) < 50 && GM_abs(mouseMotionEvent.yrel) < 50)
     {
         gMouseDelta += vec2((float)mouseMotionEvent.xrel, (float)mouseMotionEvent.yrel);
     }
@@ -220,7 +220,7 @@ INTERNAL void ProcessSDLControllerAxisEvent(SDL_ControllerAxisEvent gamepadAxisE
     switch(axisIndex)
     {
         case SDL_CONTROLLER_AXIS_LEFTX:{
-            if(SML_abs(axisValue) > SDL_JOYSTICK_DEAD_ZONE)
+            if(GM_abs(axisValue) > SDL_JOYSTICK_DEAD_ZONE)
             {
                 vec2 leftAxisDir = gGamepadStates[gamepadIndex].leftThumbStickDir * (float)SDL_JOYSTICK_MAX;
                 leftAxisDir.x = (float)axisValue;
@@ -233,7 +233,7 @@ INTERNAL void ProcessSDLControllerAxisEvent(SDL_ControllerAxisEvent gamepadAxisE
             }
         }break;
         case SDL_CONTROLLER_AXIS_LEFTY:{
-            if(SML_abs(axisValue) > SDL_JOYSTICK_DEAD_ZONE)
+            if(GM_abs(axisValue) > SDL_JOYSTICK_DEAD_ZONE)
             {
                 vec2 leftAxisDir = gGamepadStates[gamepadIndex].leftThumbStickDir * (float)SDL_JOYSTICK_MAX;
                 leftAxisDir.y = -(float)axisValue;
@@ -246,7 +246,7 @@ INTERNAL void ProcessSDLControllerAxisEvent(SDL_ControllerAxisEvent gamepadAxisE
             }
         }break;
         case SDL_CONTROLLER_AXIS_RIGHTX:{
-            if(SML_abs(axisValue) > SDL_JOYSTICK_DEAD_ZONE)
+            if(GM_abs(axisValue) > SDL_JOYSTICK_DEAD_ZONE)
             {
                 vec2 rightAxisDir = gGamepadStates[gamepadIndex].rightThumbStickDir * (float)SDL_JOYSTICK_MAX;
                 rightAxisDir.x = (float)axisValue;
@@ -259,7 +259,7 @@ INTERNAL void ProcessSDLControllerAxisEvent(SDL_ControllerAxisEvent gamepadAxisE
             }
         }break;
         case SDL_CONTROLLER_AXIS_RIGHTY:{
-            if(SML_abs(axisValue) > SDL_JOYSTICK_DEAD_ZONE)
+            if(GM_abs(axisValue) > SDL_JOYSTICK_DEAD_ZONE)
             {
                 vec2 rightAxisDir = gGamepadStates[gamepadIndex].rightThumbStickDir * (float)SDL_JOYSTICK_MAX;
                 rightAxisDir.y = -(float)axisValue;
@@ -272,7 +272,7 @@ INTERNAL void ProcessSDLControllerAxisEvent(SDL_ControllerAxisEvent gamepadAxisE
             }
         }break;
         case SDL_CONTROLLER_AXIS_TRIGGERLEFT:{
-            if(SML_abs(axisValue) > SDL_JOYSTICK_DEAD_ZONE)
+            if(GM_abs(axisValue) > SDL_JOYSTICK_DEAD_ZONE)
             {
                 gGamepadStates[gamepadIndex].leftTrigger = (axisValue + ((float)SDL_JOYSTICK_MAX)) / (2*((float)SDL_JOYSTICK_MAX));
             }
@@ -282,7 +282,7 @@ INTERNAL void ProcessSDLControllerAxisEvent(SDL_ControllerAxisEvent gamepadAxisE
             }
         }break;
         case SDL_CONTROLLER_AXIS_TRIGGERRIGHT:{
-            if(SML_abs(axisValue) > SDL_JOYSTICK_DEAD_ZONE)
+            if(GM_abs(axisValue) > SDL_JOYSTICK_DEAD_ZONE)
             {
                 gGamepadStates[gamepadIndex].rightTrigger = (axisValue + ((float)SDL_JOYSTICK_MAX)) / (2*((float)SDL_JOYSTICK_MAX));
             }

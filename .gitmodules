@@ -1,6 +1,6 @@
 [submodule "lib/noclip"]
 	path = lib/noclip
 	url = https://github.com/kevinmkchin/noclip.git
-[submodule "lib/sexymathlibrary"]
-	path = lib/sexymathlibrary
-	url = https://github.com/kevinmkchin/sexymathlibrary.git
+[submodule "lib/gmath"]
+	path = lib/gmath
+	url = https://github.com/kevinmkchin/gmath.git
