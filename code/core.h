@@ -479,7 +479,7 @@ struct SphereCollider : Collider
     void TransformCollider() override
     {
         vec3 scale = owningGameObject->GetScale();
-        float largestScale = SML_max(scale.x, SML_max(scale.y, scale.z));
+        float largestScale = GM_max(scale.x, GM_max(scale.y, scale.z));
         position = owningGameObject->GetPos();
         scaledRadius = largestScale * radius;
     }

@@ -11,7 +11,7 @@ add_compile_definitions(
 add_executable(${PROJECT_NAME} code/main.cpp)
 
 include_directories(lib/noclip)
-include_directories(lib/sexymathlibrary)
+include_directories(lib/gmath)
 include_directories(lib/stb)
 
 if(WIN32)

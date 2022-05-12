@@ -200,9 +200,9 @@ INTERNAL void UpdateEditorImGui()
                 vec3 selectedPos = selectedEditObj->GetPos();
                 ImGui::DragFloat3("Pos", &selectedPos.x,0.32f);
                 selectedEditObj->SetPos(selectedPos);
-                vec3 selectedRot = QuatToEuler(selectedEditObj->GetOrientation()) * SML_RAD2DEG;
+                vec3 selectedRot = QuatToEuler(selectedEditObj->GetOrientation()) * GM_RAD2DEG;
                 ImGui::DragFloat3("Rot", &selectedRot.x,0.2f);
-                selectedEditObj->SetOrientation(EulerToQuat(selectedRot * SML_DEG2RAD));
+                selectedEditObj->SetOrientation(EulerToQuat(selectedRot * GM_DEG2RAD));
                 vec3 selectedScale = selectedEditObj->GetScale();
                 ImGui::DragFloat3("Scale", &selectedScale.x, 0.01f);
                 selectedEditObj->SetScale(selectedScale);
@@ -276,9 +276,9 @@ INTERNAL void UpdateEditorImGui()
                     // TODO(Kevin): Add dropdown to choose brush type
 
                     ImGui::DragFloat3("Pos", &createPosition.x, 0.32f);
-                    vec3 selectedRot = QuatToEuler(createOrientation) * SML_RAD2DEG;
+                    vec3 selectedRot = QuatToEuler(createOrientation) * GM_RAD2DEG;
                     ImGui::DragFloat3("Rot", &selectedRot.x, 0.2f);
-                    createOrientation = EulerToQuat(selectedRot * SML_DEG2RAD);
+                    createOrientation = EulerToQuat(selectedRot * GM_DEG2RAD);
                     ImGui::DragFloat3("Scale", &createScale.x, 0.01f);
 
                     LOCAL_PERSIST Texture brushCreateWithTexture;
@@ -338,9 +338,9 @@ INTERNAL void UpdateEditorImGui()
                     LOCAL_PERSIST vec3 createScale = vec3(1.f, 1.f, 1.f);
 
                     ImGui::DragFloat3("Pos", &createPosition.x, 0.01f);
-                    vec3 selectedRot = QuatToEuler(createOrientation) * SML_RAD2DEG;
+                    vec3 selectedRot = QuatToEuler(createOrientation) * GM_RAD2DEG;
                     ImGui::DragFloat3("Rot", &selectedRot.x, 0.2f);
-                    createOrientation = EulerToQuat(selectedRot * SML_DEG2RAD);
+                    createOrientation = EulerToQuat(selectedRot * GM_DEG2RAD);
                     ImGui::DragFloat3("Scale", &createScale.x, 0.01f);
 
                     if(ImGui::Button("Create Entity"))
@@ -432,11 +432,11 @@ INTERNAL void UpdateEditorImGui()
                                 }
                             }
                             float _textureRotationImgui = sameTextureRotation ? selectedClickableFaces[0]->textureRotation : 0.f;
-                            _textureRotationImgui *= SML_RAD2DEG;
+                            _textureRotationImgui *= GM_RAD2DEG;
                             ImGui::DragFloat("uv rotation", &_textureRotationImgui, 0.1f);
                             if(ImGui::IsItemActive())
                             {
-                                _textureRotationImgui *= SML_DEG2RAD;
+                                _textureRotationImgui *= GM_DEG2RAD;
                                 for(auto facePtr : selectedClickableFaces)
                                 {
                                     facePtr->textureRotation = _textureRotationImgui;

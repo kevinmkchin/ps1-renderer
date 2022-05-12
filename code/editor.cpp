@@ -165,22 +165,22 @@ struct VolumeBrush : GameClass
             vec3 vtx1 = verticesTransformed[face.tris[0].in1].pos;
             vec3 vtx2 = verticesTransformed[face.tris[0].in2].pos;
             vec3 uvNormal = Normalize(Cross(vtx1 - vtx0, vtx2 - vtx0)); // we could average instead?
-            float upDownCheck = Dot(SML_UP_VECTOR, uvNormal);
+            float upDownCheck = Dot(GM_UP_VECTOR, uvNormal);
             vec3 uAxis;
             if(upDownCheck > 0.98f) {
-                uAxis = SML_RIGHT_VECTOR;
+                uAxis = GM_RIGHT_VECTOR;
             } else if(upDownCheck < -0.98f) {
-                uAxis = -SML_RIGHT_VECTOR;
+                uAxis = -GM_RIGHT_VECTOR;
             } else {
-                uAxis = Normalize(Cross(SML_UP_VECTOR, uvNormal));
+                uAxis = Normalize(Cross(GM_UP_VECTOR, uvNormal));
             }
             vec3 vAxis = -Normalize(Cross(uvNormal, uAxis));
             
             //     WORLD ALIGNMENT:
             //     // actually i dont think it matters that we are using up forward right but rather that 
             //     all the triangles are using the same
-            //     uAxis = SML_FORWARD_VECTOR or SML_RIGHT_VECTOR; 
-            //     vec3 vAxis = SML_UP_VECTOR;
+            //     uAxis = GM_FORWARD_VECTOR or GM_RIGHT_VECTOR; 
+            //     vec3 vAxis = GM_UP_VECTOR;
 
             for(int t = 0; t < face.tris.size(); ++t)
             {
@@ -412,13 +412,13 @@ struct TranslationGizmo
                 switch(activeAxis)
                 {
                     case GIZMO_TRANSLATION_ACTIVE_X:{
-                        vertexTranslationDelta = vec3(Dot(SML_FORWARD_VECTOR, rayWCS), 0.f, 0.f);
+                        vertexTranslationDelta = vec3(Dot(GM_FORWARD_VECTOR, rayWCS), 0.f, 0.f);
                     }break;
                     case GIZMO_TRANSLATION_ACTIVE_Y:{
-                        vertexTranslationDelta = vec3(0.f, Dot(SML_UP_VECTOR, rayWCS), 0.f);
+                        vertexTranslationDelta = vec3(0.f, Dot(GM_UP_VECTOR, rayWCS), 0.f);
                     }break;
                     case GIZMO_TRANSLATION_ACTIVE_Z:{
-                        vertexTranslationDelta = vec3(0.f, 0.f, Dot(SML_RIGHT_VECTOR, rayWCS));
+                        vertexTranslationDelta = vec3(0.f, 0.f, Dot(GM_RIGHT_VECTOR, rayWCS));
                     }break;
                     default:{}
                 }
@@ -445,13 +445,13 @@ struct TranslationGizmo
                 switch(activeAxis)
                 {
                     case GIZMO_TRANSLATION_ACTIVE_X:{
-                        attachedObj->Move(vec3(Dot(SML_FORWARD_VECTOR, rayWCS), 0.f, 0.f));
+                        attachedObj->Move(vec3(Dot(GM_FORWARD_VECTOR, rayWCS), 0.f, 0.f));
                     }break;
                     case GIZMO_TRANSLATION_ACTIVE_Y:{
-                        attachedObj->Move(vec3(0.f, Dot(SML_UP_VECTOR, rayWCS), 0.f));
+                        attachedObj->Move(vec3(0.f, Dot(GM_UP_VECTOR, rayWCS), 0.f));
                     }break;
                     case GIZMO_TRANSLATION_ACTIVE_Z:{
-                        attachedObj->Move(vec3(0.f, 0.f, Dot(SML_RIGHT_VECTOR, rayWCS)));
+                        attachedObj->Move(vec3(0.f, 0.f, Dot(GM_RIGHT_VECTOR, rayWCS)));
                     }break;
                     default:{}
                 }
@@ -506,7 +506,7 @@ struct TranslationGizmo
 
             modelMatrix = TranslationMatrix(attachedPos);
             modelMatrix *= ScaleMatrix(scaledDistToObjFromCam, scaledDistToObjFromCam, scaledDistToObjFromCam);
-            modelMatrix *= RotationMatrix(EulerToQuat(0.f,0.f,90.f*SML_DEG2RAD));
+            modelMatrix *= RotationMatrix(EulerToQuat(0.f,0.f,90.f*GM_DEG2RAD));
             shader.GLBindMatrix4fv("modelMatrix", 1, modelMatrix.ptr());
             eidColor = EntityIdToRGB(YArrowId);
             mousePicking ? shader.GLBind3f("entityIdColor", eidColor.x, eidColor.y, eidColor.z) 
@@ -515,7 +515,7 @@ struct TranslationGizmo
 
             modelMatrix = TranslationMatrix(attachedPos);
             modelMatrix *= ScaleMatrix(scaledDistToObjFromCam, scaledDistToObjFromCam, scaledDistToObjFromCam);
-            modelMatrix *= RotationMatrix(EulerToQuat(0.f,-90.f*SML_DEG2RAD,0.f));
+            modelMatrix *= RotationMatrix(EulerToQuat(0.f,-90.f*GM_DEG2RAD,0.f));
             shader.GLBindMatrix4fv("modelMatrix", 1, modelMatrix.ptr());
             eidColor = EntityIdToRGB(ZArrowId);
             mousePicking ? shader.GLBind3f("entityIdColor", eidColor.x, eidColor.y, eidColor.z) 
@@ -702,10 +702,10 @@ INTERNAL void EditorRender()
             LOCAL_PERSIST float _breathef = 0.f;
             LOCAL_PERSIST vec4 selectColor;
             _breathef += gDeltaTime;
-            selectColor.x = SML_abs(sinf(_breathef))*0.7f + 0.3f;
-            selectColor.y = SML_abs(sinf(_breathef))*0.7f + 0.3f;
-            selectColor.z = SML_abs(sinf(_breathef))*0.7f + 0.3f;
-            selectColor.w = SML_abs(sinf(_breathef))*0.7f + 0.3f;
+            selectColor.x = GM_abs(sinf(_breathef))*0.7f + 0.3f;
+            selectColor.y = GM_abs(sinf(_breathef))*0.7f + 0.3f;
+            selectColor.z = GM_abs(sinf(_breathef))*0.7f + 0.3f;
+            selectColor.w = GM_abs(sinf(_breathef))*0.7f + 0.3f;
             wireframeShader.GLBind4f("wireframeColor", selectColor.x, selectColor.y, selectColor.z, selectColor.w);
             glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
             wireframeShader.SuppressWarningsPush();
